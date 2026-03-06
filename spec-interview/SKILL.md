@@ -1,7 +1,8 @@
 ---
 name: spec-interview
 description: |
-  Spec interview skill. Read a SPEC.md file or summary provided via prompt,
+  仕様書インタビュースキル。仕様書やプロンプトの内容を読み取り、AskUserQuestionToolを使って詳細なインタビューを行い、仕様を明確化・拡充します。
+  Spec interview skill. Read a spec file or summary provided via prompt,
   then conduct detailed interviews using AskUserQuestionTool to clarify and expand the spec.
   Can start with just a prompt, no file required.
   Use when: (1) User wants to flesh out a specification document,
@@ -12,7 +13,7 @@ description: |
 
 # Spec Interview
 
-Read the spec (SPEC.md file or summary provided via prompt) and conduct detailed interviews using AskUserQuestionTool.
+Read the spec (spec file or summary provided via prompt) and conduct detailed interviews using AskUserQuestionTool.
 
 ## Phase 0: Codebase Investigation (Pre-Interview)
 
@@ -67,5 +68,5 @@ This investigation phase ensures interview questions are grounded in the actual 
 
 ## Input Patterns
 
-1. **With file reference**: Specify a file like `@SPEC.md`
+1. **With file reference**: Specify a spec file like `@spec.md`
 2. **Prompt only**: Describe the concept verbally and build the spec from scratch
