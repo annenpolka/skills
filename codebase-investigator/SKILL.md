@@ -6,15 +6,10 @@ description: |
   "investigate this repo", "what does this codebase do", "where is X implemented",
   "コードベース調査", "コード調査", and "全体像を把握". Uses 6 investigation phases,
   mandatory coverage lanes, contradiction and gap ledgers, and evidence-backed synthesis.
-  STRICT PROTOCOL REQUIREMENT: When this skill is invoked, the parent agent MUST
-  personally orchestrate all 6 phases in order. The most common violation is: reading
-  this skill, deciding "the task is focused enough to skip phases", and launching Explore
-  agents to do the whole investigation. THIS IS ALWAYS WRONG. Even for narrow questions
-  like "find all X" or "list Y differences", the 6-phase structure applies — focus changes
-  depth per phase, never phase count. scout.sh MUST run before any investigation begins.
-  Subagents handle bounded probes WITHIN a phase; the parent drives phase transitions,
-  coverage tracking, and synthesis. If you catch yourself about to skip straight to
-  searching without running scout.sh and establishing Phase 1 census — STOP and restart.
+  STRICT: The parent agent MUST orchestrate all 6 phases in order — never skip phases
+  or delegate the entire investigation to Explore agents. Phase 1 Census MUST run first.
+  Focus narrows scope within each phase, never reduces phase count. Subagents handle
+  bounded probes within a phase; the parent drives phase transitions and synthesis.
 ---
 
 # Codebase Investigator
@@ -48,13 +43,8 @@ Always exhaustive. The six old topic buckets are coverage lanes, not phase names
 
 1. **Sync repos**: Ensure target repositories are up-to-date before investigating.
 2. **Identify the root**: Confirm the project root (`.git/`, `package.json`, `Cargo.toml`, etc.).
-3. **Run the scout script** (not optional):
-
-   ```bash
-   bash <skill-path>/scripts/scout.sh <project-root>
-   ```
-
-4. **Freeze the census from scout output**: investigation units, candidate entrypoints, surface roots, ignored boundaries, initial size calibration.
+3. **Run the Phase 1 Census** (not optional): Use Claude's native tools (Glob, Grep, Read, Bash) to collect the initial project census. See Phase 1 for detailed goals and recommended procedures.
+4. **Freeze the census**: investigation units, candidate entrypoints, surface roots, initial size calibration.
 5. **Fold in user focus areas as extra probes, not exemptions**: focus shifts depth, not phase count. A user-approved skip must still appear in the final phase table.
 6. **Stay static only:** Do not require install, build, test, boot, or external credentials. Runtime-only questions must be labeled `Unverified`.
 
@@ -81,7 +71,7 @@ For every major unit, each applicable lane must end in: **Closed with evidence**
 - A focused user question (e.g. "find all Firebase events", "list API differences") does NOT reduce phase count. It narrows the scope WITHIN each phase.
 - Do not start synthesis until Phases 1–5 produced outputs and high-risk gaps were revisited.
 - Final report must show both phase status and coverage-lane status.
-- **First action after reading this skill must be scout.sh**, not Explore/Grep/Glob. If you find yourself about to search code before running scout.sh — you are violating the protocol.
+- **First action after reading this skill must be Phase 1 Census**, not undirected Explore agents. If you find yourself launching broad searches before completing the Census — you are violating the protocol.
 
 Final report is blocked until:
 
@@ -103,11 +93,11 @@ High confidence requires: every primary unit touched, every applicable lane clos
 Use subagents for bounded, read-only probes **within a phase**. Keep orchestration, phase transitions, and final synthesis in the parent agent.
 
 > **Anti-pattern (PROHIBITED):** "The user wants Firebase events → launch 2 Explore agents
-> to find them → combine results → done." This skips scout.sh, skips census, skips all 6
-> phases, and produces unstructured output with no coverage tracking.
+> to find them → combine results → done." This skips census, skips all 6 phases, and
+> produces unstructured output with no coverage tracking.
 >
-> **Correct pattern:** Parent runs scout.sh → Phase 1 census → Phase 2 dispatches subagents
-> for bounded surface probes → Parent collects, tracks coverage → Phase 3–5 → Phase 6
+> **Correct pattern:** Parent runs Phase 1 Census → Phase 2 dispatches subagents for
+> bounded surface probes → Parent collects, tracks coverage → Phase 3–5 → Phase 6
 > synthesis with evidence protocol.
 
 ### Evidence & Coverage Standards
@@ -199,20 +189,55 @@ Do NOT: modify files, run build/test/start/install, assume runtime behavior, rep
 
 Build the investigation census before parallel work starts. Decide what counts as the system, what counts as a unit, and what surfaces later phases must touch.
 
+**Goals:**
+
+- Confirm the project root and project type (single-language, monorepo, polyglot, etc.)
+- Identify and freeze investigation units
+- List candidate entrypoints
+- Map surface roots (source, config/CI, tests, docs, packages)
+- Determine size category (small: <5K LOC, medium: 5K–50K, large: >50K)
+- Read README and root-level manifest/config
+
 **Steps:**
 
-1. Read scout output; confirm root, size category, units, manifests
+1. Collect project census using Claude tools (see recommended procedures below)
 2. Read root README and one root-level manifest/config
 3. Confirm candidate entrypoints; add obvious misses
 4. Confirm surface roots for source, config/CI, tests, docs, packages
-5. Record ignored boundaries (vendored/generated dirs)
-6. Search for nested apps, extra manifests, alternate roots, vendored subprojects, abandoned dirs
+5. Search for nested apps, extra manifests, alternate roots, vendored subprojects, abandoned dirs
 
-**Required artifacts:** Frozen unit list, lane applicability table, candidate entrypoints, surface roots, ignored boundaries, initial blind spots.
+**Recommended Census procedures** (adapt to the target repo):
+
+```
+# Manifest detection → investigation unit identification
+Glob: **/package.json, **/Cargo.toml, **/go.mod, **/pyproject.toml,
+      **/setup.py, **/requirements.txt, **/Gemfile, **/pom.xml,
+      **/build.gradle, **/build.gradle.kts
+
+# Directory structure overview
+Bash: ls -la <project-root>
+Glob: <project-root>/*/ (top-level directories)
+
+# Entrypoint candidates
+Glob: **/main.*, **/index.*, **/app.*, **/server.*, **/cli.*
+Glob: **/__main__.py
+
+# Source/test file scope estimation
+Glob: **/*.{ts,tsx,js,jsx,py,rb,go,rs,java,kt,swift,cs,cpp,c,php}
+Glob: **/*.test.*, **/*.spec.*, **/*_test.*, **/test_*
+
+# Git intelligence (if .git/ exists)
+Bash: git log --oneline -1 --reverse (first commit)
+Bash: git log --oneline -1 (last commit)
+Bash: git rev-list --count HEAD (total commits)
+Bash: git shortlog -sn --no-merges | head -10 (contributors)
+```
+
+**Required artifacts:** Frozen unit list, lane applicability table, candidate entrypoints, surface roots, initial blind spots.
 
 **Exit:** Every major unit named, candidate entrypoints explicit, lane applicability defined, uncertainty recorded as blind spot.
 
-**Handoff:** Pass frozen unit list, lane table, entrypoints, surface roots, ignored boundaries to Phases 2–5.
+**Handoff:** Pass frozen unit list, lane table, entrypoints, surface roots to Phases 2–5.
 
 ### Phase 2: Surface Coverage Sweep
 
@@ -221,7 +246,7 @@ Touch broadly before going deep — every major unit, every surface. Breadth pre
 **Steps:**
 
 1. For each major unit, read ≥1 entry, core, config/CI, test/doc file
-2. Use scout surface roots first; expand only if thin
+2. Use Phase 1 surface roots first; expand only if thin
 3. Record representative files and which lanes each read advanced
 4. Search for hidden surfaces: alternate test trees, orphan docs, extra CI files, config roots outside expected dirs
 5. Stop only after every major unit has ≥1 real read or explicit open gap
