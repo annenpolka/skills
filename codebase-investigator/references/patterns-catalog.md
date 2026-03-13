@@ -16,7 +16,7 @@ Subagents should read the section relevant to the detected language/framework.
 
 ### Architecture Patterns (look for these)
 
-| Pattern | Grep Signals | Implications |
+| Pattern | Search Signals | Implications |
 |---------|-------------|-------------|
 | Layered / MVC | `controller`, `service`, `repository`, `model` directories | Clear separation, but watch for leaky abstractions |
 | Hexagonal | `ports/`, `adapters/`, `domain/`, `infrastructure/` | Good isolation, may be over-engineered for simple apps |
@@ -26,7 +26,7 @@ Subagents should read the section relevant to the detected language/framework.
 
 ### Anti-Patterns (watch for these)
 
-| Anti-Pattern | Grep Signals | Impact |
+| Anti-Pattern | Search Signals | Impact |
 |-------------|-------------|--------|
 | God class/module | Single file >500 LOC with many methods | Hard to test, modify, understand |
 | Circular dependencies | Mutual imports between modules | Build issues, tight coupling |
@@ -46,7 +46,7 @@ Subagents should read the section relevant to the detected language/framework.
 - **Zod/io-ts schemas**: Runtime validation matching TypeScript types
 - **Discriminated unions**: `type Result = Success | Failure` with `kind` field
 
-### Grep Targets
+### Search Targets
 ```
 # Type safety issues
 any                          # Count occurrences — high count = type safety debt
@@ -84,7 +84,7 @@ dangerouslySetInnerHTML     # XSS risk
 - **Abstract base classes**: Clear interface contracts
 - **Pytest fixtures**: Reusable test setup
 
-### Grep Targets
+### Search Targets
 ```
 # Type safety
 : Any                       # Escape hatch from type system
@@ -115,7 +115,7 @@ pickle                      # Deserialization risk
 - **Context propagation**: `ctx context.Context` as first parameter
 - **Functional options**: `WithTimeout(5)` style configuration
 
-### Grep Targets
+### Search Targets
 ```
 # Error handling
 if err != nil               # Count — should be present after every fallible call
@@ -144,7 +144,7 @@ init()                      # Init functions — side effects at import time
 - **Error crates**: `thiserror`, `anyhow` for structured error handling
 - **Builder pattern**: For complex struct construction
 
-### Grep Targets
+### Search Targets
 ```
 # Safety concerns
 unsafe                      # Count and review each usage

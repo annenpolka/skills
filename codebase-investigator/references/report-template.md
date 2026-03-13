@@ -75,7 +75,7 @@ readable: summary first, evidence matrix second, then the details that matter.
 ### Phase Completion
 | Phase | Status | Notes |
 |------|--------|-------|
-| Phase 1: Census & Scope Freeze | [Full / Minimal / Re-run required / User-skipped] | [why] |
+| Phase 1: Preflight Census | [Full / Minimal / Re-run required / User-skipped] | [why] |
 | Phase 2: Surface Coverage Sweep | [Full / Minimal / Re-run required / User-skipped] | [why] |
 | Phase 3: Flow Tracing | [Full / Minimal / Re-run required / User-skipped] | [why] |
 | Phase 4: Cross-Cutting Census | [Full / Minimal / Re-run required / User-skipped] | [why] |

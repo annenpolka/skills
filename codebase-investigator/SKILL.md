@@ -7,7 +7,7 @@ description: |
   "コードベース調査", "コード調査", and "全体像を把握". Uses 6 investigation phases,
   mandatory coverage lanes, contradiction and gap ledgers, and evidence-backed synthesis.
   STRICT: The parent agent MUST orchestrate all 6 phases in order — never skip phases
-  or delegate the entire investigation to Explore agents. Phase 1 Census MUST run first.
+  or delegate the entire investigation to Explore agents. Phase 1 Preflight Census MUST run first.
   Focus narrows scope within each phase, never reduces phase count. Subagents handle
   bounded probes within a phase; the parent drives phase transitions and synthesis.
 ---
@@ -20,7 +20,7 @@ explicit coverage, contradiction handling, and gap reporting.
 ## Core Workflow
 
 ```
-Phase 1: Census & Scope Freeze
+Phase 1: Preflight Census
           ↓
 Phase 2: Surface Coverage Sweep ─┐
 Phase 3: Flow Tracing            ├─> targeted gap-closing probes
@@ -43,8 +43,8 @@ Always exhaustive. The six old topic buckets are coverage lanes, not phase names
 
 1. **Sync repos**: Ensure target repositories are up-to-date before investigating.
 2. **Identify the root**: Confirm the project root (`.git/`, `package.json`, `Cargo.toml`, etc.).
-3. **Run the Phase 1 Census** (not optional): Use Claude's native tools (Glob, Grep, Read, Bash) to collect the initial project census. See Phase 1 for detailed goals and recommended procedures.
-4. **Freeze the census**: investigation units, candidate entrypoints, surface roots, initial size calibration.
+3. **Run the Phase 1 Preflight Census** (not optional): Use the current agent's available file-search, pattern-search, file-read, and shell tools to capture a lightweight investigation baseline. See Phase 1 for the minimum output.
+4. **Capture the baseline inline**: investigation units, candidate entrypoints, surface roots, rough size calibration, explicit exclusions or blind spots. Keep this inline in working notes or the final report, not in a separate ledger file.
 5. **Fold in user focus areas as extra probes, not exemptions**: focus shifts depth, not phase count. A user-approved skip must still appear in the final phase table.
 6. **Stay static only:** Do not require install, build, test, boot, or external credentials. Runtime-only questions must be labeled `Unverified`.
 
@@ -71,7 +71,7 @@ For every major unit, each applicable lane must end in: **Closed with evidence**
 - A focused user question (e.g. "find all Firebase events", "list API differences") does NOT reduce phase count. It narrows the scope WITHIN each phase.
 - Do not start synthesis until Phases 1–5 produced outputs and high-risk gaps were revisited.
 - Final report must show both phase status and coverage-lane status.
-- **First action after reading this skill must be Phase 1 Census**, not undirected Explore agents. If you find yourself launching broad searches before completing the Census — you are violating the protocol.
+- **First action after reading this skill must be Phase 1 Preflight Census**, not undirected Explore agents. If you find yourself launching broad searches before completing the census — you are violating the protocol.
 
 Final report is blocked until:
 
@@ -96,7 +96,7 @@ Use subagents for bounded, read-only probes **within a phase**. Keep orchestrati
 > to find them → combine results → done." This skips census, skips all 6 phases, and
 > produces unstructured output with no coverage tracking.
 >
-> **Correct pattern:** Parent runs Phase 1 Census → Phase 2 dispatches subagents for
+> **Correct pattern:** Parent runs Phase 1 Preflight Census → Phase 2 dispatches subagents for
 > bounded surface probes → Parent collects, tracks coverage → Phase 3–5 → Phase 6
 > synthesis with evidence protocol.
 
@@ -115,7 +115,7 @@ Every finding in any phase MUST follow this structure:
 | 結論 | Yes | One-sentence factual claim with label (Verified/Inference/Hypothesis/Unverified) |
 | 根拠ファイル | Yes | File paths with line numbers (≥1) |
 | 根拠コード | If citing patterns | Quoted code snippet or command output excerpt |
-| 実行コマンド | Yes | Glob/Grep/Bash command that produced this evidence |
+| 実行コマンド | Yes | Search or shell command that produced this evidence |
 | 未確認事項 | Yes (empty OK) | What remains uncertain + where to look for confirmation |
 | 反証候補 | Yes (empty OK) | Search that would disprove this claim, with expected disproving result |
 
@@ -124,9 +124,9 @@ Example:
 ```
 - 結論 [Verified]: DI は constructor injection で統一されている
   根拠ファイル: src/services/UserService.ts:15, src/services/OrderService.ts:22
-  実行コマンド: Grep `constructor.*@Inject` in src/services/ → 12 hits
+  実行コマンド: Pattern search `constructor.*@Inject` in src/services/ → 12 hits
   未確認事項: linter rule による強制があるかは未確認 → .eslintrc を確認すれば判明
-  反証候補: Grep `new UserService(` → 0 hits なら主張を支持、1+ hits なら崩れる → 0 hits
+  反証候補: Pattern search `new UserService(` → 0 hits なら主張を支持、1+ hits なら崩れる → 0 hits
 ```
 
 Negative finding example:
@@ -134,9 +134,9 @@ Negative finding example:
 ```
 - 結論 [Verified]: 直接 SQL による位置情報書き込みは存在しない
   根拠ファイル: app/models/user_location.rb (全永続化がここを経由)
-  実行コマンド: Grep `insert_all|raw\.execute.*INSERT` in app/ → 0 hits
+  実行コマンド: Pattern search `insert_all|raw\.execute.*INSERT` in app/ → 0 hits
   未確認事項: マイグレーション内の seed データ書き込みは未確認 → db/seeds/ を確認すれば判明
-  反証候補: Grep `execute.*INSERT.*user_location` → 1+ hits なら主張が崩れる → 0 hits
+  反証候補: Pattern search `execute.*INSERT.*user_location` → 1+ hits なら主張が崩れる → 0 hits
 ```
 
 ### Minimum Coverage by Repo Size
@@ -147,14 +147,14 @@ Negative finding example:
 
 ### Search Strategy
 
-| Goal | Tool | Example |
-|------|------|---------|
-| Find files by name/extension | Glob | `**/*.test.ts`, `**/routes/**` |
-| Find patterns or absences | Grep | `TODO|FIXME`,`import .* from` |
-| Read representative evidence | Read | After Glob/Grep surfaced candidates |
-| List directories or git history | Bash | `ls`, `git log --oneline -20` |
+| Goal | Tool Type | Example |
+|------|-----------|---------|
+| Find files by name/extension | File search | `**/*.test.ts`, `**/routes/**` |
+| Find patterns or absences | Pattern search | `TODO|FIXME`,`import .* from` |
+| Read representative evidence | File read | After file/pattern search surfaced candidates |
+| List directories or git history | Shell | `ls`, `git log --oneline -20` |
 
-Search order: Glob → Grep → Read. Never read files blindly.
+Search order: file search → pattern search → file read. Never read files blindly.
 
 ### Subagent Output Format
 
@@ -172,7 +172,7 @@ Search order: Glob → Grep → Read. Never read files blindly.
 ### Required Artifacts
 - Evidence ledger / Contradictions / Open gaps / Next probes
 ### Search Log
-- Glob: `[pattern]` → [result]  |  Grep: `[pattern]` → [result]
+- File search: `[pattern]` → [result]  |  Pattern search: `[pattern]` → [result]
 ### Confidence
 - [High/Medium/Low] — [why]
 ```
@@ -185,59 +185,54 @@ Do NOT: modify files, run build/test/start/install, assume runtime behavior, rep
 
 ## Investigation Phases
 
-### Phase 1: Census & Scope Freeze
+### Phase 1: Preflight Census
 
-Build the investigation census before parallel work starts. Decide what counts as the system, what counts as a unit, and what surfaces later phases must touch.
+Capture a lightweight investigation baseline before broad reading starts. Decide what counts as the system, what counts as a unit, and what surfaces later phases must touch.
 
 **Goals:**
 
 - Confirm the project root and project type (single-language, monorepo, polyglot, etc.)
-- Identify and freeze investigation units
+- Identify investigation units
 - List candidate entrypoints
 - Map surface roots (source, config/CI, tests, docs, packages)
-- Determine size category (small: <5K LOC, medium: 5K–50K, large: >50K)
-- Read README and root-level manifest/config
+- Record rough size category when it affects coverage expectations
+- Record explicit exclusions or early blind spots
+
+Keep the output inline in investigation notes or in the final report draft. Do not create a separate ledger file for Phase 1.
 
 **Steps:**
 
-1. Collect project census using Claude tools (see recommended procedures below)
-2. Read root README and one root-level manifest/config
-3. Confirm candidate entrypoints; add obvious misses
-4. Confirm surface roots for source, config/CI, tests, docs, packages
-5. Search for nested apps, extra manifests, alternate roots, vendored subprojects, abandoned dirs
+1. Read the root README and one root-level manifest/config
+2. Use available agent tools to identify major units, candidate entrypoints, and surface roots
+3. Search for obvious misses: nested apps, extra manifests, alternate roots, vendored subprojects, abandoned dirs
+4. Write down the inline baseline before moving on to Phase 2
 
 **Recommended Census procedures** (adapt to the target repo):
 
 ```
 # Manifest detection → investigation unit identification
-Glob: **/package.json, **/Cargo.toml, **/go.mod, **/pyproject.toml,
+File search: **/package.json, **/Cargo.toml, **/go.mod, **/pyproject.toml,
       **/setup.py, **/requirements.txt, **/Gemfile, **/pom.xml,
       **/build.gradle, **/build.gradle.kts
 
 # Directory structure overview
-Bash: ls -la <project-root>
-Glob: <project-root>/*/ (top-level directories)
+Shell: ls -la <project-root>
+File search: <project-root>/*/ (top-level directories)
 
 # Entrypoint candidates
-Glob: **/main.*, **/index.*, **/app.*, **/server.*, **/cli.*
-Glob: **/__main__.py
+File search: **/main.*, **/index.*, **/app.*, **/server.*, **/cli.*
+File search: **/__main__.py
 
 # Source/test file scope estimation
-Glob: **/*.{ts,tsx,js,jsx,py,rb,go,rs,java,kt,swift,cs,cpp,c,php}
-Glob: **/*.test.*, **/*.spec.*, **/*_test.*, **/test_*
-
-# Git intelligence (if .git/ exists)
-Bash: git log --oneline -1 --reverse (first commit)
-Bash: git log --oneline -1 (last commit)
-Bash: git rev-list --count HEAD (total commits)
-Bash: git shortlog -sn --no-merges | head -10 (contributors)
+File search: **/*.{ts,tsx,js,jsx,py,rb,go,rs,java,kt,swift,cs,cpp,c,php}
+File search: **/*.test.*, **/*.spec.*, **/*_test.*, **/test_*
 ```
 
-**Required artifacts:** Frozen unit list, lane applicability table, candidate entrypoints, surface roots, initial blind spots.
+**Minimum inline baseline:** project root, major units, candidate entrypoints, surface roots, rough size category, explicit exclusions/blind spots.
 
-**Exit:** Every major unit named, candidate entrypoints explicit, lane applicability defined, uncertainty recorded as blind spot.
+**Exit:** Every major unit named, candidate entrypoints explicit, surface roots captured, and obvious exclusions/blind spots recorded.
 
-**Handoff:** Pass frozen unit list, lane table, entrypoints, surface roots to Phases 2–5.
+**Handoff:** Pass the inline baseline (units, entrypoints, surface roots, exclusions) to Phases 2–5.
 
 ### Phase 2: Surface Coverage Sweep
 
@@ -246,7 +241,7 @@ Touch broadly before going deep — every major unit, every surface. Breadth pre
 **Steps:**
 
 1. For each major unit, read ≥1 entry, core, config/CI, test/doc file
-2. Use Phase 1 surface roots first; expand only if thin
+2. Use the Phase 1 baseline surface roots first; expand only if thin
 3. Record representative files and which lanes each read advanced
 4. Search for hidden surfaces: alternate test trees, orphan docs, extra CI files, config roots outside expected dirs
 5. Stop only after every major unit has ≥1 real read or explicit open gap
