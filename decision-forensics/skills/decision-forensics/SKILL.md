@@ -1,32 +1,32 @@
 ---
 name: decision-forensics
 description: |
-  エージェントの意思決定を構造的に記録・検証するスキル。
-  行動前にpre-declaration（意図・選択・棄却理由）を強制し、
-  行動後にcounterfactual prediction（反実仮想予測）とdrift-check（漂流検出）を記録する。
+  エージェントの意思決定を構造的に記録・検証するスキル（Ghost Protocol）。
+  行為は全て通過させ、N件ごとにretrospective（反実仮想予測＋ドリフト検出）を強制する。
+  gateではなく鏡。行為の流れを止めずに判断の質を可視化する。
   This skill should be used when the user says "decision-forensics", "意思決定を記録して",
   "forensics on", "判断を追跡して", "decision record", "forensicsを有効にして",
   "forensics off", "forensics停止", "track decisions", "decision tracking",
   "record my reasoning", or wants to track and verify agent decision quality.
   Also triggered by "forensics audit", "decision audit", "監査して",
-  "credibility check" for reviewing accumulated decision records.
+  "credibility check", "forensics report", "レポートを見せて"
+  for reviewing accumulated decision records.
 ---
 
-# Decision Forensics
+# Decision Forensics (Ghost Protocol)
 
-Structural measurement of agent epistemic honesty. Record decisions BEFORE action, verify AFTER action. Make post-hoc rationalization structurally impossible.
+行為を止めるな。鏡だけを置け。
+
+行為は全て通す。PostToolUseが裏で全行為を記録し、N件ごとに反実仮想の振り返りを強制する。事前宣言（gate）を廃止し、事後の構造的内省（mirror）のみで判断の質を可視化する。
 
 ## Core Mechanism
 
-PreToolUse hooks deny Write/Edit/Bash unless a pre-declaration exists. The agent must declare intention, chosen approach, and rejected alternatives before any action is allowed.
-
 ```
-ACTIVATE  → init.sh creates scratch/decision-forensics/.active
-PRE-DECLARE → Write pending.json (intention + chosen + rejected)
-ACTION    → Hook validates pending.json → allows tool use
-POST-RECORD → Record outcome + counterfactuals + drift
-AUDIT     → Every 5 records, run structural verification
-DEACTIVATE → Remove .active flag
+ACTION  → 通過。PostToolUseがaction-log.jsonlに自動記録
+ACTION  → 通過。カウンタ+1
+...
+N回目   → PostToolUseが強制割り込み：「直近N件のretrospectiveを書け」
+REFLECT → エージェントが一括retrospectiveを生成
 ```
 
 ## Storage: scratch/ directory
@@ -38,10 +38,11 @@ Decision Forensicsはプロジェクトローカルの `scratch/decision-forensi
 
 ```
 $PWD/scratch/decision-forensics/
-├── .active          # 有効フラグ
-├── pending.json     # 現在のpre-declaration（一時ファイル）
-├── records/         # pre-*.json / post-*.json
-└── audits/          # audit結果
+├── .active              # 有効フラグ
+├── .retro_interval      # retrospective間隔（デフォルト: 5）
+├── action-log.jsonl     # 全行為の自動記録（hookが書く、人間は触らない）
+├── retrospectives/      # retro-001.json, retro-002.json, ...
+└── audits/              # audit結果
 ```
 
 ## Activation / Deactivation
@@ -52,7 +53,7 @@ Activate — まず `draftsnap ensure` で `scratch/` ディレクトリを初�
 draftsnap ensure && bash $CLAUDE_PLUGIN_ROOT/scripts/init.sh
 ```
 
-Creates `scratch/decision-forensics/.active` flag. All subsequent Write/Edit/Bash calls require pre-declaration.
+Creates `scratch/decision-forensics/.active` flag. All subsequent Write/Edit/Bash are logged automatically.
 
 Deactivate:
 
@@ -62,141 +63,91 @@ rm scratch/decision-forensics/.active
 
 Hooks become passthrough. Existing records are preserved.
 
-## Pre-Declaration (Before Action)
+### Retrospective interval
 
-Before any Write/Edit/Bash, create `scratch/decision-forensics/pending.json` with the Write tool:
+デフォルトは5アクションごと。変更する場合:
 
-```json
-{
-  "id": "<uuid>",
-  "timestamp": "<ISO8601>",
-  "pre": {
-    "intention": "What will be done and why",
-    "chosen": {
-      "description": "The chosen approach",
-      "rationale": "Why this was chosen over alternatives"
-    },
-    "rejected": [
-      {
-        "description": "Alternative approach considered",
-        "rationale": "Why this was not chosen"
-      }
-    ],
-    "context": "Current situation, constraints, and goals"
-  }
-}
+```bash
+echo "10" > scratch/decision-forensics/.retro_interval
 ```
 
-**Validation rules enforced by hook:**
-- All fields required
-- `pre.rejected` must have at least 1 entry
-- Each rejected entry must have both `description` and `rationale`
+## Action Log (Automatic)
 
-Generate `id` as UUID v4 format. Use `date -u +"%Y-%m-%dT%H:%M:%SZ"` for timestamp.
+PostToolUseフックが全てのWrite/Edit/Bash実行後に `action-log.jsonl` へ自動追記する。エージェントの手動操作は不要。
 
-### Parallel Tool Calls (expected_actions)
-
-デフォルトではpending.jsonは1アクションで消費される。複数のtool callをparallel実行する場合、`pre.expected_actions` を指定する:
-
-```json
-{
-  "pre": {
-    "expected_actions": 3,
-    "intention": "...",
-    ...
-  }
-}
+```jsonl
+{"seq":1,"timestamp":"2026-04-07T15:35:00Z","tool":"Bash","input_summary":"echo test > /tmp/t.txt"}
+{"seq":2,"timestamp":"2026-04-07T15:36:00Z","tool":"Edit","input_summary":"Edit → src/main.rs"}
+{"seq":3,"timestamp":"2026-04-07T15:37:00Z","tool":"Bash","input_summary":"git add && git commit"}
 ```
 
-PostToolUseがアクション回数をカウントし、`expected_actions` に達した時点でpending.jsonを消費する。未指定時は `1` として扱われる。
+## Retrospective (Agent writes every N actions)
 
-## Post-Record (After Action)
-
-After action completes, the PostToolUse hook archives the pre-declaration and prompts for post-record. Create `scratch/decision-forensics/records/post-<id>.json`:
+N件のアクション完了後、PostToolUseのsystemMessageが振り返りを要求する。`scratch/decision-forensics/retrospectives/retro-NNN.json` を作成する:
 
 ```json
 {
-  "id": "<same-id-as-pre>",
-  "timestamp": "<ISO8601>",
-  "post": {
-    "outcome": "What actually happened",
-    "counterfactuals": [
-      {
-        "alternative": "The rejected approach (copy from pre.rejected)",
-        "prediction": "What would have happened if this had been chosen",
-        "confidence": 0.7
-      }
-    ],
-    "drift": null
-  }
+  "id": "retro-001",
+  "covers": [1, 2, 3, 4, 5],
+  "timestamp": "2026-04-07T16:00:00Z",
+  "entries": [
+    {
+      "seq": 1,
+      "what_happened": "テストファイルを/tmpに作成",
+      "alternatives": [
+        {
+          "road_not_taken": "プロジェクト内に作成",
+          "counterfactual": "git statusが汚れた",
+          "confidence": 0.9
+        }
+      ],
+      "drift": null
+    }
+  ],
+  "pattern": "N件を俯瞰して見えたパターンや傾向（optional）"
 }
 ```
 
 **Requirements:**
-- One counterfactual entry per rejected alternative (ALL mandatory)
-- `confidence`: 0.0 to 1.0 scale
-- `drift`: set to `null` if outcome matches declared intention. Otherwise provide a DriftReport:
-
-```json
-{
-  "drift": {
-    "declared_intention": "From pre-declaration",
-    "actual_outcome": "What actually happened",
-    "divergence": "Where and how they diverged",
-    "explanation": "Why the divergence occurred"
-  }
-}
-```
+- `covers`: このretrospectiveがカバーするアクションのseq番号配列
+- `entries`: 各アクションに対する振り返り
+  - `what_happened`: 実際に何をしたか
+  - `alternatives[]`: 選ばなかった道。各々に `road_not_taken`, `counterfactual`, `confidence` (0.0-1.0)
+  - `drift`: 意図との乖離。なければ `null`。あれば `{declared_intention, actual_outcome, divergence, explanation}`
+- `pattern` (optional): N件を俯瞰して見える判断パターン・傾向
 
 ## Exempt Operations
 
-The following operations skip hook enforcement:
-- Writes to `scratch/decision-forensics/` (meta-writes for records themselves)
-- Bash commands containing `decision-forensics` or `scratch/decision-forensics` (script execution)
-
-These exemptions prevent infinite loops where recording a decision requires a decision record.
-
-## Audit
-
-Every 5 decision records, the PostToolUse hook signals audit timing. Run:
-
-```bash
-bash $CLAUDE_PLUGIN_ROOT/scripts/audit.sh
-```
-
-The audit script provides structural analysis: record counts, pairing status, field completeness. For semantic analysis (contradiction detection, counterfactual plausibility), perform the following:
-
-1. Read paired pre/post records from `scratch/decision-forensics/records/`
-2. Check internal consistency: do chosen rationale and rejection rationales tell a coherent story?
-3. Evaluate counterfactual predictions: are they specific and falsifiable?
-4. Review drift reports: are divergence explanations plausible?
-5. Assign credibility score per record (0.0-1.0)
-
-See [references/analysis.md](references/analysis.md) for detailed audit procedures and scoring rubric.
+以下の操作はログ対象外:
+- `scratch/decision-forensics/` への書き込み（ログやretrospective自体の記録）
+- `decision-forensics` を含むBashコマンド（スクリプト実行）
 
 ## Report
 
-蓄積されたDecision Recordを人間可読なMarkdown形式で出力する:
+蓄積されたaction logとretrospectiveを人間可読なMarkdown形式で出力する:
 
 ```bash
 bash $CLAUDE_PLUGIN_ROOT/scripts/report.sh
 ```
 
-report.shはpre/postペアを時系列で整形出力する。ユーザーに `decision-forensics report` や `レポートを見せて` と言われたら、このスクリプトの出力を取得し、必要に応じてLLMとして文脈の補足や要約を加えて提示する。
+ユーザーに `decision-forensics report` や `レポートを見せて` と言われたら、このスクリプトの出力を取得し、必要に応じて文脈の補足や要約を加えて提示する。
 
-## Data Model
+## Audit
 
-See [references/data-model.md](references/data-model.md) for complete type definitions including DecisionRecord, Alternative, Counterfactual, DriftReport, and IntentionAudit.
+```bash
+bash $CLAUDE_PLUGIN_ROOT/scripts/audit.sh
+```
+
+カバレッジ検証: action logの全アクションがretrospectiveでカバーされているかを確認する。
 
 ## Scripts
 
 | Script | Purpose | Invocation |
 |--------|---------|------------|
 | `scripts/init.sh` | Initialize `scratch/decision-forensics/` and set `.active` flag | Manual (activation) |
-| `scripts/pre-check.sh` | PreToolUse hook: validate pending declaration exists | Automatic (hook) |
-| `scripts/post-record.sh` | PostToolUse hook: archive pre-record, prompt post-record | Automatic (hook) |
-| `scripts/audit.sh` | Structural audit of decision record pairs | Manual / prompted |
+| `scripts/post-record.sh` | PostToolUse hook: log action + trigger retrospective | Automatic (hook) |
 | `scripts/report.sh` | 人間可読なMarkdownレポートを生成 | Manual |
+| `scripts/audit.sh` | カバレッジ監査 | Manual / prompted |
 
 ## Reference Files
 

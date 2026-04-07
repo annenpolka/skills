@@ -1,119 +1,100 @@
 #!/bin/bash
 set -euo pipefail
 
-RECORDS_DIR="$PWD/scratch/decision-forensics/records"
+BASE_DIR="$PWD/scratch/decision-forensics"
+LOG_FILE="$BASE_DIR/action-log.jsonl"
+RETRO_DIR="$BASE_DIR/retrospectives"
 
-if [ ! -d "$RECORDS_DIR" ]; then
-  echo "No records directory found. Run init.sh first."
+if [ ! -f "$LOG_FILE" ]; then
+  echo "No action log found. Run init.sh first."
   exit 1
 fi
 
-# Collect all pre-record IDs (sorted by filename)
-pre_files=$(find "$RECORDS_DIR" -name 'pre-*.json' -type f 2>/dev/null | sort)
+total_actions=$(wc -l < "$LOG_FILE" | tr -d ' ')
+total_retros=$(find "$RETRO_DIR" -name 'retro-*.json' -type f 2>/dev/null | wc -l | tr -d ' ')
 
-if [ -z "$pre_files" ]; then
-  echo "No decision records found."
-  exit 0
-fi
-
-echo "# Decision Forensics Report"
+echo "# Decision Forensics Report (Ghost Protocol)"
 echo ""
 echo "Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
 echo ""
 
-record_num=0
-while IFS= read -r pre_file; do
-  [ -f "$pre_file" ] || continue
-  record_num=$((record_num + 1))
+# Action log summary
+echo "## Action Log"
+echo ""
+echo "| # | Time | Tool | Summary |"
+echo "|---|------|------|---------|"
 
-  id=$(basename "$pre_file" | sed 's/^pre-//; s/\.json$//')
-  post_file="$RECORDS_DIR/post-${id}.json"
+while IFS= read -r line; do
+  seq=$(echo "$line" | jq -r '.seq')
+  ts=$(echo "$line" | jq -r '.timestamp')
+  tool=$(echo "$line" | jq -r '.tool')
+  summary=$(echo "$line" | jq -r '.input_summary' | head -c 80)
+  echo "| ${seq} | ${ts} | ${tool} | ${summary} |"
+done < "$LOG_FILE"
 
-  # Pre-record fields
-  timestamp=$(jq -r '.timestamp // "N/A"' "$pre_file")
-  intention=$(jq -r '.pre.intention // "N/A"' "$pre_file")
-  chosen_desc=$(jq -r '.pre.chosen.description // "N/A"' "$pre_file")
-  chosen_rationale=$(jq -r '.pre.chosen.rationale // "N/A"' "$pre_file")
-  context=$(jq -r '.pre.context // "N/A"' "$pre_file")
+echo ""
 
-  echo "---"
-  echo ""
-  echo "## #${record_num}: ${id}"
-  echo "**Time**: ${timestamp}"
-  echo ""
-  echo "### Intention"
-  echo "${intention}"
-  echo ""
-  echo "### Chosen"
-  echo "- **What**: ${chosen_desc}"
-  echo "- **Why**: ${chosen_rationale}"
-  echo ""
-  echo "### Rejected"
+# Retrospectives
+retro_files=$(find "$RETRO_DIR" -name 'retro-*.json' -type f 2>/dev/null | sort)
 
-  # Iterate rejected alternatives
-  rejected_count=$(jq -r '.pre.rejected | length' "$pre_file" 2>/dev/null || echo "0")
-  for ((i=0; i<rejected_count; i++)); do
-    rej_desc=$(jq -r ".pre.rejected[$i].description // \"N/A\"" "$pre_file")
-    rej_rationale=$(jq -r ".pre.rejected[$i].rationale // \"N/A\"" "$pre_file")
-    echo "- ~~${rej_desc}~~ — ${rej_rationale}"
-  done
+if [ -n "$retro_files" ]; then
+  echo "## Retrospectives"
   echo ""
 
-  echo "### Context"
-  echo "${context}"
-  echo ""
+  while IFS= read -r retro_file; do
+    [ -f "$retro_file" ] || continue
+    retro_id=$(basename "$retro_file" .json)
 
-  # Post-record (if exists)
-  if [ -f "$post_file" ]; then
-    outcome=$(jq -r '.post.outcome // "N/A"' "$post_file")
-    echo "### Outcome"
-    echo "${outcome}"
+    covers=$(jq -r '.covers | map(tostring) | join(", ")' "$retro_file" 2>/dev/null || echo "N/A")
+    echo "---"
+    echo ""
+    echo "### ${retro_id} (actions: ${covers})"
     echo ""
 
-    # Counterfactuals
-    cf_count=$(jq -r '.post.counterfactuals | length' "$post_file" 2>/dev/null || echo "0")
-    if [ "$cf_count" -gt 0 ]; then
-      echo "### Counterfactuals"
-      for ((i=0; i<cf_count; i++)); do
-        cf_alt=$(jq -r ".post.counterfactuals[$i].alternative // \"N/A\"" "$post_file")
-        cf_pred=$(jq -r ".post.counterfactuals[$i].prediction // \"N/A\"" "$post_file")
-        cf_conf=$(jq -r ".post.counterfactuals[$i].confidence // \"N/A\"" "$post_file")
-        echo "- **If**: ${cf_alt}"
-        echo "  - **Then**: ${cf_pred} (confidence: ${cf_conf})"
+    # Entries
+    entry_count=$(jq -r '.entries | length' "$retro_file" 2>/dev/null || echo "0")
+    for ((i=0; i<entry_count; i++)); do
+      entry_seq=$(jq -r ".entries[$i].seq // \"?\"" "$retro_file")
+      what=$(jq -r ".entries[$i].what_happened // \"N/A\"" "$retro_file")
+      echo "**#${entry_seq}**: ${what}"
+
+      # Alternatives
+      alt_count=$(jq -r ".entries[$i].alternatives | length" "$retro_file" 2>/dev/null || echo "0")
+      for ((j=0; j<alt_count; j++)); do
+        road=$(jq -r ".entries[$i].alternatives[$j].road_not_taken // \"N/A\"" "$retro_file")
+        cf=$(jq -r ".entries[$i].alternatives[$j].counterfactual // \"N/A\"" "$retro_file")
+        conf=$(jq -r ".entries[$i].alternatives[$j].confidence // \"N/A\"" "$retro_file")
+        echo "  - ~~${road}~~ → ${cf} (confidence: ${conf})"
       done
+
+      # Drift
+      drift=$(jq -r ".entries[$i].drift" "$retro_file")
+      if [ "$drift" != "null" ] && [ "$drift" != "" ] && [ "$drift" != "N/A" ]; then
+        echo "  - **DRIFT**: $(jq -r ".entries[$i].drift.divergence // \"N/A\"" "$retro_file")"
+      fi
+      echo ""
+    done
+
+    # Pattern
+    pattern=$(jq -r '.pattern // empty' "$retro_file")
+    if [ -n "$pattern" ] && [ "$pattern" != "null" ]; then
+      echo "**Pattern**: ${pattern}"
       echo ""
     fi
-
-    # Drift
-    drift=$(jq -r '.post.drift' "$post_file")
-    if [ "$drift" != "null" ] && [ "$drift" != "" ]; then
-      declared=$(jq -r '.post.drift.declared_intention // "N/A"' "$post_file")
-      actual=$(jq -r '.post.drift.actual_outcome // "N/A"' "$post_file")
-      divergence=$(jq -r '.post.drift.divergence // "N/A"' "$post_file")
-      explanation=$(jq -r '.post.drift.explanation // "N/A"' "$post_file")
-      echo "### ⚠ Drift Detected"
-      echo "- **Declared**: ${declared}"
-      echo "- **Actual**: ${actual}"
-      echo "- **Divergence**: ${divergence}"
-      echo "- **Explanation**: ${explanation}"
-      echo ""
-    else
-      echo "### Drift: None"
-      echo ""
-    fi
-  else
-    echo "### Outcome: *(post-record pending)*"
-    echo ""
-  fi
-
-done <<< "$pre_files"
+  done
+fi
 
 # Summary
-total_pre=$(echo "$pre_files" | wc -l | tr -d ' ')
-total_post=$(find "$RECORDS_DIR" -name 'post-*.json' -type f 2>/dev/null | wc -l | tr -d ' ')
 echo "---"
 echo ""
 echo "## Summary"
-echo "- **Total decisions**: ${total_pre}"
-echo "- **Completed (with post-record)**: ${total_post}"
-echo "- **Pending post-record**: $((total_pre - total_post))"
+echo "- **Total actions logged**: ${total_actions}"
+echo "- **Retrospectives completed**: ${total_retros}"
+covered=0
+if [ -n "$retro_files" ]; then
+  while IFS= read -r rf; do
+    n=$(jq -r '.covers | length' "$rf" 2>/dev/null || echo "0")
+    covered=$((covered + n))
+  done <<< "$retro_files"
+fi
+echo "- **Actions covered by retrospectives**: ${covered}/${total_actions}"

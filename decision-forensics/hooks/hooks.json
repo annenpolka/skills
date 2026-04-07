@@ -1,18 +1,6 @@
 {
-  "description": "Decision Forensics: structural enforcement of pre-action declarations via PreToolUse deny and PostToolUse archival",
+  "description": "Decision Forensics (Ghost Protocol): action logging via PostToolUse, retrospective every N actions",
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Write|Edit|Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash $CLAUDE_PLUGIN_ROOT/scripts/pre-check.sh",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit|Bash",
