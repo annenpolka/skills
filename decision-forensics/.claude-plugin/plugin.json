@@ -1,7 +1,7 @@
 {
   "name": "decision-forensics",
-  "version": "0.1.0",
-  "description": "Structural measurement of agent epistemic honesty through pre-action intention declaration, counterfactual prediction, and drift detection",
+  "version": "0.2.0",
+  "description": "Ghost Protocol: action logging with retrospective debt gate for structural decision forensics",
   "author": {
     "name": "Annenpolka"
   }
