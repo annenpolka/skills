@@ -15,22 +15,25 @@ description: |
 
 # Decision Forensics (Ghost Protocol)
 
-行為を止めるな。鏡だけを置け。ただし債務は払え。
+行為を止めるな。鏡だけを置け。commitする時だけ、振り返れ。
 
-行為は全て通す。PostToolUseが裏で全行為を記録する。N件ごとにretrospective（振り返り）が発生し、書くまで次の行為がブロックされる（debt gate）。普段は摩擦ゼロ、債務発生時のみ門が現れる。
+行為は全て通す。PostToolUseが裏で全行為を記録する。`git commit` 時にPreToolUseが未振り返りアクションの有無を確認し、あればcommitをブロックしてretrospectiveを要求する。
 
 ## Core Mechanism
 
 ```
-ACTION 1-4  → フリーパス。PostToolUseがaction-log.jsonlに自動記録
-ACTION 5    → フリーパス。ログ記録。これでN件到達
-ACTION 6    → PreToolUseがretrospective debt検出 → DENY
-RETROSPECTIVE → scratch/への書き込みはskip → 通る
-ACTION 7    → debt解消済み → フリーパス
-...
-ACTION 10   → フリーパス。再びN件到達
-ACTION 11   → DENY（retro-002 未払い）
+edit src/main.rs   → フリーパス
+edit config.json   → フリーパス
+bash cargo test    → フリーパス
+grep handleError   → フリーパス
+
+git commit         → 未振り返りアクション4件 → DENY（retro書け）
+RETROSPECTIVE      → scratch/への書き込みはskip → 通る
+.last_retro_seq更新 → scratch/への書き込みはskip → 通る
+git commit         → 未振り返り0件 → フリーパス
 ```
+
+ルールは1つ: **commitするなら振り返れ。**
 
 ## Storage: scratch/ directory
 
@@ -42,7 +45,7 @@ Decision Forensicsはプロジェクトローカルの `scratch/decision-forensi
 ```
 $PWD/scratch/decision-forensics/
 ├── .active              # 有効フラグ
-├── .retro_interval      # retrospective間隔（デフォルト: 5）
+├── .last_retro_seq      # 最後にretroした時点のseq番号
 ├── action-log.jsonl     # 全行為の自動記録（hookが書く、人間は触らない）
 ├── retrospectives/      # retro-001.json, retro-002.json, ...
 └── audits/              # audit結果
@@ -86,7 +89,7 @@ PostToolUseフックが全てのWrite/Edit/Bash実行後に `action-log.jsonl` �
 
 ## Retrospective (Agent writes every N actions)
 
-N件のアクション完了後、PostToolUseのsystemMessageが振り返りを要求する。`scratch/decision-forensics/retrospectives/retro-NNN.json` を作成する:
+commit時にdebt gateが発火したら、`scratch/decision-forensics/retrospectives/retro-NNN.json` を作成する。retrospective作成後、`echo <最新seq> > scratch/decision-forensics/.last_retro_seq` でシーケンスを更新する:
 
 ```json
 {
@@ -148,7 +151,9 @@ bash $CLAUDE_PLUGIN_ROOT/scripts/audit.sh
 | Script | Purpose | Invocation |
 |--------|---------|------------|
 | `scripts/init.sh` | Initialize `scratch/decision-forensics/` and set `.active` flag | Manual (activation) |
-| `scripts/post-record.sh` | PostToolUse hook: log action + trigger retrospective | Automatic (hook) |
+| `scripts/pre-check.sh` | PreToolUse hook: git commit時にretro要求 | Automatic (hook) |
+| `scripts/post-record.sh` | PostToolUse hook: action-log.jsonlへの記録 | Automatic (hook) |
+| `scripts/weight.jq` | アクション重みスコアリング（report用） | report.shから呼出 |
 | `scripts/report.sh` | 人間可読なMarkdownレポートを生成 | Manual |
 | `scripts/audit.sh` | カバレッジ監査 | Manual / prompted |
 

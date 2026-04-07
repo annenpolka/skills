@@ -26,57 +26,60 @@ if [[ "$tool_name" == "Bash" ]]; then
   fi
 fi
 
-# === RETROSPECTIVE DEBT CHECK ===
+# === COMMIT GATE: every git commit requires retrospective ===
+
+# Only gate on Bash with git commit
+if [[ "$tool_name" != "Bash" ]]; then
+  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
+  exit 0
+fi
+
+command=$(echo "$input" | jq -r '.tool_input.command // empty')
+if [[ "$command" != *"git commit"* ]]; then
+  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
+  exit 0
+fi
+
+# --- This is a git commit. Check for unretrospected actions ---
 
 BASE_DIR="$PWD/scratch/decision-forensics"
 LOG_FILE="$BASE_DIR/action-log.jsonl"
 RETRO_DIR="$BASE_DIR/retrospectives"
-RETRO_INTERVAL_FILE="$BASE_DIR/.retro_interval"
+LAST_RETRO_SEQ_FILE="$BASE_DIR/.last_retro_seq"
 
-# If no action log yet, no debt possible
 if [ ! -f "$LOG_FILE" ]; then
   echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
   exit 0
 fi
 
-# Retrospective interval (default: 5)
-RETRO_N=5
-if [ -f "$RETRO_INTERVAL_FILE" ]; then
-  RETRO_N=$(cat "$RETRO_INTERVAL_FILE")
+last_retro_seq=0
+if [ -f "$LAST_RETRO_SEQ_FILE" ]; then
+  last_retro_seq=$(cat "$LAST_RETRO_SEQ_FILE")
 fi
 
-# Current action count
-action_count=$(wc -l < "$LOG_FILE" | tr -d ' ')
+total_actions=$(wc -l < "$LOG_FILE" | tr -d ' ')
+unretrospected=$((total_actions - last_retro_seq))
 
-# How many retrospectives should exist by now?
-expected_retros=$((action_count / RETRO_N))
+if [ "$unretrospected" -le 0 ]; then
+  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
+  exit 0
+fi
 
-# How many actually exist?
-actual_retros=$(find "$RETRO_DIR" -name 'retro-*.json' -type f 2>/dev/null | wc -l | tr -d ' ')
+# Unretrospected actions exist → deny commit until retro is written
+existing_retros=$(find "$RETRO_DIR" -name 'retro-*.json' -type f 2>/dev/null | wc -l | tr -d ' ')
+retro_num=$((existing_retros + 1))
+retro_id=$(printf "retro-%03d" "$retro_num")
+start_seq=$((last_retro_seq + 1))
 
-# Debt = expected - actual
-if [ "$expected_retros" -gt "$actual_retros" ]; then
-  # Which retro is missing?
-  missing_num=$((actual_retros + 1))
-  retro_id=$(printf "retro-%03d" "$missing_num")
-  start_seq=$(( (actual_retros * RETRO_N) + 1 ))
-  end_seq=$((missing_num * RETRO_N))
+recent=$(tail -n "$unretrospected" "$LOG_FILE" | jq -r '"  #\(.seq) [\(.tool)] \(.input_summary[:60])"' 2>/dev/null | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' '|' | sed 's/|/\\n/g' || echo "  (actions ${start_seq}-${total_actions})")
 
-  # Collect the actions that need retrospective (escaped for JSON string embedding)
-  recent=$(sed -n "${start_seq},${end_seq}p" "$LOG_FILE" | jq -r '"  #\(.seq) [\(.tool)] \(.input_summary[:60])"' 2>/dev/null | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' '|' | sed 's/|/\\n/g' || echo "  (actions ${start_seq}-${end_seq})")
-
-  cat <<EOF
+cat <<EOF
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "retrospective debt"
+    "permissionDecisionReason": "commit requires retrospective"
   },
-  "systemMessage": "Decision Forensics [RETROSPECTIVE DEBT]: retro未払いのため行動をブロック。\\n\\nscratch/decision-forensics/retrospectives/${retro_id}.json を作成してください。\\n\\n対象アクション:\\n${recent}\\n\\n各アクションについて:\\n1. what_happened: 何をしたか\\n2. alternatives[]: 選ばなかった道 (road_not_taken + counterfactual + confidence)\\n3. drift: 意図との乖離があればnull以外\\n\\n全体について:\\n4. pattern: 俯瞰して見えたパターンや傾向 (optional)"
+  "systemMessage": "Decision Forensics [COMMIT GATE]: commit前にretrospectiveを書いてください。\\n\\nscratch/decision-forensics/retrospectives/${retro_id}.json を作成してください。\\n\\n対象アクション (#${start_seq}-${total_actions}, ${unretrospected}件):\\n${recent}\\n\\n各アクションについて:\\n1. what_happened: 何をしたか\\n2. alternatives[]: 選ばなかった道 (road_not_taken + counterfactual + confidence)\\n3. drift: 意図との乖離があればnull以外\\n\\n全体について:\\n4. pattern: 俯瞰して見えたパターンや傾向 (optional)\\n\\nretrospective作成後:\\necho ${total_actions} > scratch/decision-forensics/.last_retro_seq"
 }
 EOF
-  exit 0
-fi
-
-# No debt — allow
-echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'

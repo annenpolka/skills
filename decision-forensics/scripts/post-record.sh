@@ -29,18 +29,22 @@ fi
 BASE_DIR="$PWD/scratch/decision-forensics"
 LOG_FILE="$BASE_DIR/action-log.jsonl"
 
-# Build input summary
+# Build input summary and target
 case "$tool_name" in
   Bash)
     summary=$(echo "$input" | jq -r '.tool_input.command // "N/A"' | head -c 200)
+    target="bash"
     ;;
   Write)
-    summary="Write → $(echo "$input" | jq -r '.tool_input.file_path // "N/A"')"
+    target=$(echo "$input" | jq -r '.tool_input.file_path // ""')
+    summary="Write → $target"
     ;;
   Edit)
-    summary="Edit → $(echo "$input" | jq -r '.tool_input.file_path // "N/A"')"
+    target=$(echo "$input" | jq -r '.tool_input.file_path // ""')
+    summary="Edit → $target"
     ;;
   *)
+    target=""
     summary="$tool_name"
     ;;
 esac
@@ -60,8 +64,9 @@ jq -n -c \
   --argjson seq "$seq_num" \
   --arg timestamp "$timestamp" \
   --arg tool "$tool_name" \
+  --arg target "$target" \
   --arg summary "$summary" \
-  '{seq: $seq, timestamp: $timestamp, tool: $tool, input_summary: $summary}' >> "$LOG_FILE"
+  '{seq: $seq, timestamp: $timestamp, tool: $tool, target: $target, input_summary: $summary}' >> "$LOG_FILE"
 
 # Retrospective enforcement is handled by pre-check.sh (debt gate).
 # post-record.sh only logs actions.
