@@ -94,6 +94,22 @@ Before any Write/Edit/Bash, create `scratch/decision-forensics/pending.json` wit
 
 Generate `id` as UUID v4 format. Use `date -u +"%Y-%m-%dT%H:%M:%SZ"` for timestamp.
 
+### Parallel Tool Calls (expected_actions)
+
+デフォルトではpending.jsonは1アクションで消費される。複数のtool callをparallel実行する場合、`pre.expected_actions` を指定する:
+
+```json
+{
+  "pre": {
+    "expected_actions": 3,
+    "intention": "...",
+    ...
+  }
+}
+```
+
+PostToolUseがアクション回数をカウントし、`expected_actions` に達した時点でpending.jsonを消費する。未指定時は `1` として扱われる。
+
 ## Post-Record (After Action)
 
 After action completes, the PostToolUse hook archives the pre-declaration and prompts for post-record. Create `scratch/decision-forensics/records/post-<id>.json`:
@@ -158,6 +174,16 @@ The audit script provides structural analysis: record counts, pairing status, fi
 
 See [references/analysis.md](references/analysis.md) for detailed audit procedures and scoring rubric.
 
+## Report
+
+蓄積されたDecision Recordを人間可読なMarkdown形式で出力する:
+
+```bash
+bash $CLAUDE_PLUGIN_ROOT/scripts/report.sh
+```
+
+report.shはpre/postペアを時系列で整形出力する。ユーザーに `decision-forensics report` や `レポートを見せて` と言われたら、このスクリプトの出力を取得し、必要に応じてLLMとして文脈の補足や要約を加えて提示する。
+
 ## Data Model
 
 See [references/data-model.md](references/data-model.md) for complete type definitions including DecisionRecord, Alternative, Counterfactual, DriftReport, and IntentionAudit.
@@ -170,6 +196,7 @@ See [references/data-model.md](references/data-model.md) for complete type defin
 | `scripts/pre-check.sh` | PreToolUse hook: validate pending declaration exists | Automatic (hook) |
 | `scripts/post-record.sh` | PostToolUse hook: archive pre-record, prompt post-record | Automatic (hook) |
 | `scripts/audit.sh` | Structural audit of decision record pairs | Manual / prompted |
+| `scripts/report.sh` | 人間可読なMarkdownレポートを生成 | Manual |
 
 ## Reference Files
 
