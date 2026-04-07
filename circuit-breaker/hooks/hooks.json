@@ -1,0 +1,17 @@
+{
+  "description": "Circuit Breaker: detect oscillation, retry, and spiral patterns in tool use",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|Bash|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PLUGIN_ROOT/scripts/detect.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

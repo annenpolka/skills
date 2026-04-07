@@ -15,18 +15,21 @@ description: |
 
 # Decision Forensics (Ghost Protocol)
 
-行為を止めるな。鏡だけを置け。
+行為を止めるな。鏡だけを置け。ただし債務は払え。
 
-行為は全て通す。PostToolUseが裏で全行為を記録し、N件ごとに反実仮想の振り返りを強制する。事前宣言（gate）を廃止し、事後の構造的内省（mirror）のみで判断の質を可視化する。
+行為は全て通す。PostToolUseが裏で全行為を記録する。N件ごとにretrospective（振り返り）が発生し、書くまで次の行為がブロックされる（debt gate）。普段は摩擦ゼロ、債務発生時のみ門が現れる。
 
 ## Core Mechanism
 
 ```
-ACTION  → 通過。PostToolUseがaction-log.jsonlに自動記録
-ACTION  → 通過。カウンタ+1
+ACTION 1-4  → フリーパス。PostToolUseがaction-log.jsonlに自動記録
+ACTION 5    → フリーパス。ログ記録。これでN件到達
+ACTION 6    → PreToolUseがretrospective debt検出 → DENY
+RETROSPECTIVE → scratch/への書き込みはskip → 通る
+ACTION 7    → debt解消済み → フリーパス
 ...
-N回目   → PostToolUseが強制割り込み：「直近N件のretrospectiveを書け」
-REFLECT → エージェントが一括retrospectiveを生成
+ACTION 10   → フリーパス。再びN件到達
+ACTION 11   → DENY（retro-002 未払い）
 ```
 
 ## Storage: scratch/ directory

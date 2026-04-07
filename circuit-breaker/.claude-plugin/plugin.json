@@ -1,0 +1,8 @@
+{
+  "name": "circuit-breaker",
+  "version": "0.1.0",
+  "description": "Detects net-negative work patterns (oscillation, retry, spiral) and cuts the circuit",
+  "author": {
+    "name": "Annenpolka"
+  }
+}

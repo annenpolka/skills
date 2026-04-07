@@ -1,6 +1,18 @@
 {
-  "description": "Decision Forensics (Ghost Protocol): action logging via PostToolUse, retrospective every N actions",
+  "description": "Decision Forensics (Ghost Protocol): free-pass with retrospective debt gate",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PLUGIN_ROOT/scripts/pre-check.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit|Bash",
