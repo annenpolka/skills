@@ -62,8 +62,8 @@ if [ "$expected_retros" -gt "$actual_retros" ]; then
   start_seq=$(( (actual_retros * RETRO_N) + 1 ))
   end_seq=$((missing_num * RETRO_N))
 
-  # Collect the actions that need retrospective (escaped for JSON)
-  recent=$(sed -n "${start_seq},${end_seq}p" "$LOG_FILE" | jq -r '"  #\(.seq) [\(.tool)] \(.input_summary[:60])"' 2>/dev/null | tr '\n' '|' | sed 's/|/\\n/g' || echo "  (actions ${start_seq}-${end_seq})")
+  # Collect the actions that need retrospective (escaped for JSON string embedding)
+  recent=$(sed -n "${start_seq},${end_seq}p" "$LOG_FILE" | jq -r '"  #\(.seq) [\(.tool)] \(.input_summary[:60])"' 2>/dev/null | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' '|' | sed 's/|/\\n/g' || echo "  (actions ${start_seq}-${end_seq})")
 
   cat <<EOF
 {
