@@ -47,18 +47,20 @@ LOG_FILE="$BASE_DIR/action-log.jsonl"
 RETRO_DIR="$BASE_DIR/retrospectives"
 LAST_RETRO_SEQ_FILE="$BASE_DIR/.last_retro_seq"
 
-if [ ! -f "$LOG_FILE" ]; then
-  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
-  exit 0
-fi
-
 last_retro_seq=0
 if [ -f "$LAST_RETRO_SEQ_FILE" ]; then
   last_retro_seq=$(cat "$LAST_RETRO_SEQ_FILE")
 fi
 
-total_actions=$(wc -l < "$LOG_FILE" | tr -d ' ')
-unretrospected=$((total_actions - last_retro_seq))
+# Count logged actions (0 if file doesn't exist)
+if [ -f "$LOG_FILE" ]; then
+  total_actions=$(wc -l < "$LOG_FILE" | tr -d ' ')
+else
+  total_actions=0
+fi
+
+# The commit itself is an action — always count at least 1 unretrospected
+unretrospected=$((total_actions - last_retro_seq + 1))
 
 if [ "$unretrospected" -le 0 ]; then
   echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
