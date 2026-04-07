@@ -12,11 +12,6 @@
       "name": "decision-forensics",
       "description": "Structural measurement of agent epistemic honesty through pre-action intention declaration, counterfactual prediction, and drift detection",
       "source": "./decision-forensics"
-    },
-    {
-      "name": "circuit-breaker",
-      "description": "Detects net-negative work patterns (oscillation, retry, spiral) and cuts the circuit with a single word: STOP",
-      "source": "./circuit-breaker"
     }
   ]
 }
