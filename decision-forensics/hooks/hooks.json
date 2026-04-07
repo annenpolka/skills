@@ -1,0 +1,29 @@
+{
+  "description": "Decision Forensics: structural enforcement of pre-action declarations via PreToolUse deny and PostToolUse archival",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PLUGIN_ROOT/scripts/pre-check.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PLUGIN_ROOT/scripts/post-record.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "decision-forensics",
+  "version": "0.1.0",
+  "description": "Structural measurement of agent epistemic honesty through pre-action intention declaration, counterfactual prediction, and drift detection",
+  "author": {
+    "name": "Annenpolka"
+  }
+}

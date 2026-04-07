@@ -1,0 +1,17 @@
+{
+  "name": "annenpolka-skills",
+  "owner": {
+    "name": "Annenpolka"
+  },
+  "metadata": {
+    "description": "Annenpolka's custom Claude Code plugins",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "decision-forensics",
+      "description": "Structural measurement of agent epistemic honesty through pre-action intention declaration, counterfactual prediction, and drift detection",
+      "source": "./decision-forensics"
+    }
+  ]
+}
