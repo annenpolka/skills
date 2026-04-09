@@ -178,7 +178,7 @@ Witnessのopinionatednessは「これが失われた」「これが見過ごさ�
 
 ### 実走で現れた感情の動きの例
 
-**C→G→D→R（戦闘型）:** Contempt → Gravity → Dread → Relief。nuclear intensityで完全シーケンスを使用。Generous Knifeと合成可能——宣言=C、復元80%=G、刃=D、着地=R。
+**C→G→D→R（戦闘型）:** Contempt → Gravity → Dread → Relief。Generous Knifeと合成可能——宣言=C、復元80%=G、刃=D、着地=R。
 
 **S→G→L→I（目撃型）:** Stillness → Gravity → Loss → Itch。Smalltalk記事の感情。静かに見て、重さを積み、失われたものを惜しみ、「本当に代替できたのか？」という引っ掻きで開く。
 
@@ -196,9 +196,9 @@ Witnessのopinionatednessは「これが失われた」「これが見過ごさ�
 | medium | + Temporal Inversion, Flip | 任意 |
 | hot | + Aesthetic Destruction | 部分シーケンス可 |
 | scorched | + Irreversibility Bomb, Escalation, Upgrade Trap | 部分シーケンス可 |
-| nuclear | 全武器 + Generous Knife | C→G→D→R必須 |
+| nuclear | 全武器 + Generous Knife | 感情設計必須 |
 
-指定がなければnuclearで開始する。感情の動きの選択はIntensity Gatingとは独立——戦闘型でも目撃型でも診断型でも、内容が決める。nuclear時のGenerous Knife合成（宣言=C、復元=G、刃=D、着地=R）は戦闘型の場合の合成であり、他の感情ラインでは合成の形も変わる。
+指定がなければnuclearで開始する。感情の動きの選択はIntensity Gatingとは独立——戦闘型でも目撃型でも診断型でも、内容が決める。nuclearではGenerous Knifeと感情設計の両方が必須だが、どの感情ラインを使うかは内容が決める。
 
 ---
 
