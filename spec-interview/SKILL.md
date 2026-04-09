@@ -36,24 +36,42 @@ This investigation phase ensures interview questions are grounded in the actual 
 
 ## Core Instructions
 
-**interview me in detail using the AskUserQuestionTool about literally anything:**
-- technical implementation
-- UI & UX
-- concerns
-- tradeoffs
-- etc.
-
-**but make sure the questions are not obvious**
-- Avoid obvious questions
-- Don't ask about things already clearly stated in the spec
-- Dig into implicit assumptions, hidden constraints, and overlooked perspectives
-
-**be very in-depth and continue interviewing me continually until it's complete**
+**Interview relentlessly until shared understanding is reached**
+- Interview me relentlessly about every aspect of this plan until we reach a shared understanding
 - Don't settle for surface-level answers
 - Probe deeper with "why" and "what if" questions
 - Continue until the user explicitly declares completion with "done", "complete", "finished", etc.
 
-**then write the spec to the file**
+**Walk down the design tree branch by branch**
+- Treat the spec as a tree of interconnected decisions
+- Walk down each branch of the design tree, resolving dependencies between decisions one-by-one
+- Don't jump around; finish resolving one branch before moving to the next
+- When a decision depends on another, resolve the prerequisite first
+
+**Ask questions one at a time**
+- Present exactly ONE question per turn (not 2-3)
+- Wait for the answer before generating the next question
+- Dynamically generate the next question based on the previous answer
+- This keeps the interview focused and allows dependencies to resolve cleanly
+
+**For each question, provide your recommended answer**
+- Every question must include your own recommended answer with reasoning
+- Frame options so the user can accept your recommendation, pick an alternative, or push back
+- Base recommendations on codebase reality (from Phase 0) and stated constraints
+- This reduces cognitive load and surfaces disagreements quickly
+
+**Prefer codebase exploration over asking**
+- If a question can be answered by exploring the codebase, explore the codebase instead of asking
+- Only ask the user for information that cannot be derived from code, git history, or documentation
+- Use Grep/Glob/Read or the Explore agent to self-serve answers
+- Reserve user questions for genuine ambiguity, preferences, constraints, and intent
+
+**Cover every relevant aspect**
+- Technical implementation, UI & UX, concerns, tradeoffs, edge cases, failure modes, etc.
+- Dig into implicit assumptions, hidden constraints, and overlooked perspectives
+- Avoid obvious questions and things already clearly stated in the spec
+
+**Then write the spec to the file**
 - After interview completion, create/update the spec with collected information
 - If a file was provided, update the same file
 - If prompt-only, confirm the output destination with the user
@@ -61,10 +79,12 @@ This investigation phase ensures interview questions are grounded in the actual 
 ## Interview Format
 
 - Use AskUserQuestionTool
-- Present questions with options (utilize the options feature)
-- Present 2-3 related questions at a time
-- Dynamically generate next questions based on answers
+- Present exactly ONE question per turn
+- Always include your recommended answer among the options, clearly marked
+- Utilize the options feature to offer the recommendation plus meaningful alternatives
+- Dynamically generate the next question based on the previous answer
 - Point out contradictions or issues immediately when discovered
+- Before asking, check: can this be answered by reading the code? If yes, explore instead
 
 ## Input Patterns
 
