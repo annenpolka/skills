@@ -62,6 +62,24 @@ Record only the repo-local working contract needed for this project or task.
 5. **Do the work.** Use the current working contract while answering, designing, or implementing.
 6. **Return deltas.** At the end, include at most five proposed brief changes, or edit `.stratal/brief.md` directly when the user asked to create/update the brief.
 
+## Common Cases
+
+### No Existing Brief Or No Repo Evidence
+
+When creating the first `.stratal/brief.md`, inspect the repo before binding repo-specific claims if files are available. If no repo evidence is available, create a small initial draft with meta-level working defaults and mark project-specific assumptions as `tentative`, `speculative`, or `Agent inference`.
+
+The first brief should help the next agent start, not pretend to know the repo. Include validation steps that tell the next agent what to inspect first.
+
+### Overgrown Brief Cleanup
+
+When `.stratal/brief.md` has become too long, edit it in place instead of appending another cleanup layer. Merge duplicates by meaning, retire stale judgments, and keep only project-wide guidance that can help future tasks.
+
+Task-local judgments should stay in the task response, PR description, or implementation notes unless the same judgment recurs and becomes a repo convention. If repo evidence conflicts with an older agent inference, repo evidence wins and the old inference should become `retired` or `revisit`.
+
+### Fully Specified Mechanical Task
+
+If the user names Stratal but the actual request is a small fully specified edit, acknowledge that no new brief binding is needed and do the mechanical work. Do not create `.stratal/brief.md`, Judgment Bindings, or Proposed Brief Delta noise unless broader uncertainty appears.
+
 ## Ask Policy
 
 Do not ask the human to supply expert knowledge they may not have. Prefer questions about stakes, examples, appetite for risk, and what would feel wrong.
@@ -86,6 +104,10 @@ Use plain labels rather than elaborate scoring.
 - **Needs human judgment**: The point depends on values, stakes, or taste the agent cannot safely decide.
 
 Prefer stronger authority when conflicts arise. Do not let an agent inference override human-stated intent or repo evidence.
+
+`Repo evidence` requires direct inspection of files, commands, logs, or source material. If the user only describes the repo verbally (stating the stack, file names, or shape) without the agent reading the source, treat the claim as `Human stated` for Authority and `Stated` for Evidence; mark anything inferred beyond the literal description as `Agent inference` + `Speculative`.
+
+A single binding may rest on multiple load-bearing claims with different authorities (e.g., the user states the runtime while the agent infers the SDK choice). Label the binding with the **weakest** authority among its load-bearing claims, and surface each layer briefly in the Evidence line (e.g., `Stated for runtime; Derived for SDK choice`). Apply the same precedence to Evidence classes — pick the weakest class among load-bearing facts.
 
 ## Evidence Classes
 
@@ -193,6 +215,7 @@ When updating a brief:
 - Preserve existing headings unless a rename clearly improves self-explanation.
 - Merge duplicates by meaning, not by filename, timestamp, or source path.
 - Retire stale or overgrown items instead of letting sections become unreadable.
+- When a section legitimately empties (e.g., the only Hard Constraint was dropped), preserve the heading with a one-line note such as `None as of <reason>`; do not delete the heading.
 - Move weak or unsettled material to `Open Questions And Discomfort`.
 - Add validation and revisit conditions to any new working default.
 - Avoid YAML events, hidden state machines, and append-only ritual unless the user explicitly asks for them.
@@ -213,6 +236,8 @@ Use simple Markdown status words:
 - `retired`: No longer guides work, kept only for record.
 
 Prefer editing the item's status and explanation in Markdown. Do not create a parallel machine-readable lifecycle unless the project later proves it needs automation.
+
+`Status: retired` and `Rejected Directions` are not the same. `Status: retired` lives inside `Judgment Bindings` and marks a binding that was once active and is no longer. `Rejected Directions` records an approach considered and explicitly not taken — it never became an active binding. When a binding is retired because its underlying approach was abandoned, move the rationale to `Rejected Directions` and shrink the binding entry to a one-line cross-reference, rather than keeping a full retired binding and a parallel rejection note.
 
 ## Quality Gate
 
