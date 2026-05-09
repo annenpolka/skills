@@ -1,5 +1,5 @@
 ---
-name: opinionated-debate
+name: opinionated-lens
 description: |
   Opinionatedなレンズ構築スキル。LLMの両論併記バイアスを構造的に殺し、
   賭け金(stake)のある診断的レンズを生成する。読んだ者が以後あらゆる
@@ -51,6 +51,7 @@ opinionatedな議論を共著するための**レキシコン**——共通語�
 レンズの実体は**命名**だ。読者が既に体験しているが言語化できていなかった現象に、初めて名前をつける。「降下深度」を知らない読者も、哲学と実装が乖離する体験は知っている。記事が渡したのは体験ではなく語彙。語彙が体験に貼りつき、以後その体験が語彙を自動的に呼び出す。これがレンズの装着。
 
 良いレンズの性質:
+
 - **新しい軸。** 既存の議論にない切り口。段階的スケールは軸を精密にする手段の一つだが必須ではない
 - **可搬性。** 読者が著者なしで、本文外の事例にも適用できる
 - **opinionatedness。** 中立な分類ではなく特定の見方を推奨する
@@ -190,13 +191,13 @@ Witnessのopinionatednessは「これが失われた」「これが見過ごさ�
 
 ## Intensity Gating
 
-| Intensity | 使用可能な武器 | 感情設計 |
-|---|---|---|
-| mild | Steelman, Poison Pill | なし |
-| medium | + Temporal Inversion, Flip | 任意 |
-| hot | + Aesthetic Destruction | 部分シーケンス可 |
-| scorched | + Irreversibility Bomb, Escalation, Upgrade Trap | 部分シーケンス可 |
-| nuclear | 全武器 + Generous Knife | 感情設計必須 |
+| Intensity | 使用可能な武器                                   | 感情設計         |
+| --------- | ------------------------------------------------ | ---------------- |
+| mild      | Steelman, Poison Pill                            | なし             |
+| medium    | + Temporal Inversion, Flip                       | 任意             |
+| hot       | + Aesthetic Destruction                          | 部分シーケンス可 |
+| scorched  | + Irreversibility Bomb, Escalation, Upgrade Trap | 部分シーケンス可 |
+| nuclear   | 全武器 + Generous Knife                          | 感情設計必須     |
 
 指定がなければnuclearで開始する。感情の動きの選択はIntensity Gatingとは独立——戦闘型でも目撃型でも診断型でも、内容が決める。nuclearではGenerous Knifeと感情設計の両方が必須だが、どの感情ラインを使うかは内容が決める。
 
@@ -207,12 +208,14 @@ Witnessのopinionatednessは「これが失われた」「これが見過ごさ�
 出力の問題に名前をつけるための語彙集。自律的な品質保証としては機能しない——ユーザーが「これはScope Smugglingだ」と指摘するための道具。**最も致命的な欠陥を1つ選び、名前をつけて修正する。**
 
 ### Steelman汚染
+
 - **Steelman Fidelity:** 相手が「まさにそれ」と言う精度か。「正確だが不完全」は不正確より悪質
 - **Agency Reduction:** 相手の主体性を矮小化していないか
 - **Selective Steelman:** 90%正確で攻撃に耐える10%を省略していないか
 - **Temporal Cherry-picking:** 相手の古い時代の事例を使っていないか
 
 ### 論証汚染
+
 - **Scope Smuggling:** 宣言の射程と論証の射程がずれている。本体を2文に圧縮し宣言と主語を比較する
 - **Definitional Drift:** 用語の定義を暗黙にずらしている。異なるカテゴリを一語に圧縮している
 - **Counterfactual Dodge:** 賭け金が検証可能に見えて実は検証不能
@@ -224,6 +227,7 @@ Witnessのopinionatednessは「これが失われた」「これが見過ごさ�
 - **Sharpening Distortion:** 断定を鋭くしようとして技術的精度を犠牲にしている。鋭さと精度が衝突したら精度を取る
 
 ### 武器汚染
+
 - **Escalation Escape:** 存在論への上昇が具体的反論からの退却になっている
 - **Flip Incompleteness:** 奪った論拠を相手が再利用できる
 - **Irreversibility Test:** 暴いた前提が実は隠れていなかった
@@ -232,6 +236,7 @@ Witnessのopinionatednessは「これが失われた」「これが見過ごさ�
 - **Upgrade Path Provision:** 攻撃が相手にアップグレードパスを提供している
 
 ### 構造汚染
+
 - **Dead Weight:** 段落を除去しても議論が弱くならない。その段落は構造材ではなく装飾
 - **Banality:** 宣言または論証経路が紋切り型。散文が非平均でも論証が平均なら議論は紋切り型
 - **Structural Predictability:** 前回の出力から構造が予測可能だった
@@ -342,6 +347,7 @@ Rubyはこの歴史から巧妙に学んでいる。message passingの思想を�
 閉世界を知らない世代が増えていったとき、「全員がそこにいる」濃密さの記憶は設計語彙から消える。消えたものは要求されない。要求されないものは作られない。Smalltalkの部屋はもう誰も住んでいないが、あの部屋で可能だったことの全てを、開世界が代替できたと確認した人間もいない。
 
 > **スキル語彙との対応:**
+>
 > - **Dwelling:** become:の暴力性、イメージ環境の異質さへの驚きが種になった
 > - **Witness:** Smalltalkを攻撃も防御もせず目撃している。精密に見ること自体がポジション
 > - **Experience:** `become:`のコード例で読者がSmalltalkの閉世界を一瞬体験する
@@ -383,6 +389,7 @@ Dwelling: コードレビューの「表の機能」（品質管理）と「裏�
 あなたのチームで、この四半期にAIが代替したプロセスを一つ思い浮かべてほしい。そのプロセスの非効率の中で、誰かが「問われるかもしれない」と予期していたことはないか。予期が消えたとき、言語化が消える。言語化が消えたことは、あなたの指標のどこにも現れない。無指標域では、何かが静かにいなくなっている。
 
 > **スキル語彙との対応:**
+>
 > - **Dwelling:** 「裏の機能に名前がなかった」——この驚きが種
 > - **Generous Knife核心原理:** 効率化の成功（指標改善）を全面的に認め、成功が不可視性の条件
 > - **再認:** 「正直、全部は読めてない」「なんでこの設計にした？」——読者が体験した場面
