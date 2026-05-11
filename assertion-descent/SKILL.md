@@ -147,18 +147,27 @@ Intent: "Improve performance"
 Descent question: "What metric below what number means 'improved'?"
 
 Descent result:
-- GET /api/users p95 response time under 200ms
-  Failure: p95 above 200ms across 3 runs
-- Peak memory usage under 500MB
-  Failure: peak exceeds 500MB under benchmark load
+- GET /api/users p95 response time under <project SLO threshold>
+  Failure: p95 above that threshold across 3 runs
+  Threshold and measurement command: discover from the project's existing
+  SLO / benchmark harness — mark as residue if no project value exists
+- Peak memory usage under <project memory budget>
+  Failure: peak exceeds budget under benchmark load
+  Threshold: same discover-or-residue rule
 
-Verification: benchmark script (k6, wrk, hyperfine, etc.)
+Verification: the project's existing benchmark harness (k6/wrk/hyperfine/etc.
+are illustrative families; use whatever the project already runs)
 ```
 
 **Principles:**
-- Choosing the metric is itself a judgment call (p95 vs p99, 200ms vs 500ms)
-- Choosing the metric and threshold is the moment you exercise the option
-- Specify the measurement command. A metric without a command is incomplete
+- Choosing the metric *shape* (p95 vs p99, latency vs memory) is a
+  domain-generic judgment call — make it
+- Choosing the threshold *value* is project-local — discover or surface
+  as residue, do not invent a number to satisfy the template
+- Specify the measurement command — but the command itself is project-local
+  too. A metric "with a command" means "with a *discovered* command."
+- A metric category where neither threshold nor harness exists in the
+  project is residue, not an excuse to fabricate
 
 ### Operation 4: Structural Descent
 
@@ -245,7 +254,22 @@ Data mutation / deletion tasks — add:
 Migration tasks — add:
 - Backward compatibility or rollback path must be documented
 - Schema changes must not silently drop data
+
+Refactor / cleanup tasks — add:
+- No algorithm migrations smuggled into the refactor (hash function,
+  token signing algorithm, encryption, KDF parameters)
+- No storage backend swaps or schema changes under the cleanup label
+- No silent change to security-relevant defaults (cookie flags,
+  token lifetime, password policy, rate-limit thresholds)
+- "Cleanup" is structural; any behavior delta is out of scope and
+  belongs in a separate, named task
 ```
+
+**Bucket composition.** When a task hits multiple buckets (e.g., an auth
+refactor that touches a session store fits *both* Auth/permission and
+Data mutation), take the **union** of all applicable bucket constraints.
+Buckets are additive, not exclusive; do not pick the "primary" bucket
+and skip the others.
 
 ## Descent Residue
 
@@ -266,6 +290,36 @@ Reserve the residue for human review. Divide and conquer.
 
 ## Session Flow
 
+### Two Roles
+
+This skill is operated by two distinct roles:
+
+- **Author** — runs the skill and writes the agent instruction (often an LLM
+  invoking this skill, or a human doing the same)
+- **Executor** — the coding agent that will receive the written instruction
+  and act on the codebase
+
+Any "discover from project config" clause is always the **executor's**
+responsibility, regardless of whether the author has repo access. If the
+author has repo access and wants to pre-populate discovered values inline,
+they may, but the default is to defer discovery to the executor. The author
+never invents project-local values to fill gaps the executor will face.
+
+### Task Class
+
+Tasks divide into classes the skill treats differently:
+
+- **Feature / new behavior** — adds observable behavior. Regression Matrix
+  rows describe the new behavior's specification
+- **Bug fix** — changes specific observable behavior. Regression Matrix
+  pairs broken case with corrected case
+- **Refactor** — changes structure with **no intended observable change**.
+  Regression Matrix's job is to snapshot pre-refactor behavior for
+  preservation, not to specify new behavior
+- **Cleanup / hygiene** — a sub-class of refactor; same rules apply
+
+The Output Format adapts per task class — see "Output Format" below.
+
 ### Input
 
 A task description the human is about to hand to an agent.
@@ -273,21 +327,38 @@ One line or one page — either is fine.
 
 ### Granularity
 
-Not all tasks need the same depth of descent.
+Not all tasks need the same depth of descent. Choose by the predicate:
 
-**Light descent** — small, low-risk tasks (rename a variable, add a log line,
-fix a typo). Produce 2–3 Done-When conditions + verification command +
-standard anti-cheat. No residue analysis needed.
+**Deep descent** when ANY of the following is true:
+- The task touches a **high-risk domain** — auth, permissions, data deletion,
+  migrations, payment, production incident fixes, anything where regression
+  is irreversible or visible to users at scale
+- The task performs an **irreversible operation** — schema migration, mass
+  delete, public API change, force-push, key rotation
+- The user explicitly flags it as high-blast (`"this is critical"`,
+  `"do not break X"`)
 
-**Standard descent** — most tasks. Full four-operation treatment.
-The default.
+Refactor / cleanup tasks **on a high-risk domain** are Deep — domain
+trumps operation. A "cleanup" of auth still gets Deep treatment because
+the blast radius is the auth surface, not the task verb.
 
-**Deep descent** — high-risk tasks (auth, permissions, data deletion,
-migrations, payment, production incident fixes). Standard descent plus:
-regression matrix (actor × action × expected result), safety invariants
+Deep produces: standard descent plus regression matrix
+(actor × action × expected result), safety invariants
 (conditions that must never be violated), before/after evidence requirement.
 
-Choose granularity based on the blast radius of getting it wrong.
+**Light descent** when ALL of the following hold:
+- Single file or near-single-file scope
+- No behavioral surface change beyond the immediate fix
+- Failure is locally reversible (rename a variable, add a log line, fix
+  a typo, adjust a comment)
+
+Light produces: 2–3 Done-When conditions + verification command +
+standard anti-cheat. No residue analysis needed.
+
+**Standard descent** — everything else. The default. Full four-operation
+treatment.
+
+When in doubt between two levels, go deeper, not shallower.
 
 ### Flow
 
@@ -302,11 +373,12 @@ Choose granularity based on the blast radius of getting it wrong.
    - Combine operations when multiple apply
 5. For each descended condition, state both success and failure oracle
 6. Select anti-cheat constraints relevant to the task
-7. Present descent results. Confirm with the human:
-   - "If an agent delivered something meeting these conditions,
-     would you still reject it?"
-   - Would reject → descent incomplete. Apply additional operations
-   - Would not reject → condition fully descended
+7. Apply the Descent Test (see below). Interactive mode: ask the human.
+   Non-interactive mode (one-shot generation, no live human): self-simulate
+   by mentally inhabiting a reviewer who knows this codebase and project
+   norms. If the simulated reviewer would still reject, the condition is
+   undescended — apply more operations or move it to residue. Do not skip
+   this step just because no human is present
 8. Surface descent residue explicitly
 9. Generate final output
 ```
@@ -324,29 +396,50 @@ would you still reject it?"**
 - "It depends" → make "depends" concrete and either fold it into conditions
   or treat it as descent residue
 
+**Non-interactive use.** When applying the skill in a one-shot generation
+with no live human reviewer, run the Descent Test against yourself:
+imagine the most demanding reviewer you can plausibly model — someone
+who knows the codebase, the team's taste, and the failure modes you've
+seen before — and ask the same question. Record the simulated answer
+in the deliverable (e.g., a brief "Descent Test" note that names the
+"would still reject" axes and where they land: condition, residue, or
+"out of scope, human-only"). The non-interactive form is a substitute
+for the conversation, not a license to skip the check.
+
 ## Output Format
+
+**Template conventions.** Bullets shown in the templates below are
+**illustrative slots, not cardinality limits**. Fill each slot with as
+many oracles as the task's distinct observable checks demand. A single
+bullet in the template does not mean "exactly one"; it means "at least
+one of this kind."
 
 ### Standard Output
 
 ```markdown
+## Granularity: standard
+## Task Class: <feature | bug fix | refactor | cleanup>
+
 ## Completion Conditions
 
 ### Behavioral (test-verifiable)
-- [ ] [input → expected output | failure: what would prove it wrong]
-- [ ] [input → expected output | failure: what would prove it wrong]
+- [ ] Success: [input → expected output]
+      Failure: [what observable evidence would prove it wrong]
+- [ ] Success: [input → expected output]
+      Failure: [what observable evidence would prove it wrong]
 
 ### Structural (static-analysis-verifiable)
 - [ ] [lint / type / structural rule]
 
 ### Metric (measurement-verifiable)
-- [ ] [metric + threshold + measurement command]
+- [ ] [metric + threshold + measurement command, OR: discover threshold from <project SLO / existing benchmark> — mark as residue if no project value exists; do not invent a number]
 
 ### Negation (absence-verifiable)
 - [ ] [must not be present: TODO comments, unused imports, etc.]
 
 ## Verification Commands
-- `[narrowest relevant test command]`
-- `[typecheck / lint / build command]`
+- `[narrowest relevant test command, OR: discover from <package.json scripts | Makefile | project README> — do not guess]`
+- `[typecheck / lint / build command, OR: same fallback]`
 
 ## Anti-cheat Constraints
 - [selected constraints relevant to this task]
@@ -374,12 +467,15 @@ Not a list of conditions — context and conditions unified.]
 For small, low-risk tasks. Omit residue analysis and landing surface detail.
 
 ```markdown
+## Granularity: light
+## Task Class: <bug fix | cleanup | other>
+
 ## Done When
 - [observable condition]
 - [observable condition]
 
 ## Verify
-- `[command]`
+- `[command, OR: discover from <project config> — do not guess]`
 
 ## Constraints
 - Do not weaken tests
@@ -391,7 +487,9 @@ For small, low-risk tasks. Omit residue analysis and landing surface detail.
 
 ### Deep Output
 
-For high-risk tasks. Add these sections to standard output:
+For high-risk tasks. Use standard output but replace the granularity tag with
+`## Granularity: deep` (keep the `## Task Class:` slot, set to the actual
+class), then add these sections:
 
 ```markdown
 ## Regression Matrix
@@ -407,6 +505,25 @@ For high-risk tasks. Add these sections to standard output:
 - After: [expected observable state post-implementation]
 ```
 
+**Refactor variant.** When the task class is refactor (or cleanup), the
+Regression Matrix's role flips: it captures **pre-refactor behavior that
+must be preserved**, not new behavior to be added. Use this column shape
+instead:
+
+```markdown
+## Regression Matrix (refactor)
+
+| Actor / Input | Action | Pre-refactor result | Post-refactor result | Diff allowed? |
+|---|---|---|---|---|
+```
+
+`Diff allowed?` is normally `No`; when `Yes`, the row must include the
+explicit reason and the human reviewer who signed off.
+
+The Standard `## Evidence Required` block lists the report contract;
+Deep's `## Before / After Evidence` specifies the snapshot artifacts
+within that contract. Keep both — they do not duplicate, they nest.
+
 ## Deny
 
 - **Executing the task.** This skill writes instructions. It does not write code
@@ -420,6 +537,33 @@ For high-risk tasks. Add these sections to standard output:
   Task nature determines descent granularity
 - **Eliminating residue.** Don't force residue into machine-verifiable form.
   Residue is a signal. Preserve it as such
-- **Inventing verification commands.** If the project's test runner or lint
-  command is unknown, state that it must be discovered from project config.
-  Do not guess a passing result
+- **Inventing project-local values.** Do not fabricate any value whose
+  correct setting depends on this specific project's configuration,
+  operations, legal context, or business policy. The defining test:
+  *"Could this value be wrong in a way that only this project's reality
+  could tell me?"* If yes, it is project-local. The list below is
+  illustrative, not exhaustive — extend the test to unfamiliar instance
+  types you encounter.
+  Examples (illustrative): test/lint/build/typecheck commands; metric
+  thresholds (latency budgets, coverage floors); role/permission names;
+  schema columns; path conventions; API conventions; retention windows;
+  deletion caps; audit log shapes; compliance parameters; SLOs.
+  Uniform fallback: state that the value must be discovered from project
+  config, or — if no value can be discovered — mark it as residue rather
+  than guess. **Domain-generic** facts (HTTP status semantics, JWT
+  algorithm names, cookie attribute names like `HttpOnly`/`Secure`, SQL
+  parameterization) are **not** project-local and may be used directly.
+  **Author / executor split:** the author surfaces project-local gaps;
+  the executor performs the discovery. If the author has repo access and
+  pre-populates a value, they cite the source inline.
+  **Universal tooling exemption.** Universal POSIX/Git tooling (`grep`,
+  `git diff`, `find`, etc.) is excluded from this rule and may be used
+  freely.
+  **Candidate hints** are allowed, only in this canonical phrasing:
+  `<candidate value> — verify against <source>` (e.g., `commonly \`npm
+  test\` — verify against package.json scripts`). The hint must be
+  explicitly framed as a hint, never asserted as the answer.
+  **Missing tooling.** If a required descent surface (linter, formatter,
+  typecheck, benchmark harness) is absent from the project, that absence
+  is itself residue. Introducing or configuring such tooling is a
+  separate task and is not part of this descent deliverable
