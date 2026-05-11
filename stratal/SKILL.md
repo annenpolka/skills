@@ -165,6 +165,8 @@ Prefer stronger authority when conflicts arise. Do not let an agent inference ov
 
 A single binding may rest on multiple load-bearing claims with different authorities (e.g., the user states the runtime while the agent infers the SDK choice). Label the binding with the **weakest** authority among its load-bearing claims, and surface each layer briefly in the Evidence line (e.g., `Stated for runtime; Derived for SDK choice`). Apply the same precedence to Evidence classes — pick the weakest class among load-bearing facts.
 
+The "weakest" rule applies only when the claims could plausibly pull in different conclusions. When two authorities **agree** (e.g., the user stated a preference and the repo also exhibits it), do not weaken the label: pick the originating decider — `Human stated` when the user spoke it, `Repo evidence` when the convention is purely observed — and cite the corroborating sources in the Evidence line (e.g., `Stated by user; also Observed in <file>`). Reserve weakest-among-load-bearing for cases where dropping any one claim would leave the binding genuinely contestable.
+
 ## Evidence Classes
 
 Use evidence classes to keep judgments honest:
@@ -235,6 +237,8 @@ Retention: <carry-forward | repo-contract, optional when useful>
 
 Keep headings self-explanatory. Do not invent separate opaque IDs or aliases when the heading title is enough. If a stable handle is useful, include it in the heading text itself. Omit `Retention:` unless it clarifies why the binding belongs in the brief.
 
+Keep all top-level section headings even when a section has no content yet. On first creation, write a one-line `None as of <reason>` placeholder rather than dropping the heading entirely; on updates, the same rule applies (see Editing Rules). The brief's shape should not depend on whether the agent who wrote it found something to put in every section.
+
 ## Brief Delta Format
 
 When not editing the brief directly, return proposed changes in this shape:
@@ -281,6 +285,8 @@ Keep the brief compact. A useful brief should be readable in one pass, ideally w
 
 `.stratal/brief.md` may be committed when it is part of the shared repo working contract. If it contains private preferences, sensitive context, or local-only working notes, keep it untracked or ignore it. Stratal should make this choice explicit instead of assuming either policy.
 
+When the user has not signaled commit-vs-ignore, do not block. Apply this fallback: default to **recommending commit** if the brief contains only shared repo conventions and no private or sensitive context; default to **recommending ignore** if it carries personal preferences, credentials, or local-only paths. Either way, surface the recommendation in `## Open Questions And Discomfort` with a one-line note (e.g., `Commit policy: recommend commit (only shared conventions present); confirm before tracking.`) and continue. Never silently track or untrack on the user's behalf.
+
 ## Lifecycle
 
 Lifecycle applies to any judgment, not only rejected directions.
@@ -295,6 +301,8 @@ Use simple Markdown status words:
 Prefer editing the item's status and explanation in Markdown. Do not create a parallel machine-readable lifecycle unless the project later proves it needs automation.
 
 `Status: retired` and `Rejected Directions` are not the same. `Status: retired` lives inside `Judgment Bindings` and marks a binding that was once active and is no longer. `Rejected Directions` records an approach considered and explicitly not taken — it never became an active binding. When a binding is retired because its underlying approach was abandoned, move the rationale to `Rejected Directions` and shrink the binding entry to a one-line cross-reference, rather than keeping a full retired binding and a parallel rejection note.
+
+If a binding's only authority was `Agent inference` and a later `Human stated` or `Repo evidence` claim contradicts it, treat the binding as if it never legitimately became active: move it straight to `Rejected Directions` with a one-line rationale, and remove the binding entry entirely (no retired stub). The retired-stub form is reserved for bindings whose authority was once strong — `Human stated`, `Repo evidence`, or a cited `External source` — and has since been overturned.
 
 ## Quality Gate
 
@@ -321,7 +329,9 @@ When using Stratal in chat, keep the answer focused:
 <only the bindings that materially shaped the work>
 
 ## Proposed Brief Delta
-<at most five changes, unless the brief was edited directly>
+<at most five changes>
 ```
 
-Omit sections that would be empty or noisy.
+`## Proposed Brief Delta` is conditional. Include it only when there are actual proposed changes the human must review. If you edited `.stratal/brief.md` directly per the user's request and have no leftover follow-up changes, **omit the entire section** — do not leave a stub like "N/A" or "edited directly". Only keep the section when in-place edits did not absorb every change and a small residual delta still needs review.
+
+Omit any other section that would be empty or noisy.
