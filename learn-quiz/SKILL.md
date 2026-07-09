@@ -1,19 +1,15 @@
 ---
 name: learn-quiz
 description: >-
-  Socratic teaching protocol that drives a learner to deep, verified mastery of a
-  "session" — a code change, PR, bug fix, design, architecture, or concept just
-  worked through. Works incrementally, gates progress on demonstrated mastery,
-  keeps a running checklist, and verifies understanding through production (free
-  recall, perturbation, falsification, trap-authoring) rather than multiple
-  choice, which it treats as exam rehearsal only. Use whenever the user wants to
-  genuinely understand something rather than be handed an answer: "teach me this",
+  Socratic teaching protocol for deep, verified mastery of a "session" (code
+  change, PR, bug fix, design, architecture, or concept). Gates progress on
+  demonstrated production (free recall, perturbation, falsification,
+  trap-authoring); multiple choice is exam rehearsal only. Use when the user
+  wants to genuinely understand rather than be handed an answer: "teach me this",
   "quiz me", "make sure I understand", "walk me through why", "I want to learn
-  this properly", "教えて", "理解できたか確認して", "クイズして", "なぜこうなったのか説明して",
-  "ちゃんと分かりたい". Trigger even when the user only says "explain X" but context
-  implies they must retain and reason about it (onboarding, post-mortem, code
-  review study, exam prep, inheriting an unfamiliar codebase). Do NOT use for
-  one-off factual lookups the user wants answered and forgotten.
+  this properly", "教えて", "理解できたか確認して", "クイズして", "ちゃんと分かりたい". Also when
+  "explain X" implies retention (onboarding, post-mortem, exam prep). Do NOT use
+  for one-off factual lookups.
 ---
 
 # Learn Quiz
