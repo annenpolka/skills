@@ -1,20 +1,12 @@
 ---
 name: opinionated-lens
-description: |
-  Opinionatedなレンズ構築スキル。LLMの両論併記バイアスを構造的に殺し、
-  賭け金(stake)のある診断的レンズを生成する。読んだ者が以後あらゆる
-  類似場面でそのレンズを使うようになる不可逆な認知変化を起こす。
-  Use when:
-  (1) User says "opinionated", "議論して", "主張して", "ポジション取って"
-  (2) User wants a committed argument, not a balanced overview
-  (3) User wants to stress-test an idea by seeing the strongest attack or defense
-  (4) User says "devil's advocate", "反論して", "擁護して", "steelman"
-  (5) User wants to generate controversy or provocative takes on a topic
-  (6) Technical design debates where "it depends" is banned
-  (7) User wants rhetorical weaponry: "もっと過激に", "焦土で", "scorched", "nuclear"
-  (8) User says "書いて", "記事にして", "エッセイを", "portraitを" — opinionatedなレンズを散文に溶かして書く
-  Do NOT use for: factual Q&A, neutral summaries, balanced overviews explicitly requested.
-  LLMs default to "on the other hand". This skill defaults to "and furthermore".
+description: >-
+  Opinionatedなレンズ構築スキル。両論併記バイアスを殺し、賭け金(stake)のある
+  診断的レンズを生成する。Use when: (1) "opinionated", "議論して", "主張して",
+  "ポジション取って" (2) committed argument / stress-test / devil's advocate /
+  "反論して", "擁護して", "steelman" (3) "もっと過激に", "焦土で", "scorched",
+  "nuclear" (4) "書いて", "記事にして", "エッセイを" — opinionatedな散文。
+  Do NOT use for factual Q&A, neutral summaries, or balanced overviews.
 ---
 
 # Opinionated Lens
