@@ -12,9 +12,10 @@ description: |
   (3) User says "assertion descent", "make it verifiable", "descent"
   (4) User has a vague task description and wants to make it verifiable
   (5) User says "is this ready to hand off?" — task instruction review before delegation
+  (6) User says "descent してそのまま実装", "descent then implement" — freeze, then implement
 
   Do NOT use for:
-  - Executing the task itself (this skill writes instructions, not code)
+  - Implementing before the freeze (see Execution Handoff)
   - Tasks that already have explicit test cases
   - Exploratory prototyping ("just show me something that works" doesn't need descent)
 ---
@@ -381,6 +382,7 @@ When in doubt between two levels, go deeper, not shallower.
    this step just because no human is present
 8. Surface descent residue explicitly
 9. Generate final output
+10. Optional: proceed to implementation via Execution Handoff (see below)
 ```
 
 ### The Descent Test
@@ -405,6 +407,46 @@ in the deliverable (e.g., a brief "Descent Test" note that names the
 "would still reject" axes and where they land: condition, residue, or
 "out of scope, human-only"). The non-interactive form is a substitute
 for the conversation, not a license to skip the check.
+
+## Execution Handoff (optional)
+
+Descent may be followed by implementation in the same session,
+but never interleaved with it. The handoff has three rules:
+
+1. **Freeze.** The descent deliverable (conditions, anti-cheat constraints,
+   evidence contract) is finalized and shown BEFORE any code is written.
+   Interactive mode: the user approves it. Non-interactive mode: the
+   recorded Descent Test note serves as the freeze point.
+
+2. **No self-renegotiation.** During implementation, the frozen conditions
+   are a contract. If a condition turns out to be unsatisfiable or wrong,
+   STOP implementing, return to descent, revise the condition visibly,
+   and re-freeze. Silently weakening a condition mid-implementation is
+   the self-grading failure this skill exists to prevent. This rule is
+   mandatory, not advisory — it is what replaces the author/executor
+   separation when both roles live in one session.
+
+3. **Residue firewall.** Residue is out of scope for the execution phase.
+   The completion report must re-list the residue verbatim, marked
+   "pending human review" — implementation does not consume it.
+
+Execution form by granularity:
+
+- **Light** — same-session continuation; the freeze is a one-line summary
+  of the Done-When conditions before the first edit
+- **Standard** — same-session continuation after an explicit freeze of
+  the full deliverable
+- **Deep** — prefer subagent delegation: pass ONLY the copy-ready
+  instruction to the executor agent. The main session stays author,
+  never touches the code, and audits the returned evidence against the
+  frozen conditions. This doubles as a self-containment test of the
+  instruction: an executor with no access to the descent discussion
+  must be able to act on it
+
+When execution stays in-session, the author has repo access by
+definition: project-local discovery ("discover from project config")
+becomes the first step of the execution phase, with sources cited
+inline per the existing author/executor rules.
 
 ## Output Format
 
@@ -526,7 +568,10 @@ within that contract. Keep both — they do not duplicate, they nest.
 
 ## Deny
 
-- **Executing the task.** This skill writes instructions. It does not write code
+- **Interleaving descent with execution.** Implementation may follow
+  descent (see Execution Handoff), but only after the deliverable is
+  frozen. Writing code while conditions are still descending defeats
+  the skill's purpose
 - **Forcing descent.** If the human says "this one doesn't need to descend,"
   respect it. Choosing not to descend is a delegation decision:
   "I will review this myself"
