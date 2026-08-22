@@ -13,6 +13,7 @@ Claude Code 用のスキルとプラグイン。
 | **emergent-engine** | 創発的LLM実行環境。allow/deny list で出力を制御し、入力に存在しない新規の跳躍のみを出力 |
 | **godoku** | 誤読による創造的変形。入力テキストを構造的に誤読し、歪みの幾何学から新規の創造物を生成 |
 | **preact-zero-mock** | Preact + HTM でゼロビルドWebモック。npm不要、ブラウザで直接開けるプロトタイプ |
+| **sanitize-artifacts** | 生成成果物からプロンプト履歴・制作制約・修正痕跡を除去し、会話なしで成立する一貫した最終成果物へ再構成 |
 | **spec-interview** | 仕様書インタビュー。AskUserQuestion で仕様を対話的に明確化・拡充 |
 | **syntax-reference** | 文体DNA抽出・再現。12の構造層で文体をYAML符号化し、LLMによる高精度な文体模倣を実現 |
 
