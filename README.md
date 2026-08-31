@@ -12,6 +12,7 @@ Claude Code 用のスキルとプラグイン。
 | **deep-research** | Web検索を活用した多層リサーチ。9層の因果構造フレームワークで表層から根本要因まで分析 |
 | **emergent-engine** | 創発的LLM実行環境。allow/deny list で出力を制御し、入力に存在しない新規の跳躍のみを出力 |
 | **godoku** | 誤読による創造的変形。入力テキストを構造的に誤読し、歪みの幾何学から新規の創造物を生成 |
+| **hdd-loop** | Hallucination-Driven Design。未実装の道具を既に存在するものとして使わせ、批評・制約・現実化を反復して新しいアフォーダンスを発掘 |
 | **preact-zero-mock** | Preact + HTM でゼロビルドWebモック。npm不要、ブラウザで直接開けるプロトタイプ |
 | **sanitize-artifacts** | 生成成果物からプロンプト履歴・制作制約・修正痕跡を除去し、会話なしで成立する一貫した最終成果物へ再構成 |
 | **spec-interview** | 仕様書インタビュー。AskUserQuestion で仕様を対話的に明確化・拡充 |
