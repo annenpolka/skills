@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI Exploration"
+  short_description: "Steer UI design through controlled visual comparisons"
+  default_prompt: "Use $ui-exploration to explore this UI through controlled variants and visual feedback."
