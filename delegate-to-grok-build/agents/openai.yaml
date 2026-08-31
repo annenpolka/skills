@@ -1,0 +1,4 @@
+interface:
+  display_name: "Delegate to Grok Build"
+  short_description: "Delegate frozen code changes to Grok Build"
+  default_prompt: "Use $delegate-to-grok-build to have Grok Build implement this frozen, authorized code change while Codex audits the result."
