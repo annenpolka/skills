@@ -3,7 +3,7 @@ name: hdd-loop
 description: Run Hallucination-Driven Design (HDD) loops to discover novel affordances by having a speculative Dreamer model use a not-yet-existing artifact as if it already exists, then pressure-test it with Red Pen critique, continuity ledgers, capability removal, contradiction injection, and late implementation grounding. Use for speculative CLI/tool/OS/runtime/interface design, DeepSeek R1 exploration, red-pen iterative design, affordance mining, or when conventional feasibility-first ideation is collapsing too early.
 metadata:
   author: hdd-loop
-  version: "0.3.0"
+  version: "0.4.0"
   method: hallucination-driven-design
 ---
 
@@ -218,6 +218,18 @@ Then inspect the Dreamer output for:
 - conventionalization that destroys the original affordance;
 - overly detailed implementation work that indicates Dreaming should stop.
 
+After the boring-collapse check, and once a central interaction is identifiable, run the Reality-Stripped Affordance Test:
+
+- remove artifact-specific names;
+- remove fictional machinery, lore, magic, and convenience guarantees;
+- state the user-visible operation that remains;
+- compare it with the nearest existing ordinary workflow;
+- identify the observable behavioral delta lost by that substitution.
+
+Classify the survivor as `NOVEL_AFFORDANCE`, `USEFUL_COMPOSITION`, `THIN_WRAPPER`, or `NO_SURVIVOR` using [references/RED_PEN.md](references/RED_PEN.md). Do not reject an interaction merely because it resembles an existing tool, and do not call it novel merely because it has a new name. Early iterations may leave the assessment unset.
+
+If the assessment is `THIN_WRAPPER` or `NO_SURVIVOR`, do not ask the Dreamer to become more novel. Continue only when a specific untested observable delta could change the classification, and translate that test into a concrete in-world fact or usage task.
+
 Return 1-3 high-value pressures for the next turn rather than solving everything yourself.
 
 ## High-value pressure techniques
@@ -280,6 +292,8 @@ During grounding:
 - accept partial automation when it preserves the interaction;
 - identify research boundaries honestly.
 
+`USEFUL_COMPOSITION` is a valid Harvest result; HDD success is not limited to `NOVEL_AFFORDANCE`. If the latest assessment is `THIN_WRAPPER` or `NO_SURVIVOR` and no concrete untested delta could change it, end Dreaming without forcing novelty and either ground the honest result or stop.
+
 Read [references/METHOD.md](references/METHOD.md) for the full grounding and harvest procedure.
 
 ## Harvest
@@ -298,15 +312,22 @@ The important artifact was not the fictional implementation. It was making **"wh
 
 Write Harvest Candidates into the ledger throughout the loop.
 
+Treat the latest Red Pen affordance assessment as grounding input. Harvest must not upgrade it after the fact merely to make the artifact sound stronger.
+
 At the end, produce:
 
 - Core Affordance;
+- Affordance Classification;
+- Nearest Existing Operation;
+- Observable Delta;
 - Surviving Abstractions;
 - Removed Magic;
 - Reality Mapping;
 - Research Boundary;
 - Smallest Useful Artifact;
 - Why Existing Tools Are Not Enough.
+
+For `THIN_WRAPPER` or `NO_SURVIVOR`, do not invent an argument for the final section. It may state that current evidence did not establish enough observable delta to require a new artifact.
 
 ## Reference material
 

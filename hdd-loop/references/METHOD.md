@@ -171,8 +171,25 @@ For each Harvest Candidate ask:
 7. What existing technologies provide raw substrate?
 8. Which part is an actual research problem?
 9. Does the interaction still feel useful after partial automation replaces magic?
+10. Strip away artifact-specific names, fictional machinery, lore, and magical guarantees. What user-visible operation remains?
+11. What is the nearest existing ordinary workflow that can reproduce it?
+12. What observable capability is lost if that existing workflow replaces the artifact?
+13. Is the survivor a novel affordance, a useful composition, a thin wrapper, or no survivor?
 
 Preserve observed/inferred/declared provenance in grounded designs.
+
+## Reality-Stripped Affordance Test
+
+Red Pen runs this test once a central interaction is identifiable, before grounding turns the fictional artifact into an implementation proposal. It classifies the surviving operation as:
+
+- `NOVEL_AFFORDANCE`: a new first-class question or operation remains, and replacing it with the nearest ordinary workflow loses an important observable capability or cannot naturally express the same question.
+- `USEFUL_COMPOSITION`: known primitives become practically valuable as one operation or contract, without claiming a new foundational capability.
+- `THIN_WRAPPER`: the ordinary workflow is behaviorally equivalent enough that the demonstrated difference is mainly syntax, metaphor, metadata, or convenience.
+- `NO_SURVIVOR`: no useful operation remains without the fictional machinery or magic.
+
+The test measures what survived; it does not generate novelty. An early iteration may leave the assessment unset. A `THIN_WRAPPER` result is a legitimate finding, not a failure that must be repaired with new fiction.
+
+If a `THIN_WRAPPER` or `NO_SURVIVOR` assessment leaves no specific untested observable delta that could change the classification, Red Pen should return no further pressure and recommend grounding or ending. If such a delta does remain, pressure must request a concrete usage trace that tests it without artifact-specific names. Never ask the Dreamer to be more novel or to invent a capability merely because the classification is weak.
 
 ## Stop conditions
 
@@ -183,7 +200,9 @@ Stop Dreaming when:
 - capability removal no longer changes the artifact substantially;
 - the user says "I would actually use/build that";
 - the Dreamer is now doing correctness-sensitive implementation detail;
-- novelty is decreasing as specification detail increases.
+- novelty is decreasing as specification detail increases;
+- the Reality-Stripped Affordance Test returns `THIN_WRAPPER` or `NO_SURVIVOR` with no specific untested observable delta;
+- another turn is accumulating fictional capabilities rather than evidence that could change the assessment.
 
 Do not continue merely to make the fictional world internally complete.
 
@@ -204,6 +223,38 @@ show the earliest runtime divergence that affected this failed assertion
 ```
 
 If the harvest requires several pages of fictional lore to explain why it is useful, it is probably not ready.
+
+Then restate that one command, operation, or question as the nearest existing ordinary workflow. A strong harvest can name the observable delta that remains after the substitution. If no meaningful delta remains, record `THIN_WRAPPER` or `NO_SURVIVOR` honestly instead of manufacturing a differentiation claim.
+
+### Calibration: flowtrace
+
+Reality stripped:
+
+```text
+Why does this runtime state have this value?
+```
+
+Nearest existing workflow: manual debugger tracing and instrumentation.
+
+Observable delta: runtime mutation provenance can be requested directly as a first-class post-execution query.
+
+Calibration classification: `NOVEL_AFFORDANCE`.
+
+### Calibration: archive borrow
+
+Reality stripped:
+
+```text
+Start one fresh agent invocation with this explicit file included as context.
+```
+
+Nearest existing workflow: start a new coding-agent session and attach only that file.
+
+Observable delta: current evidence mainly shows archive metadata, metaphor, and convenience; it does not yet establish a distinct execution capability.
+
+Calibration classification: closer to `THIN_WRAPPER`.
+
+These examples calibrate the comparison method; they are not absolute classifications. New observed behavior may justify reassessment.
 
 ## Diegetic prompt compilation
 

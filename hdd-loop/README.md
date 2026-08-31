@@ -4,6 +4,8 @@ An Agent Skills-compatible package for **Hallucination-Driven Design (HDD)**.
 
 HDD uses a speculative model to experience a not-yet-existing artifact as already usable, then iteratively applies Red Pen pressure, continuity constraints, capability removal, and late implementation grounding to harvest novel affordances. The external Dreamer is kept **diegetic**: it is not told that HDD, Red Pen, or a Ledger exists.
 
+Before grounding, Red Pen records a reality-stripped affordance assessment that distinguishes a novel operation, a useful composition, a thin wrapper, and an idea that does not survive removal of fictional machinery.
+
 ## Package layout
 
 ```text

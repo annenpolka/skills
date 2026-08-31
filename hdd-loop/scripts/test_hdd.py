@@ -43,6 +43,14 @@ def check_diegetic_compilation() -> None:
         ledger["harvest_candidates"] = ["SECRET HARVEST SHOULD NOT LEAK"]
         ledger["human_pressure"] = ["Keep the interface as a one-shot CLI."]
         ledger["last_pressure"] = ["Candidate labels encode no history or semantics."]
+        ledger["affordance_assessment"] = {
+            "classification": "THIN_WRAPPER",
+            "core_operation": "attach one explicit file to one fresh agent invocation",
+            "nearest_existing_operation": "SECRET ORDINARY WORKFLOW",
+            "observable_delta": "SECRET DELTA",
+            "reason": "Reality-Stripped assessment found no distinct execution capability.",
+            "iteration": 4,
+        }
         hdd.save_ledger(ws, ledger)
 
         prompt = hdd.compose_dreamer_prompt(ws, ledger)
@@ -52,6 +60,11 @@ def check_diegetic_compilation() -> None:
             "Dream Iteration",
             "SECRET OPEN QUESTION",
             "SECRET HARVEST",
+            "THIN_WRAPPER",
+            "SECRET ORDINARY WORKFLOW",
+            "SECRET DELTA",
+            "Affordance Assessment",
+            "Reality-Stripped",
         ]
         for token in forbidden:
             assert token.lower() not in prompt.lower(), token
@@ -68,6 +81,24 @@ def check_diegetic_compilation() -> None:
         critic = hdd.compose_critic_prompt(ws, ledger, "raw dream output")
         assert "Ledger Before This Iteration" in critic
         assert "Dreamer Output To Review" in critic
+        assert "Affordance Assessment" in critic
+        assert "THIN_WRAPPER" in critic
+        assert "SECRET ORDINARY WORKFLOW" in critic
+        assert "SECRET DELTA" in critic
+
+        harvest = hdd.compose_harvest_prompt(ws, ledger)
+        assert "Affordance Assessment" in harvest
+        assert "THIN_WRAPPER" in harvest
+        assert "SECRET ORDINARY WORKFLOW" in harvest
+        assert "SECRET DELTA" in harvest
+        for section in (
+            "# Affordance Classification",
+            "# Nearest Existing Operation",
+            "# Observable Delta",
+        ):
+            assert section in harvest
+        assert "Do not upgrade the affordance classification" in harvest
+        assert 'Do not invent a "Why Existing Tools Are Not Enough" argument' in harvest
 
 
 
@@ -101,6 +132,100 @@ def check_reference_migration() -> None:
         prompt = hdd.compose_dreamer_prompt(ws, ledger)
         for token in ("Red Pen", "Dream Iteration", "Harvest Candidates", "Stop Dreaming", "Grounding Gate"):
             assert token.lower() not in prompt.lower(), token
+
+
+def check_affordance_assessment() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        ws = Path(td) / ".hdd"
+        ws.mkdir()
+        (ws / "iterations").mkdir()
+        (ws / "outbox").mkdir()
+
+        legacy_ledger = hdd.default_ledger()
+        legacy_ledger.pop("affordance_assessment")
+        (ws / "ledger.json").write_text(
+            json.dumps(legacy_ledger, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        ledger = hdd.load_ledger(ws)
+        assert ledger["affordance_assessment"] is None
+
+        legacy_patch = {"summary": "legacy critic response"}
+        assert hdd.validate_patch(legacy_patch)["affordance_assessment"] is None
+        assert hdd.validate_patch({"affordance_assessment": None})["affordance_assessment"] is None
+        hdd.apply_patch(ws, ledger, legacy_patch, 1)
+        assert ledger["affordance_assessment"] is None
+
+        assessment = {
+            "classification": "THIN_WRAPPER",
+            "core_operation": "attach one explicit file to one fresh agent invocation",
+            "nearest_existing_operation": "start a fresh agent session with that file attached",
+            "observable_delta": "persistent archive-status metadata only",
+            "reason": "no distinct execution capability has been established",
+        }
+        normalized = hdd.validate_patch({"affordance_assessment": assessment})
+        assert normalized["affordance_assessment"] == assessment
+        padded = {key: f"  {value}  " for key, value in assessment.items()}
+        assert hdd.validate_patch({"affordance_assessment": padded})[
+            "affordance_assessment"
+        ] == assessment
+
+        invalid = dict(assessment)
+        invalid["classification"] = "SUPER_NOVEL"
+        try:
+            hdd.validate_patch({"affordance_assessment": invalid})
+        except hdd.HDDException:
+            pass
+        else:
+            raise AssertionError("unknown affordance classification was accepted")
+
+        hdd.apply_patch(
+            ws,
+            ledger,
+            {"summary": "reality-stripped assessment", "affordance_assessment": assessment},
+            2,
+        )
+        expected = {**assessment, "iteration": 2}
+        persisted = json.loads((ws / "ledger.json").read_text(encoding="utf-8"))
+        assert persisted["affordance_assessment"] == expected
+        assert persisted["history"][-1]["affordance_assessment"] == expected
+        assert "affordance_assessment" not in persisted["history"][-2]
+        persisted_patch = json.loads(
+            (ws / "iterations" / "0002-redpen.json").read_text(encoding="utf-8")
+        )
+        assert persisted_patch["affordance_assessment"] == assessment
+        ledger_markdown = (ws / "ledger.md").read_text(encoding="utf-8")
+        for token in (
+            "## Affordance Assessment",
+            "Classification: THIN_WRAPPER",
+            "Core operation: attach one explicit file",
+            "Nearest existing operation: start a fresh agent session",
+            "Observable delta: persistent archive-status metadata only",
+            "Reason: no distinct execution capability has been established",
+            "Assessed at iteration: 2",
+        ):
+            assert token in ledger_markdown, token
+        redpen_markdown = (ws / "iterations" / "0002-redpen.md").read_text(encoding="utf-8")
+        assert "## Affordance Assessment" in redpen_markdown
+        assert "Assessed at iteration: 2" in redpen_markdown
+
+        hdd.apply_patch(ws, ledger, {"summary": "no new assessment"}, 3)
+        assert ledger["affordance_assessment"] == expected
+        assert "affordance_assessment" not in ledger["history"][-1]
+        assert hdd.load_ledger(ws)["affordance_assessment"] == expected
+
+        replacement = {
+            "classification": "USEFUL_COMPOSITION",
+            "core_operation": "run a bounded provenance inspection as one contract",
+            "nearest_existing_operation": "combine debugger tracing and log correlation manually",
+            "observable_delta": "the bounded inspection contract is reusable across runs",
+            "reason": "the primitives are known but the combined contract remains useful",
+        }
+        hdd.apply_patch(ws, ledger, {"affordance_assessment": replacement}, 4)
+        replacement_with_iteration = {**replacement, "iteration": 4}
+        assert ledger["affordance_assessment"] == replacement_with_iteration
+        assert ledger["history"][-1]["affordance_assessment"] == replacement_with_iteration
+        assert hdd.load_ledger(ws)["affordance_assessment"] == replacement_with_iteration
 
 
 def check_manual_cli() -> None:
@@ -206,6 +331,7 @@ def check_trial_workspaces() -> None:
 def main() -> int:
     check_diegetic_compilation()
     check_reference_migration()
+    check_affordance_assessment()
     check_manual_cli()
     check_trial_workspaces()
     print("test_hdd.py: OK")

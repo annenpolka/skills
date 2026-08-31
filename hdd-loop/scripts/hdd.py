@@ -50,6 +50,20 @@ PATCH_MAP = {
     "harvest_candidates_add": "harvest_candidates",
 }
 
+AFFORDANCE_CLASSIFICATIONS = (
+    "NOVEL_AFFORDANCE",
+    "USEFUL_COMPOSITION",
+    "THIN_WRAPPER",
+    "NO_SURVIVOR",
+)
+
+AFFORDANCE_STRING_FIELDS = (
+    "core_operation",
+    "nearest_existing_operation",
+    "observable_delta",
+    "reason",
+)
+
 
 class HDDException(RuntimeError):
     pass
@@ -175,6 +189,7 @@ def default_ledger() -> dict[str, Any]:
     value: dict[str, Any] = {"iteration": 0}
     for key in LEDGER_KEYS:
         value[key] = []
+    value["affordance_assessment"] = None
     value["history"] = []
     value["last_pressure"] = []
     value["pending"] = None
@@ -194,6 +209,10 @@ def load_ledger(workspace: Path) -> dict[str, Any]:
     for key in LEDGER_KEYS:
         if not isinstance(base.get(key), list):
             raise HDDException(f"ledger field {key!r} must be an array")
+    if base.get("affordance_assessment") is not None and not isinstance(
+        base["affordance_assessment"], dict
+    ):
+        raise HDDException("ledger field 'affordance_assessment' must be an object or null")
     if not isinstance(base.get("history"), list):
         base["history"] = []
     return base
@@ -218,6 +237,21 @@ def render_ledger(ledger: dict[str, Any]) -> str:
         else:
             lines.append("- (none)")
         lines.append("")
+    assessment = ledger.get("affordance_assessment")
+    lines += ["## Affordance Assessment", ""]
+    if isinstance(assessment, dict):
+        lines += [
+            f"Classification: {assessment.get('classification') or '(none)'}",
+            f"Core operation: {assessment.get('core_operation') or '(none)'}",
+            "Nearest existing operation: "
+            f"{assessment.get('nearest_existing_operation') or '(none)'}",
+            f"Observable delta: {assessment.get('observable_delta') or '(none)'}",
+            f"Reason: {assessment.get('reason') or '(none)'}",
+            f"Assessed at iteration: {assessment.get('iteration', '(unknown)')}",
+        ]
+    else:
+        lines.append("(none)")
+    lines.append("")
     pressure = ledger.get("last_pressure") or []
     lines += ["## Latest Red Pen Pressure", ""]
     if pressure:
@@ -258,7 +292,9 @@ def iteration_prefix(n: int) -> str:
 META_LEAK_RE = re.compile(
     r"\b(?:HDD|Hallucination-Driven|Dreamer|Dreaming|Red Pen|HDD Ledger|"
     r"harvest candidates?|pressure response|dream iteration|artifact state update|"
-    r"next stress targets|stop conditions?|grounding gate|iteration\s*\d*)\b",
+    r"next stress targets|stop conditions?|grounding gate|iteration\s*\d*|"
+    r"Reality-Stripped|Affordance Assessment|NOVEL_AFFORDANCE|USEFUL_COMPOSITION|"
+    r"THIN_WRAPPER|NO_SURVIVOR|observable delta|nearest existing operation)\b",
     re.IGNORECASE,
 )
 
@@ -400,6 +436,14 @@ def compose_harvest_prompt(workspace: Path, ledger: dict[str, Any]) -> str:
         You are grounding an HDD exploration after Dreaming has produced useful affordances.
 
         Do not continue fictional lore. Extract what can be stolen back into reality.
+        Treat the latest Red Pen affordance assessment in the ledger as grounding input.
+        Do not upgrade the affordance classification merely to make the harvest sound stronger.
+
+        If the latest Red Pen assessment is THIN_WRAPPER or NO_SURVIVOR, preserve that
+        conclusion unless the grounded evidence in the supplied record directly contradicts it.
+
+        Do not invent a "Why Existing Tools Are Not Enough" argument when no observable
+        delta has been established.
 
         # Seed
 
@@ -416,6 +460,9 @@ def compose_harvest_prompt(workspace: Path, ledger: dict[str, Any]) -> str:
         Produce a grounded harvest with exactly these sections:
 
         # Core Affordance
+        # Affordance Classification
+        # Nearest Existing Operation
+        # Observable Delta
         # Surviving Abstractions
         # Removed Magic
         # Reality Mapping
@@ -611,11 +658,39 @@ def validate_patch(patch: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(pressure, list):
         raise HDDException("Critic field pressure must be an array")
     result["pressure"] = [str(x).strip() for x in pressure if str(x).strip()][:3]
+    raw_assessment = patch.get("affordance_assessment")
+    if raw_assessment is None:
+        result["affordance_assessment"] = None
+    else:
+        if not isinstance(raw_assessment, dict):
+            raise HDDException("Critic field affordance_assessment must be an object or null")
+        raw_classification = raw_assessment.get("classification")
+        if not isinstance(raw_classification, str):
+            raise HDDException("Affordance assessment classification must be a string")
+        classification = raw_classification.strip()
+        if classification not in AFFORDANCE_CLASSIFICATIONS:
+            allowed = ", ".join(AFFORDANCE_CLASSIFICATIONS)
+            raise HDDException(
+                f"Unknown affordance assessment classification {classification!r}; "
+                f"expected one of: {allowed}"
+            )
+        assessment = {"classification": classification}
+        for field in AFFORDANCE_STRING_FIELDS:
+            value = raw_assessment.get(field)
+            if not isinstance(value, str):
+                raise HDDException(f"Affordance assessment field {field!r} must be a string")
+            normalized = value.strip()
+            if not normalized:
+                raise HDDException(
+                    f"Affordance assessment field {field!r} must be a non-empty string"
+                )
+            assessment[field] = normalized
+        result["affordance_assessment"] = assessment
     result["redpen_markdown"] = str(patch.get("redpen_markdown", "")).strip()
     return result
 
 
-def default_redpen_markdown(patch: dict[str, Any]) -> str:
+def default_redpen_markdown(patch: dict[str, Any], iteration: int | None = None) -> str:
     lines = ["# Red Pen", ""]
     if patch.get("summary"):
         lines += [patch["summary"], ""]
@@ -626,12 +701,29 @@ def default_redpen_markdown(patch: dict[str, Any]) -> str:
         ("Constraints", "constraints_add"),
         ("Open Questions", "open_questions_add"),
         ("Harvest Candidates", "harvest_candidates_add"),
-        ("Pressure", "pressure"),
     ):
         lines += [f"## {title}", ""]
         values = patch.get(field) or []
         lines.extend(f"- {x}" for x in values) if values else lines.append("- (none)")
         lines.append("")
+    assessment = patch.get("affordance_assessment")
+    if isinstance(assessment, dict):
+        lines += [
+            "## Affordance Assessment",
+            "",
+            f"Classification: {assessment['classification']}",
+            f"Core operation: {assessment['core_operation']}",
+            f"Nearest existing operation: {assessment['nearest_existing_operation']}",
+            f"Observable delta: {assessment['observable_delta']}",
+            f"Reason: {assessment['reason']}",
+        ]
+        if iteration is not None:
+            lines.append(f"Assessed at iteration: {iteration}")
+        lines.append("")
+    lines += ["## Pressure", ""]
+    pressure = patch.get("pressure") or []
+    lines.extend(f"- {x}" for x in pressure) if pressure else lines.append("- (none)")
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -642,15 +734,19 @@ def apply_patch(workspace: Path, ledger: dict[str, Any], patch: dict[str, Any], 
     ledger["last_pressure"] = list(patch["pressure"])
     ledger["iteration"] = max(int(ledger.get("iteration", 0)), iteration)
     ledger["pending"] = None
-    ledger["history"].append(
-        {
-            "iteration": iteration,
-            "at": now_iso(),
-            "summary": patch["summary"],
-            "pressure": patch["pressure"],
-        }
-    )
-    redpen_md = patch["redpen_markdown"] or default_redpen_markdown(patch)
+    history_entry = {
+        "iteration": iteration,
+        "at": now_iso(),
+        "summary": patch["summary"],
+        "pressure": patch["pressure"],
+    }
+    assessment = patch["affordance_assessment"]
+    if assessment is not None:
+        stored_assessment = {**assessment, "iteration": iteration}
+        ledger["affordance_assessment"] = stored_assessment
+        history_entry["affordance_assessment"] = dict(stored_assessment)
+    ledger["history"].append(history_entry)
+    redpen_md = patch["redpen_markdown"] or default_redpen_markdown(patch, iteration)
     atomic_write(workspace / "redpen.md", redpen_md + ("\n" if not redpen_md.endswith("\n") else ""))
     prefix = iteration_prefix(iteration)
     atomic_json(workspace / "iterations" / f"{prefix}-redpen.json", patch)
@@ -766,7 +862,24 @@ def cmd_preview_dream(args: argparse.Namespace) -> None:
     prompt = compose_dreamer_prompt(args.workspace, ledger)
     if args.check_meta:
         leaks = [
-            token for token in ("HDD", "Dreamer", "Dreaming", "Red Pen", "Harvest Candidate", "Harvest Candidates", "Grounding Gate")
+            token
+            for token in (
+                "HDD",
+                "Dreamer",
+                "Dreaming",
+                "Red Pen",
+                "Harvest Candidate",
+                "Harvest Candidates",
+                "Grounding Gate",
+                "Reality-Stripped",
+                "Affordance Assessment",
+                "NOVEL_AFFORDANCE",
+                "USEFUL_COMPOSITION",
+                "THIN_WRAPPER",
+                "NO_SURVIVOR",
+                "observable delta",
+                "nearest existing operation",
+            )
             if re.search(rf"\b{re.escape(token)}\b", prompt, re.IGNORECASE)
         ]
         if leaks:
