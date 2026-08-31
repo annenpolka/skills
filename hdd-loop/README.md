@@ -29,7 +29,12 @@ python3 scripts/hdd.py dream
 
 `preview-dream --check-meta` is useful when changing prompt policy: it fails if core orchestration vocabulary leaks into the external Dreamer prompt.
 
-If no Dreamer transport is configured, the last command writes a manual prompt under `.hdd/outbox/`.
+Each `init` creates an independent timestamped trial under `.hdd/` and updates
+`.hdd/current` to point at it. Name a trial with `init --trial NAME`; select an older
+trial with commands such as `status --trial NAME`. Existing trials are left intact.
+
+If no Dreamer transport is configured, the last command writes a manual prompt under
+`.hdd/current/outbox/`.
 
 See `references/AUTH.md` for OpenRouter, OpenAI-compatible, command, and manual transports.
 

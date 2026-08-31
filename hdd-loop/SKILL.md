@@ -3,7 +3,7 @@ name: hdd-loop
 description: Run Hallucination-Driven Design (HDD) loops to discover novel affordances by having a speculative Dreamer model use a not-yet-existing artifact as if it already exists, then pressure-test it with Red Pen critique, continuity ledgers, capability removal, contradiction injection, and late implementation grounding. Use for speculative CLI/tool/OS/runtime/interface design, DeepSeek R1 exploration, red-pen iterative design, affordance mining, or when conventional feasibility-first ideation is collapsing too early.
 metadata:
   author: hdd-loop
-  version: "0.2.0"
+  version: "0.3.0"
   method: hallucination-driven-design
 ---
 
@@ -92,7 +92,11 @@ Bad seed:
 
 The bad seed already gives away the affordance that HDD should discover.
 
-If scripts are usable, initialize a workspace:
+Treat each independent exploration as a separate trial. Keep all trial state inside a
+dedicated direct child of `.hdd/`; do not write ledgers, transcripts, or iteration files
+directly into `.hdd/`.
+
+If scripts are usable, initialize a trial:
 
 ```bash
 python3 scripts/hdd.py init --seed-file seed.md
@@ -103,6 +107,33 @@ or:
 ```bash
 python3 scripts/hdd.py init --seed 'An unfamiliar debugging CLI is already installed. Discover and use it.'
 ```
+
+By default, `init` creates a timestamped directory and updates a relative symlink named
+`.hdd/current` only after initialization succeeds:
+
+```text
+.hdd/
+├── current -> 20260901-001530
+└── 20260901-001530/
+    ├── ledger.json
+    ├── iterations/
+    └── outbox/
+```
+
+Use a stable name when it helps distinguish parallel trials:
+
+```bash
+python3 scripts/hdd.py init --trial runtime-why --seed-file seed.md
+```
+
+Commands without a selector operate on `.hdd/current`. To resume another trial without
+changing `current`, pass `--trial NAME` after the command, for example
+`python3 scripts/hdd.py status --trial runtime-why`. `--workspace PATH` remains an
+exact-path escape hatch for legacy or externally managed workspaces and bypasses the
+trial root and `current` pointer.
+
+Do not reuse one trial directory for an unrelated seed. Continue the same world as
+iterations inside its trial directory; start another trial for an independent attempt.
 
 Read [references/AUTH.md](references/AUTH.md) before configuring an external Dreamer.
 
@@ -129,7 +160,8 @@ Inspect the exact diegetic prompt without invoking a model:
 python3 scripts/hdd.py preview-dream --check-meta
 ```
 
-If no external Dreamer transport is configured, it writes a prompt into `.hdd/outbox/` for manual execution.
+If no external Dreamer transport is configured, it writes a prompt into the selected
+trial's `outbox/` directory, normally `.hdd/current/outbox/`, for manual execution.
 
 When an external critic is configured, a full automated iteration can be run with:
 

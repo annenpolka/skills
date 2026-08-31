@@ -142,10 +142,72 @@ def check_manual_cli() -> None:
         assert records[0]["payload"]["mode"] == "diegetic"
 
 
+def check_trial_workspaces() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td) / ".hdd"
+        env = os.environ.copy()
+        for key in list(env):
+            if key.startswith("HDD_DREAMER_") or key == "OPENROUTER_API_KEY":
+                env.pop(key, None)
+
+        def run(*arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [sys.executable, str(RUNNER), "--root", str(root), *arguments],
+                check=check,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+        run("init", "--seed", "Discover the installed interface through use.")
+        current = root / "current"
+        assert current.is_symlink()
+        first_name = os.readlink(current)
+        assert first_name != "current"
+        first = root / first_name
+        assert first.is_dir()
+        assert (first / "ledger.json").exists()
+        assert not (root / "ledger.json").exists()
+
+        run("init", "--trial", "second-trial", "--seed", "Discover a different interface.")
+        second = root / "second-trial"
+        assert second.is_dir()
+        assert first.is_dir()
+        assert os.readlink(current) == "second-trial"
+
+        run("dream")
+        assert (second / "outbox" / "0001-dreamer-prompt.md").exists()
+        assert not (first / "outbox" / "0001-dreamer-prompt.md").exists()
+
+        run("dream", "--trial", first_name)
+        assert (first / "outbox" / "0001-dreamer-prompt.md").exists()
+        assert os.readlink(current) == "second-trial"
+
+        invalid = run(
+            "init",
+            "--trial",
+            "../escape",
+            "--seed",
+            "This must not escape the HDD root.",
+            check=False,
+        )
+        assert invalid.returncode == 2
+        assert not (Path(td) / "escape").exists()
+
+        outside = Path(td) / "outside"
+        outside.mkdir()
+        (root / "linked-trial").symlink_to(outside, target_is_directory=True)
+        linked = run("status", "--trial", "linked-trial", check=False)
+        assert linked.returncode == 2
+        assert "cannot be symlinks" in linked.stderr
+
+
 def main() -> int:
     check_diegetic_compilation()
     check_reference_migration()
     check_manual_cli()
+    check_trial_workspaces()
     print("test_hdd.py: OK")
     return 0
 

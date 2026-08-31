@@ -80,8 +80,11 @@ python3 scripts/hdd.py dream
 The runner writes a prompt under:
 
 ```text
-.hdd/outbox/NNNN-dreamer-prompt.md
+.hdd/current/outbox/NNNN-dreamer-prompt.md
 ```
+
+Here `current` points to the selected trial. When operating on a named or exact-path
+workspace, read the prompt from that trial's `outbox/` directory instead.
 
 Run that prompt in OpenRouter Chat or any other model UI, save the response, then ingest it:
 

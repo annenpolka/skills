@@ -28,7 +28,8 @@ PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 DIEGETIC_POLICY = PACKAGE_ROOT / "references" / "DIEGETIC_DREAMER.md"
 DREAMER_POLICY = PACKAGE_ROOT / "references" / "DREAMER.md"
 REDPEN_POLICY = PACKAGE_ROOT / "references" / "RED_PEN.md"
-DEFAULT_WORKSPACE = Path(".hdd")
+DEFAULT_HDD_ROOT = Path(".hdd")
+TRIAL_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 LEDGER_KEYS = (
     "preserve",
@@ -56,6 +57,89 @@ class HDDException(RuntimeError):
 
 def now_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).astimezone().isoformat(timespec="seconds")
+
+
+def validate_trial_name(name: str) -> str:
+    if name == "current" or not TRIAL_NAME_RE.fullmatch(name):
+        raise HDDException(
+            "Trial names must be one directory name containing only letters, numbers, "
+            "periods, underscores, or hyphens, and cannot be 'current'."
+        )
+    return name
+
+
+def next_trial_name(root: Path) -> str:
+    base = dt.datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
+    candidate = base
+    suffix = 2
+    while (root / candidate).exists() or (root / candidate).is_symlink():
+        candidate = f"{base}-{suffix:02d}"
+        suffix += 1
+    return candidate
+
+
+def current_workspace(root: Path) -> Path:
+    current = root / "current"
+    if not current.is_symlink():
+        legacy_hint = (
+            " Use `--workspace .hdd` for a legacy single-workspace layout."
+            if (root / "ledger.json").exists()
+            else ""
+        )
+        raise HDDException(
+            f"No current HDD trial found under {root}. Run `hdd.py init ...` first "
+            "or select one with --trial."
+            + legacy_hint
+        )
+    target = Path(os.readlink(current))
+    if target.is_absolute() or len(target.parts) != 1:
+        raise HDDException(
+            f"Invalid current pointer at {current}; it must name one direct child of {root}."
+        )
+    validate_trial_name(target.name)
+    workspace = root / target.name
+    if workspace.is_symlink():
+        raise HDDException(f"HDD trial directories cannot be symlinks: {workspace}")
+    return workspace
+
+
+def set_current(root: Path, workspace: Path) -> None:
+    root.mkdir(parents=True, exist_ok=True)
+    current = root / "current"
+    if (current.exists() or current.is_symlink()) and not current.is_symlink():
+        raise HDDException(f"Cannot replace non-symlink current path: {current}")
+    temporary = root / f".current-{os.getpid()}.tmp"
+    try:
+        if temporary.exists() or temporary.is_symlink():
+            temporary.unlink()
+        temporary.symlink_to(workspace.name, target_is_directory=True)
+        temporary.replace(current)
+    except OSError as exc:
+        raise HDDException(f"Could not update current trial pointer at {current}: {exc}") from exc
+    finally:
+        if temporary.exists() or temporary.is_symlink():
+            temporary.unlink()
+
+
+def resolve_workspace(args: argparse.Namespace) -> tuple[Path, Path | None]:
+    trial = getattr(args, "trial", None)
+    if args.workspace is not None:
+        if trial:
+            raise HDDException("Use either --workspace or --trial, not both.")
+        return args.workspace, None
+    root = args.root
+    if args.command == "init":
+        trial_name = validate_trial_name(trial) if trial else next_trial_name(root)
+        workspace = root / trial_name
+        if workspace.is_symlink():
+            raise HDDException(f"HDD trial directories cannot be symlinks: {workspace}")
+        return workspace, root
+    if trial:
+        workspace = root / validate_trial_name(trial)
+        if workspace.is_symlink():
+            raise HDDException(f"HDD trial directories cannot be symlinks: {workspace}")
+        return workspace, None
+    return current_workspace(root), None
 
 
 def read_text(path: Path, default: str = "") -> str:
@@ -596,13 +680,6 @@ def save_dream(workspace: Path, ledger: dict[str, Any], dream: str, iteration: i
 
 def cmd_init(args: argparse.Namespace) -> None:
     workspace = args.workspace
-    if workspace.exists() and any(workspace.iterdir()):
-        if not args.force:
-            raise HDDException(f"Workspace {workspace} is not empty. Use --force to overwrite HDD state.")
-        shutil.rmtree(workspace)
-    workspace.mkdir(parents=True, exist_ok=True)
-    (workspace / "iterations").mkdir(exist_ok=True)
-    (workspace / "outbox").mkdir(exist_ok=True)
     if args.seed_file:
         seed = Path(args.seed_file).read_text(encoding="utf-8")
     elif args.seed:
@@ -612,6 +689,19 @@ def cmd_init(args: argparse.Namespace) -> None:
     artifact = ""
     if args.artifact_file:
         artifact = Path(args.artifact_file).read_text(encoding="utf-8")
+    if workspace.exists():
+        if not workspace.is_dir():
+            raise HDDException(f"Trial workspace is not a directory: {workspace}")
+        if any(workspace.iterdir()):
+            if not args.force:
+                raise HDDException(
+                    f"Trial workspace {workspace} is not empty. "
+                    "Use --force to overwrite that trial."
+                )
+            shutil.rmtree(workspace)
+    workspace.mkdir(parents=True, exist_ok=True)
+    (workspace / "iterations").mkdir(exist_ok=True)
+    (workspace / "outbox").mkdir(exist_ok=True)
     atomic_write(workspace / "seed.md", seed.rstrip() + "\n")
     atomic_write(workspace / "artifact.md", artifact.rstrip() + ("\n" if artifact else ""))
     atomic_write(workspace / "redpen.md", "")
@@ -620,7 +710,11 @@ def cmd_init(args: argparse.Namespace) -> None:
         unique_append(ledger["human_pressure"], [args.human])
     save_ledger(workspace, ledger)
     atomic_write(workspace / "human-pressure.md", (args.human or "").rstrip() + ("\n" if args.human else ""))
-    print(f"Initialized HDD workspace: {workspace}")
+    if args.current_root is not None:
+        set_current(args.current_root, workspace)
+    print(f"Initialized HDD trial: {workspace}")
+    if args.current_root is not None:
+        print(f"Current trial: {args.current_root / 'current'} -> {workspace.name}")
 
 
 def cmd_status(args: argparse.Namespace) -> None:
@@ -791,10 +885,19 @@ def cmd_doctor(args: argparse.Namespace) -> None:
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Hallucination-Driven Design loop helper")
-    p.add_argument("--workspace", type=Path, default=DEFAULT_WORKSPACE, help="HDD workspace (default .hdd)")
+    p.add_argument("--root", type=Path, default=DEFAULT_HDD_ROOT, help="HDD trial root (default .hdd)")
+    p.add_argument(
+        "--workspace",
+        type=Path,
+        help="exact trial workspace; bypasses --root, --trial, and current",
+    )
     sub = p.add_subparsers(dest="command", required=True)
 
-    q = sub.add_parser("init", help="initialize an HDD workspace")
+    def add_trial_selector(command: argparse.ArgumentParser) -> None:
+        command.add_argument("--trial", help="trial directory name under --root")
+
+    q = sub.add_parser("init", help="initialize a new HDD trial")
+    add_trial_selector(q)
     q.add_argument("--seed")
     q.add_argument("--seed-file")
     q.add_argument("--artifact-file")
@@ -803,45 +906,55 @@ def parser() -> argparse.ArgumentParser:
     q.set_defaults(func=cmd_init)
 
     q = sub.add_parser("status", help="show ledger and transport state")
+    add_trial_selector(q)
     q.set_defaults(func=cmd_status)
 
     q = sub.add_parser("human", help="append human pressure")
+    add_trial_selector(q)
     q.add_argument("note")
     q.set_defaults(func=cmd_human)
 
     q = sub.add_parser("dream", help="invoke or prepare the next Dreamer turn")
+    add_trial_selector(q)
     q.add_argument("--force", action="store_true")
     q.set_defaults(func=cmd_dream)
 
     q = sub.add_parser("preview-dream", help="render the diegetic Dreamer prompt without invoking a model")
+    add_trial_selector(q)
     q.add_argument("--check-meta", action="store_true", help="fail if core orchestration terms leak")
     q.set_defaults(func=cmd_preview_dream)
 
     q = sub.add_parser("ingest-dreamer", help="ingest a manual Dreamer response")
+    add_trial_selector(q)
     q.add_argument("--file", required=True)
     q.add_argument("--force", action="store_true")
     q.set_defaults(func=cmd_ingest_dreamer)
 
     q = sub.add_parser("critic", help="invoke or prepare the Red Pen critic")
+    add_trial_selector(q)
     q.set_defaults(func=cmd_critic)
 
     q = sub.add_parser("record-redpen", help="record a host/manual Red Pen JSON patch")
+    add_trial_selector(q)
     q.add_argument("--file", required=True)
     q.add_argument("--iteration", type=int)
     q.set_defaults(func=cmd_record_redpen)
 
     q = sub.add_parser("step", help="run one HDD iteration")
+    add_trial_selector(q)
     q.add_argument("--external-critic", action="store_true")
     q.add_argument("--force", action="store_true")
     q.set_defaults(func=cmd_step)
 
     q = sub.add_parser("run", help="run multiple fully externalized iterations")
+    add_trial_selector(q)
     q.add_argument("--iterations", type=int, default=3)
     q.add_argument("--external-critic", action="store_true", required=True)
     q.add_argument("--force", action="store_true")
     q.set_defaults(func=cmd_run)
 
     q = sub.add_parser("harvest-prompt", help="write a grounding/harvest prompt")
+    add_trial_selector(q)
     q.set_defaults(func=cmd_harvest_prompt)
 
     q = sub.add_parser("doctor", help="inspect transport/auth resolution without revealing secrets")
@@ -853,6 +966,8 @@ def main() -> int:
     p = parser()
     args = p.parse_args()
     try:
+        if args.command != "doctor":
+            args.workspace, args.current_root = resolve_workspace(args)
         args.func(args)
     except HDDException as exc:
         print(f"hdd-loop: {exc}", file=sys.stderr)
