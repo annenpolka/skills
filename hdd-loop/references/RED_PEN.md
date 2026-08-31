@@ -1,101 +1,41 @@
-# Red Pen Rubric
+# Red Pen Policy
 
-Red Pen applies evolutionary pressure without replacing the artifact.
+The Red Pen is meta-aware. Unlike the Dreamer, it may see the full HDD ledger, raw Dreamer output, method goals, prior rejections, and stop conditions.
 
-Always begin by identifying what should survive.
+Its job is not to write the replacement design. Its job is to preserve the interesting departure while applying pressure.
 
-## Review dimensions
+## Review order
 
-### Preserve
+1. Identify what should survive.
+2. Find contradictions and continuity violations.
+3. Find magic or missing information sources.
+4. Find provenance confusion.
+5. Find unsupported precision.
+6. Find boring collapse into a familiar system with renamed nouns.
+7. Decide whether further Dreaming still produces novelty.
+8. Produce at most three pressures for the next turn.
 
-Identify new affordances, operations, metaphors, or abstractions worth protecting.
-
-A Preserve item should describe an interaction or design property, not fictional lore.
-
-### Contradictions
-
-Look for conflicts with:
-
-- the current output;
-- the ledger;
-- previous observations;
-- arithmetic or units;
-- the artifact's own definitions.
-
-### Magic
-
-Identify capabilities whose information source or implementation boundary is missing.
-
-Do not reject magic solely because it is unfamiliar. Ask what information would be required to make the interaction real.
-
-### Provenance Problems
-
-Distinguish:
-
-- observed: directly obtained from a real execution or explicit supplied source;
-- inferred: produced by analysis, matching, heuristics, or a model;
-- declared: provided as a user/framework/domain semantic rule;
-- fictional-observed: represented by the Dreamer as an observation inside the speculative world.
-
-During HDD Dreaming, fictional-observed material is legitimate design material but not external evidence.
-
-Flag cases where the Dreamer:
-
-- cites its own generated output as independent evidence;
-- invents historical logs after the fact;
-- creates a validation command solely to prove another invented command;
-- rewrites earlier observations without acknowledging the rewrite.
-
-### Boring Collapse
-
-Flag when realism pressure destroys the interesting operation and replaces it with:
-
-- a thin wrapper;
-- a familiar product with renamed nouns;
-- generic LLM search or summarization;
-- ordinary shell scripting without a new interaction model.
-
-### Semantic Inflation
-
-Flag when familiar mechanisms receive grandiose names that hide rather than clarify their actual behavior.
-
-Typical warning signs from the reference case include "quantum", "spacetime", "entanglement", "causal" and "physical" when the implementation is merely probabilistic state, a predicate, a dependency edge, or a normalized metric.
-
-### Unsupported Precision
-
-Flag exact-looking values with no measurement or derivation.
-
-Recompute numerical claims whenever useful.
-
-### Implementation Drift
-
-If the Dreamer is now spending most of its effort on AST details, WeakMaps, exact APIs, edge-case coding, or benchmark claims, consider ending HDD and handing off to an implementation-focused model.
-
-## Pressure construction
-
-Return only 1-3 important pressures per iteration.
+Pressure should normally be expressible later as an in-world fact or constraint. Avoid pressures that require the Dreamer to understand the HDD process itself.
 
 Good pressure:
 
-- "Do not use quantum concepts at all; keep the same interaction useful."
-- "The OS has no PID, path, or device-file abstractions. Discover what replaces them."
-- "That 0.75 value appeared earlier without justification. Explain the tradeoff that makes it optimal."
-- "You cannot prove the observation by querying another output from the same fictional environment."
-- "Keep it a one-shot CLI for coding agents. Do not add a human GUI."
+- "This environment has no path-based identity. Continue using it under that fact."
+- "The claimed timestamp cannot be observed after an offline partition. Show only what the environment can actually observe."
+- "The tool has no AST model or hidden classifier. Use the existing interaction anyway."
 
 Bad pressure:
 
-- a complete replacement architecture;
-- a long implementation tutorial;
-- a list of ten unrelated improvements.
+- "Improve novelty score."
+- "Preserve the Harvest Candidate."
+- "Respond to Red Pen 0003."
 
-## Structured external-critic contract
+## External critic JSON contract
 
-When the runner uses an external critic, return a single JSON object and no prose outside it.
+Return one JSON object and no surrounding Markdown fence.
 
 ```json
 {
-  "summary": "short red-pen summary",
+  "summary": "short diagnosis",
   "preserve_add": ["..."],
   "established_add": ["..."],
   "rejected_add": ["..."],
@@ -107,4 +47,8 @@ When the runner uses an external critic, return a single JSON object and no pros
 }
 ```
 
-Do not remove ledger entries in an automated patch. Human intervention may revise or supersede them explicitly.
+All array fields may be empty. `pressure` is truncated to three items by the runner.
+
+## Stop signal
+
+Recommend grounding when the same failure repeats, the Dreamer starts explaining why the task is difficult instead of using the artifact, or the surviving interaction has become clear enough to harvest.

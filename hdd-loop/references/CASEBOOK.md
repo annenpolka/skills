@@ -157,3 +157,34 @@ Coding agent -> actual implementation
 ```
 
 HDD works best when the Dreamer is retired after the affordance has been harvested.
+
+## 11. Meta leakage changed the Dreamer mode
+
+A later HDD run explored a fictional version-control tool. Early turns used the artifact directly. After the prompt began exposing orchestration state, the Dreamer explicitly wrote phrases such as "We are under Red Pen pressure" and started reasoning about how to satisfy constraints rather than remaining inside the artifact.
+
+The resulting turns became longer feasibility monologues and executed fewer concrete artifact interactions.
+
+Lesson: the critic may be meta-aware, but the Dreamer should receive only an in-world compilation of the critic's conclusions.
+
+## 12. `vc witness` survived the version-control run
+
+The version-control exploration repeatedly removed renamed Git primitives, temporal ancestry, semantic entity registries, hidden classifiers, and unsupported compatibility claims.
+
+The surviving affordance was a first-class query over coexisting candidate changes:
+
+```text
+vc witness --probe <behavioral-obligation> --among <changes> --budget <n>
+```
+
+The grounded result asks for a small **observed** candidate set that falsifies a human/framework-supplied behavioral probe before merge. It distinguishes:
+
+- behavioral failure;
+- unmaterializable combinations;
+- unobserved combinations.
+
+It also limits minimality claims to the environments actually executed unless stronger search assumptions are declared.
+
+This case reinforced two HDD lessons:
+
+1. a valuable operation can survive even when almost all fictional infrastructure is removed;
+2. raw Dreamer turns remain useful because the path from collaboration magic -> temporal events -> semantic entities -> executable behavioral witness reveals discarded affordances that the final Harvest alone cannot show.

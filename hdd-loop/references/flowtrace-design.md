@@ -2,9 +2,9 @@
 
 ## Design and Implementation Specification
 
-**Status:** Exploratory design, implementation-oriented
-**Primary target:** Node.js / TypeScript development and test environments
-**Primary consumer:** Coding agents / LLM tool users
+**Status:** Exploratory design, implementation-oriented<br>
+**Primary target:** Node.js / TypeScript development and test environments<br>
+**Primary consumer:** Coding agents / LLM tool users<br>
 **Interface:** One-shot command-line tool with structured JSON output
 
 ---

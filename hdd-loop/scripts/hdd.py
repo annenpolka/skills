@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
+DIEGETIC_POLICY = PACKAGE_ROOT / "references" / "DIEGETIC_DREAMER.md"
 DREAMER_POLICY = PACKAGE_ROOT / "references" / "DREAMER.md"
 REDPEN_POLICY = PACKAGE_ROOT / "references" / "RED_PEN.md"
 DEFAULT_WORKSPACE = Path(".hdd")
@@ -170,39 +171,112 @@ def iteration_prefix(n: int) -> str:
     return f"{n:04d}"
 
 
+META_LEAK_RE = re.compile(
+    r"\b(?:HDD|Hallucination-Driven|Dreamer|Dreaming|Red Pen|HDD Ledger|"
+    r"harvest candidates?|pressure response|dream iteration|artifact state update|"
+    r"next stress targets|stop conditions?|grounding gate|iteration\s*\d*)\b",
+    re.IGNORECASE,
+)
+
+
+def sanitize_inworld_text(text: str) -> str:
+    """Remove obvious orchestration/editorial framing from material shown to the Dreamer.
+
+    Raw text is never modified on disk; this is only the diegetic view compiled into the
+    next Dreamer prompt. The compiler is deliberately conservative: it drops lines that
+    explicitly reveal HDD orchestration instead of trying to rewrite their meaning.
+    """
+    out: list[str] = []
+    skipped = False
+    for line in text.splitlines():
+        if META_LEAK_RE.search(line):
+            skipped = True
+            continue
+        out.append(line)
+    cleaned = "\n".join(out).strip()
+    if skipped and cleaned:
+        cleaned += "\n\n[Some editorial framing from the previous field report was omitted.]"
+    return cleaned
+
+
+def inworld_entries(values: Any) -> list[str]:
+    result: list[str] = []
+    if not isinstance(values, list):
+        return result
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        item = value.strip()
+        if not item or META_LEAK_RE.search(item):
+            continue
+        result.append(item)
+    return result
+
+
+def render_inworld_list(title: str, values: list[str]) -> str:
+    if not values:
+        return ""
+    return "\n".join([f"## {title}", "", *(f"- {x}" for x in values), ""])
+
+
+def compile_world_state(workspace: Path, ledger: dict[str, Any]) -> str:
+    """Compile meta-aware HDD state into diegetic facts for the Dreamer.
+
+    Open questions and harvest candidates are intentionally withheld. They are critic/host
+    concerns and bias the Dreamer toward designing for the methodology instead of inhabiting
+    the artifact.
+    """
+    seed = sanitize_inworld_text(read_text(workspace / "seed.md"))
+    artifact = sanitize_inworld_text(read_text(workspace / "artifact.md"))
+
+    observed: list[str] = []
+    unique_append(observed, inworld_entries(ledger.get("preserve")))
+    unique_append(observed, inworld_entries(ledger.get("established")))
+
+    corrections: list[str] = []
+    unique_append(corrections, inworld_entries(ledger.get("rejected")))
+    unique_append(corrections, inworld_entries(ledger.get("constraints")))
+
+    new_information = inworld_entries(ledger.get("last_pressure"))
+    operator_request = inworld_entries(ledger.get("human_pressure"))
+
+    parts = [
+        "# Current situation",
+        "",
+        seed or "You are already inside the current environment. Continue from what is present.",
+        "",
+    ]
+    if artifact:
+        parts += ["# Previous field report", "", artifact, ""]
+    for section in (
+        render_inworld_list("Behavior already demonstrated", observed),
+        render_inworld_list("Newly confirmed limits and corrections", corrections),
+        render_inworld_list("Current operator request", operator_request),
+        render_inworld_list("New information since the previous report", new_information),
+    ):
+        if section:
+            parts += [section, ""]
+    return "\n".join(parts).strip() + "\n"
+
+
 def compose_dreamer_prompt(workspace: Path, ledger: dict[str, Any]) -> str:
-    seed = read_text(workspace / "seed.md")
-    artifact = read_text(workspace / "artifact.md")
-    redpen = read_text(workspace / "redpen.md")
-    policy = read_text(DREAMER_POLICY)
+    policy = read_text(DIEGETIC_POLICY)
+    world = compile_world_state(workspace, ledger)
     return textwrap.dedent(
         f"""
         {policy}
 
         ---
 
-        # Current HDD State
+        {world}
 
-        ## Seed
+        # What to do now
 
-        {seed or '(none)'}
-
-        ## Current Artifact
-
-        {artifact or '(No artifact has been established yet. Discover it through use.)'}
-
-        ## Ledger
-
-        {render_ledger(ledger)}
-
-        ## Most Recent Red Pen
-
-        {redpen or '(none yet)'}
-
-        # Task
-
-        Continue the same artifact/world. Perform the next useful Dream iteration now.
-        Prefer actual usage, exploration, failure, and adaptation over a feature-list response.
+        Continue operating the same tool or environment from its current state.
+        Treat the limits and corrections above as facts that have just become known inside
+        the world, not as review comments. Investigate their consequences through concrete
+        use. Prefer commands, observations, failures, retries, and changed behavior over a
+        design essay.
         """
     ).strip() + "\n"
 
@@ -575,9 +649,12 @@ def cmd_dream(args: argparse.Namespace) -> None:
     if ledger.get("pending") and ledger["pending"].get("stage") == "redpen" and not args.force:
         raise HDDException("A Dreamer response is already pending Red Pen. Resolve it or use --force.")
     iteration = next_iteration(ledger)
+    world = compile_world_state(args.workspace, ledger)
     prompt = compose_dreamer_prompt(args.workspace, ledger)
     prefix = iteration_prefix(iteration)
+    atomic_write(args.workspace / "iterations" / f"{prefix}-world.md", world)
     atomic_write(args.workspace / "outbox" / f"{prefix}-dreamer-prompt.md", prompt)
+    append_transcript(args.workspace, "dreamer-prompt", iteration, {"mode": "diegetic", "text": prompt})
     transport, result = call_model("HDD_DREAMER", prompt)
     if result is None:
         ledger["pending"] = {"iteration": iteration, "stage": "dreamer-manual", "dreamer_transport": "manual"}
@@ -587,6 +664,20 @@ def cmd_dream(args: argparse.Namespace) -> None:
     save_dream(args.workspace, ledger, result, iteration, transport)
     print(args.workspace / "iterations" / f"{prefix}-dreamer.md")
 
+
+
+def cmd_preview_dream(args: argparse.Namespace) -> None:
+    ensure_workspace(args.workspace)
+    ledger = load_ledger(args.workspace)
+    prompt = compose_dreamer_prompt(args.workspace, ledger)
+    if args.check_meta:
+        leaks = [
+            token for token in ("HDD", "Dreamer", "Dreaming", "Red Pen", "Harvest Candidate", "Harvest Candidates", "Grounding Gate")
+            if re.search(rf"\b{re.escape(token)}\b", prompt, re.IGNORECASE)
+        ]
+        if leaks:
+            raise HDDException(f"Diegetic prompt leaks orchestration terms: {', '.join(leaks)}")
+    print(prompt, end="")
 
 def cmd_ingest_dreamer(args: argparse.Namespace) -> None:
     ensure_workspace(args.workspace)
@@ -692,8 +783,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
     print(f"OPENROUTER_API_KEY: {masked_presence('OPENROUTER_API_KEY')}")
     print(f"HDD_DREAMER_API_KEY: {masked_presence('HDD_DREAMER_API_KEY')}")
     print(f"Critic transport: {infer_transport('HDD_CRITIC')}")
+    print("Dreamer prompting: diegetic (HDD/Red Pen/Ledger hidden)")
     print(f"HDD_CRITIC_API_KEY: {masked_presence('HDD_CRITIC_API_KEY')}")
-    for required in (DREAMER_POLICY, REDPEN_POLICY):
+    for required in (DIEGETIC_POLICY, DREAMER_POLICY, REDPEN_POLICY):
         print(f"Reference {required.name}: {'ok' if required.exists() else 'MISSING'}")
 
 
@@ -720,6 +812,10 @@ def parser() -> argparse.ArgumentParser:
     q = sub.add_parser("dream", help="invoke or prepare the next Dreamer turn")
     q.add_argument("--force", action="store_true")
     q.set_defaults(func=cmd_dream)
+
+    q = sub.add_parser("preview-dream", help="render the diegetic Dreamer prompt without invoking a model")
+    q.add_argument("--check-meta", action="store_true", help="fail if core orchestration terms leak")
+    q.set_defaults(func=cmd_preview_dream)
 
     q = sub.add_parser("ingest-dreamer", help="ingest a manual Dreamer response")
     q.add_argument("--file", required=True)

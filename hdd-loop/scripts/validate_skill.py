@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Lightweight Agent Skills package validator (standard library only)."""
-
 from __future__ import annotations
 
 import re
@@ -8,61 +6,48 @@ import sys
 from pathlib import Path
 
 
-def fail(message: str) -> None:
-    print(f"ERROR: {message}")
-    raise SystemExit(1)
-
-
-def parse_frontmatter(text: str) -> dict[str, str]:
-    if not text.startswith("---\n"):
-        fail("SKILL.md must start with YAML frontmatter")
-    end = text.find("\n---\n", 4)
-    if end < 0:
-        fail("SKILL.md frontmatter closing delimiter not found")
-    front = text[4:end]
-    values: dict[str, str] = {}
-    for line in front.splitlines():
-        if not line or line.startswith(" ") or line.startswith("\t"):
-            continue
-        if ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
-    return values
+def fail(msg: str) -> None:
+    raise SystemExit(f"validate_skill.py: {msg}")
 
 
 def main() -> int:
-    root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
+    root = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent)
     skill = root / "SKILL.md"
     if not skill.exists():
-        fail(f"missing {skill}")
+        fail("SKILL.md missing")
     text = skill.read_text(encoding="utf-8")
-    fm = parse_frontmatter(text)
-    name = fm.get("name", "")
-    description = fm.get("description", "")
-    if not name:
-        fail("frontmatter name is required")
-    if root.name != name:
-        fail(f"skill name {name!r} must match parent directory {root.name!r}")
-    if len(name) > 64 or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name):
-        fail("name must be <=64 chars, lowercase alphanumeric/hyphen, no edge/consecutive hyphens")
-    if not description or len(description) > 1024:
-        fail("description must be 1-1024 characters")
-    line_count = len(text.splitlines())
-    if line_count > 500:
-        print(f"WARN: SKILL.md is {line_count} lines; Agent Skills recommends keeping it under 500")
-    for directory in ("scripts", "references", "assets"):
-        path = root / directory
-        if not path.exists():
-            print(f"WARN: optional directory missing: {directory}/")
-    refs = re.findall(r"\]\((references/[^)]+|scripts/[^)]+|assets/[^)]+)\)", text)
-    missing = [ref for ref in refs if not (root / ref).exists()]
+    if not text.startswith("---\n"):
+        fail("SKILL.md must start with YAML frontmatter")
+    parts = text.split("---\n", 2)
+    if len(parts) < 3:
+        fail("frontmatter closing delimiter missing")
+    front = parts[1]
+    for key in ("name", "description"):
+        if not re.search(rf"(?m)^{re.escape(key)}:\s*.+$", front):
+            fail(f"frontmatter field {key!r} missing")
+    if not re.search(r"(?m)^name:\s*hdd-loop\s*$", front):
+        fail("name must be hdd-loop")
+    required = [
+        "scripts/hdd.py",
+        "scripts/test_hdd.py",
+        "agents/openai.yaml",
+        "assets/icon.svg",
+        "references/DREAMER.md",
+        "references/DIEGETIC_DREAMER.md",
+        "references/RED_PEN.md",
+        "references/METHOD.md",
+        "references/AUTH.md",
+        "references/CASEBOOK.md",
+        "references/raw/README.md",
+    ]
+    missing = [rel for rel in required if not (root / rel).exists()]
+    linked = re.findall(r"\]\((references/[^)]+|scripts/[^)]+|assets/[^)]+)\)", text)
+    missing.extend(rel for rel in linked if not (root / rel).exists())
     if missing:
-        fail("missing referenced files: " + ", ".join(sorted(set(missing))))
-    print(f"OK: {name}")
-    print(f"SKILL.md lines: {line_count}")
-    print(f"references: {sum(1 for _ in (root / 'references').glob('*')) if (root / 'references').exists() else 0}")
-    print(f"scripts: {sum(1 for _ in (root / 'scripts').glob('*')) if (root / 'scripts').exists() else 0}")
+        fail("missing required files: " + ", ".join(sorted(set(missing))))
+    if len(text.splitlines()) > 500:
+        fail("SKILL.md is over 500 lines; move detail into references/")
+    print("validate_skill.py: OK")
     return 0
 
 

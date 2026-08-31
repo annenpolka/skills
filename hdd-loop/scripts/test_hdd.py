@@ -1,62 +1,152 @@
 #!/usr/bin/env python3
-"""Small smoke/unit test suite for hdd.py."""
-
 from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-SPEC = importlib.util.spec_from_file_location("hdd", HERE / "hdd.py")
-assert SPEC and SPEC.loader
-hdd = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(hdd)
+ROOT = Path(__file__).resolve().parent.parent
+RUNNER = ROOT / "scripts" / "hdd.py"
+
+spec = importlib.util.spec_from_file_location("hdd_loop_runner", RUNNER)
+assert spec and spec.loader
+hdd = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(hdd)
 
 
-def main() -> int:
-    ledger = hdd.default_ledger()
-    assert ledger["iteration"] == 0
-    hdd.unique_append(ledger["preserve"], ["x", "x", " y "])
-    assert ledger["preserve"] == ["x", "y"]
-
-    patch = hdd.validate_patch(
-        {
-            "summary": "test",
-            "preserve_add": ["keep"],
-            "pressure": ["p1", "p2", "p3", "p4"],
-        }
-    )
-    assert patch["pressure"] == ["p1", "p2", "p3"]
-
-    parsed = hdd.extract_json_object("```json\n{\"summary\": \"ok\"}\n```")
-    assert parsed["summary"] == "ok"
-
+def check_diegetic_compilation() -> None:
     with tempfile.TemporaryDirectory() as td:
         ws = Path(td) / ".hdd"
         ws.mkdir()
         (ws / "iterations").mkdir()
         (ws / "outbox").mkdir()
-        hdd.atomic_write(ws / "seed.md", "seed\n")
-        hdd.atomic_write(ws / "artifact.md", "artifact\n")
-        hdd.atomic_write(ws / "redpen.md", "")
-        hdd.save_ledger(ws, hdd.default_ledger())
-        loaded = hdd.load_ledger(ws)
-        assert loaded["preserve"] == []
-        dream_prompt = hdd.compose_dreamer_prompt(ws, loaded)
-        assert "seed" in dream_prompt and "artifact" in dream_prompt
-        hdd.save_dream(ws, loaded, "dream result", 1, "test")
-        loaded = hdd.load_ledger(ws)
-        assert loaded["pending"]["stage"] == "redpen"
-        hdd.apply_patch(ws, loaded, {"summary": "ok", "preserve_add": ["affordance"], "pressure": ["constraint"]}, 1)
-        final = json.loads((ws / "ledger.json").read_text(encoding="utf-8"))
-        assert final["iteration"] == 1
-        assert "affordance" in final["preserve"]
-        assert final["human_pressure"] == []
-        assert final["last_pressure"] == ["constraint"]
-        assert final["pending"] is None
-    print("OK: hdd.py tests")
+        (ws / "seed.md").write_text(
+            "An unfamiliar CLI is installed. Use it on a real development task.\n",
+            encoding="utf-8",
+        )
+        (ws / "artifact.md").write_text(
+            "## Dream Iteration 4: Meta framing\n"
+            "We are under Red Pen 0004 pressure.\n"
+            "$ vc inspect A\nOBSERVED: candidate A materialized.\n",
+            encoding="utf-8",
+        )
+        ledger = hdd.default_ledger()
+        ledger["preserve"] = ["Concurrent candidates can be executed before integration."]
+        ledger["established"] = ["The tool can materialize opaque candidate bundles."]
+        ledger["rejected"] = ["A hidden semantic entity registry does not exist."]
+        ledger["constraints"] = ["At most six executable environments are available."]
+        ledger["open_questions"] = ["SECRET OPEN QUESTION SHOULD NOT LEAK"]
+        ledger["harvest_candidates"] = ["SECRET HARVEST SHOULD NOT LEAK"]
+        ledger["human_pressure"] = ["Keep the interface as a one-shot CLI."]
+        ledger["last_pressure"] = ["Candidate labels encode no history or semantics."]
+        hdd.save_ledger(ws, ledger)
+
+        prompt = hdd.compose_dreamer_prompt(ws, ledger)
+        forbidden = [
+            "HDD",
+            "Red Pen",
+            "Dream Iteration",
+            "SECRET OPEN QUESTION",
+            "SECRET HARVEST",
+        ]
+        for token in forbidden:
+            assert token.lower() not in prompt.lower(), token
+        required = [
+            "candidate A materialized",
+            "hidden semantic entity registry does not exist",
+            "six executable environments",
+            "one-shot CLI",
+            "encode no history or semantics",
+        ]
+        for token in required:
+            assert token.lower() in prompt.lower(), token
+
+        critic = hdd.compose_critic_prompt(ws, ledger, "raw dream output")
+        assert "Ledger Before This Iteration" in critic
+        assert "Dreamer Output To Review" in critic
+
+
+
+def check_reference_migration() -> None:
+    reference = ROOT / "references" / "raw" / "vc-witness-hdd-loop.jsonl"
+    records = [json.loads(line) for line in reference.read_text(encoding="utf-8").splitlines()]
+    latest = max((r for r in records if r["kind"] == "dreamer"), key=lambda r: r["iteration"])
+    ledger = hdd.default_ledger()
+    mapping = {
+        "preserve_add": "preserve",
+        "established_add": "established",
+        "rejected_add": "rejected",
+        "constraints_add": "constraints",
+        "open_questions_add": "open_questions",
+        "harvest_candidates_add": "harvest_candidates",
+    }
+    for record in records:
+        if record["kind"] != "redpen":
+            continue
+        patch = record["payload"]
+        for source, target in mapping.items():
+            hdd.unique_append(ledger[target], patch.get(source, []))
+        ledger["last_pressure"] = patch.get("pressure", [])
+    with tempfile.TemporaryDirectory() as td:
+        ws = Path(td) / ".hdd"
+        ws.mkdir(); (ws / "iterations").mkdir(); (ws / "outbox").mkdir()
+        (ws / "seed.md").write_text("An unfamiliar version-control tool is installed. Use it.\n", encoding="utf-8")
+        (ws / "artifact.md").write_text(latest["payload"]["text"], encoding="utf-8")
+        (ws / "redpen.md").write_text("", encoding="utf-8")
+        hdd.save_ledger(ws, ledger)
+        prompt = hdd.compose_dreamer_prompt(ws, ledger)
+        for token in ("Red Pen", "Dream Iteration", "Harvest Candidates", "Stop Dreaming", "Grounding Gate"):
+            assert token.lower() not in prompt.lower(), token
+
+
+def check_manual_cli() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        ws = Path(td) / ".hdd"
+        env = os.environ.copy()
+        for key in list(env):
+            if key.startswith("HDD_DREAMER_") or key == "OPENROUTER_API_KEY":
+                env.pop(key, None)
+        subprocess.run(
+            [sys.executable, str(RUNNER), "--workspace", str(ws), "init", "--seed", "An unknown CLI is installed. Use it."],
+            check=True,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        preview = subprocess.run(
+            [sys.executable, str(RUNNER), "--workspace", str(ws), "preview-dream", "--check-meta"],
+            check=True,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        assert "HDD" not in preview.stdout
+        subprocess.run(
+            [sys.executable, str(RUNNER), "--workspace", str(ws), "dream"],
+            check=True,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        assert (ws / "iterations" / "0001-world.md").exists()
+        assert (ws / "outbox" / "0001-dreamer-prompt.md").exists()
+        records = [json.loads(line) for line in (ws / "transcript.jsonl").read_text(encoding="utf-8").splitlines()]
+        assert records and records[0]["kind"] == "dreamer-prompt"
+        assert records[0]["payload"]["mode"] == "diegetic"
+
+
+def main() -> int:
+    check_diegetic_compilation()
+    check_reference_migration()
+    check_manual_cli()
+    print("test_hdd.py: OK")
     return 0
 
 

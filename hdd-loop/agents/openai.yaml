@@ -1,5 +1,8 @@
 interface:
-  display_name: "hdd loop"
+  display_name: "HDD Loop"
+  short_description: "Discover novel affordances through diegetic design loops"
+  icon_small: "./assets/icon.svg"
+  icon_large: "./assets/icon.svg"
 policy:
   products:
     - "chatgpt"

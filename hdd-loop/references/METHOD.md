@@ -204,3 +204,44 @@ show the earliest runtime divergence that affected this failed assertion
 ```
 
 If the harvest requires several pages of fictional lore to explain why it is useful, it is probably not ready.
+
+## Diegetic prompt compilation
+
+The Dreamer should not know that HDD is being performed.
+
+The host/critic may reason in terms of Preserve, Rejected, Pressure, Harvest Candidates, novelty, and stop conditions. Before a Dreamer turn, compile that state into facts that make sense inside the artifact's world.
+
+Example meta state:
+
+```text
+Preserve: coexisting changes can be executed before merge
+Rejected: no semantic entity registry
+Pressure: only six environments may be executed
+```
+
+Dreamer-facing form:
+
+```text
+The tool already supports executing coexisting changes before integration.
+No semantic entity registry exists in this environment.
+Only six executable environments are available for this investigation.
+Continue using the tool under these facts.
+```
+
+Do not expose Open Questions or Harvest Candidates unless the human deliberately turns one into an operator request. They bias the Dreamer toward producing the expected answer.
+
+Raw transcripts remain untouched. Diegetic compilation is a view layer, not history rewriting.
+
+### Why this matters
+
+A later reference run leaked the orchestration vocabulary into the Dreamer prompt. The model began turns with statements such as "We are under Red Pen pressure" and increasingly produced design/feasibility monologues rather than using the fictional artifact. This behavior was materially different from early Vesper/9 turns, where the model only knew that it inhabited an unfamiliar system.
+
+Treat meta leakage as a prompt-quality bug.
+
+The runner therefore:
+
+- hides HDD/Red Pen/Ledger terminology from the Dreamer;
+- withholds Open Questions and Harvest Candidates;
+- translates pressure into newly confirmed in-world facts;
+- writes the compiled world state separately for audit;
+- preserves the unmodified Dreamer output and critic history in `transcript.jsonl`.

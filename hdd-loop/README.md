@@ -2,7 +2,7 @@
 
 An Agent Skills-compatible package for **Hallucination-Driven Design (HDD)**.
 
-HDD uses a speculative Dreamer model to experience a not-yet-existing artifact as already usable, then iteratively applies Red Pen pressure, continuity constraints, capability removal, and late implementation grounding to harvest novel affordances.
+HDD uses a speculative model to experience a not-yet-existing artifact as already usable, then iteratively applies Red Pen pressure, continuity constraints, capability removal, and late implementation grounding to harvest novel affordances. The external Dreamer is kept **diegetic**: it is not told that HDD, Red Pen, or a Ledger exists.
 
 ## Package layout
 
@@ -23,8 +23,11 @@ hdd-loop/
 python3 scripts/validate_skill.py .
 python3 scripts/hdd.py doctor
 python3 scripts/hdd.py init --seed 'An unfamiliar development CLI is already installed. Discover and use it.'
+python3 scripts/hdd.py preview-dream --check-meta
 python3 scripts/hdd.py dream
 ```
+
+`preview-dream --check-meta` is useful when changing prompt policy: it fails if core orchestration vocabulary leaks into the external Dreamer prompt.
 
 If no Dreamer transport is configured, the last command writes a manual prompt under `.hdd/outbox/`.
 
@@ -35,3 +38,7 @@ See `references/AUTH.md` for OpenRouter, OpenAI-compatible, command, and manual 
 The historical reference loop used the original DeepSeek R1 behavior because its willingness to over-complete speculative environments was useful for affordance exploration.
 
 The method does not require R1 and does not treat its hallucinations as factual evidence.
+
+## Prompt architecture
+
+The host and Red Pen operate on the full HDD Ledger. Before each external Dreamer call, the runner compiles that meta state into an in-world field brief. Open Questions and Harvest Candidates are withheld by default. Exact prompts and raw responses remain in the workspace transcript for audit.
