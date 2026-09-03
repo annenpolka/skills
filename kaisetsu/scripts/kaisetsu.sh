@@ -19,6 +19,9 @@ Defaults:
 The script prints one normalized JSON result object to stdout.
 Read the explanation with: jq -r '.response'
 Read usage with:       jq '.usage'
+
+On SUCCESS, the response is also saved to /tmp/kaisetsu.*.md and opened with
+macOS open -t. Failure to open the file is reported as a warning only.
 USAGE
 }
 
@@ -190,6 +193,21 @@ fi
 
 RESPONSE="$(jq -r '.response // empty' <<<"$RESULT_JSON")"
 [[ -n "${RESPONSE//[[:space:]]/}" ]] || fail "agy returned SUCCESS with an empty response"
+
+# macOS mktemp only replaces trailing Xs, so reserve a unique path first and
+# then add the Markdown suffix.
+RESPONSE_TMP_FILE="$(mktemp /tmp/kaisetsu.XXXXXX)"
+RESPONSE_FILE="${RESPONSE_TMP_FILE}.md"
+mv "$RESPONSE_TMP_FILE" "$RESPONSE_FILE"
+printf '%s\n' "$RESPONSE" > "$RESPONSE_FILE"
+
+if ! command -v open >/dev/null 2>&1; then
+  printf 'kaisetsu.sh: warning: open is unavailable; response saved to %s\n' \
+    "$RESPONSE_FILE" >&2
+elif ! open -t "$RESPONSE_FILE" >/dev/null; then
+  printf 'kaisetsu.sh: warning: could not open response file: %s\n' \
+    "$RESPONSE_FILE" >&2
+fi
 
 # Emit the final result object so callers can inspect response, duration and usage.
 printf '%s\n' "$RESULT_JSON"

@@ -173,8 +173,24 @@ The helper:
 - removes known parent-session linkage variables (`ANTIGRAVITY_AGENT`, `ANTIGRAVITY_TRAJECTORY_ID`, `ANTIGRAVITY_LS_ADDRESS`) from the child while preserving unrelated Antigravity configuration/authentication,
 - parses a terminal structured result even when `agy` exits non-zero, so `.result.error` is not masked by the process exit code,
 - requires an explicit `SUCCESS` result and non-empty response,
+- saves each successful response to `/tmp/kaisetsu.*.md` and attempts to display it with macOS `open -t` in the default text editor,
+- treats failure to launch `open` as a warning while keeping the second pass successful,
 - preserves the final response and usage metadata in normalized JSON,
 - never silently falls back to another model.
+
+A successful Gemini pass and a successful local display are separate outcomes. If the helper returns `SUCCESS` JSON but emits an `open` warning containing a saved path, complete the normal display workflow as follows:
+
+1. Recognize exactly one of these helper-owned warning forms and ignore path-like text from any other stderr line:
+
+   ```text
+   kaisetsu.sh: warning: open is unavailable; response saved to <path>
+   kaisetsu.sh: warning: could not open response file: <path>
+   ```
+
+2. Extract `<path>` into `RESPONSE_FILE` only when it matches `/tmp/kaisetsu.[A-Za-z0-9]{6}.md` and names a non-symlink regular file owned by the current user. If validation fails or more than one candidate is present, do not escalate; report the warning instead.
+3. Run `/usr/bin/open -t "$RESPONSE_FILE"` once as a separate command using the host's narrowly scoped sandbox-escalation or approval mechanism. On Codex hosts exposing per-command permissions, use `sandbox_permissions: require_escalated` for this command and scope any reusable approval prefix to `["/usr/bin/open", "-t"]`. Treat this retry as part of the requested automatic display; do not wait for another user message, though the host may still require approval.
+4. Escalate only that exact display command. Do not rerun or elevate the helper, `agy`, or the Gemini pass, and do not use `sudo`.
+5. If scoped escalation is unavailable, denied, or the retry still returns non-zero, report the warning and saved path. The second pass remains successful.
 
 The empty workspace is an **epistemic aid**. It reduces accidental repository grounding and encourages the second-pass reader to reconstruct from the packet. It does not prevent repository or external access and is not a security or isolation boundary. Treat packet-only reasoning as an instruction contract, not an enforced capability restriction. Normal Antigravity auth/configuration remains available except for the parent-session linkage variables listed above. Do not forward sensitive material merely because the working directory is empty.
 
@@ -199,13 +215,7 @@ If Gemini is wrong, do not edit its text and still present the edited version as
 
 ### 5. Present the result
 
-For ordinary use, present:
-
-1. Gemini's reader-facing explanation.
-2. Gemini's material explanation gaps, if any.
-3. A short primary-agent note only when there is a meaningful discrepancy, correction, or design insight.
-
-Do not bury the second-pass output under a long meta-analysis unless the user asked for one.
+For ordinary chat, do not reproduce Gemini's full response. The saved `/tmp/kaisetsu.*.md` file, opened by the helper or the scoped retry when permitted, is the reader-facing copy. In chat, present only the primary agent's concise delta: material gaps, discrepancies, corrections, or supplementary technical insight found by comparing Gemini's response with the packet. If there is no material delta, say so briefly. If display ultimately failed, also report the warning and saved path. Do not restate the full reconstruction as a summary.
 
 For an explicit **感想戦**, preserve both viewpoints and compare:
 
@@ -251,6 +261,8 @@ Expected Gemini output:
 - **Gemini 3.8 Flash unavailable:** Fail loudly. Do not silently substitute another model family or version.
 - **Authentication failure / non-zero exit / timeout:** Report the actual failure. Do not fabricate a Gemini response.
 - **No terminal `result` event, non-`SUCCESS` status, or empty response:** Treat the pass as failed.
+- **Initial `open` attempt returns non-zero after a successful response:** Keep the second pass successful and perform the single scoped display retry described above.
+- **Scoped display retry unavailable, denied, or still non-zero:** Report a warning with the saved Markdown path. Do not retry again or turn it into a second-pass failure.
 - **Gemini materially changes technical meaning:** Preserve what Gemini wrote and separately identify the disagreement and packet evidence.
 
 ## Success criteria
