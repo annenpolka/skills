@@ -26,7 +26,7 @@ reader-facing result
 ## Invariants
 
 1. **Two-pass principle** — Never outsource the primary reasoning. The primary agent investigates, decides, implements or reviews, verifies, and produces its own explanation before invoking Gemini.
-2. **Epistemic isolation** — By default Gemini reconstructs the work from a bounded explanation packet rather than independently exploring the repository. Running from an empty temporary directory helps keep the pass packet-grounded, but is not a security boundary.
+2. **Epistemic isolation** — By default Gemini reconstructs the work from a bounded explanation packet rather than independently exploring the repository. Running from an empty temporary directory reduces accidental repository grounding and encourages packet-only reconstruction. It does not prevent repository or external access and is not a security or isolation boundary. Packet-only reasoning is an instruction contract, not an enforced capability restriction.
 3. **Epistemic labeling** — Facts, decisions, inferences, and unknowns must remain distinct. Fluent prose must not manufacture certainty, evidence, or rationale.
 4. **Implementation learning is first-class** — Preserve broken assumptions, surprises, newly exposed constraints, and changes in understanding discovered while touching the implementation.
 5. **Discrepancies are signal** — Differences between the primary explanation and Gemini's reconstruction are useful observations. Do not silently merge them away.
@@ -145,19 +145,19 @@ Before sending the packet externally, remove credentials, tokens, private keys, 
 
 ### 3. Run the second pass
 
-Resolve this skill's directory and invoke the helper by its actual path. Do not assume the target project's working directory contains `scripts/kaisetsu.sh`.
+Resolve this skill's directory and invoke the helper by its actual path. Do not assume the target project's working directory contains `scripts/kaisetsu.sh`. Invoke it through `bash` because download-based installation may not preserve Git's executable bit.
 
 Example:
 
 ```bash
-RESULT_JSON="$(/absolute/path/to/kaisetsu-skill/scripts/kaisetsu.sh /path/to/explanation-packet.txt)"
+RESULT_JSON="$(bash /absolute/path/to/kaisetsu-skill/scripts/kaisetsu.sh /path/to/explanation-packet.txt)"
 GEMINI_EXPLANATION="$(jq -r '.response' <<<"$RESULT_JSON")"
 ```
 
 For a reasoning-dense packet:
 
 ```bash
-RESULT_JSON="$(/absolute/path/to/kaisetsu-skill/scripts/kaisetsu.sh \
+RESULT_JSON="$(bash /absolute/path/to/kaisetsu-skill/scripts/kaisetsu.sh \
   --model gemini-3.8-flash-high \
   /path/to/explanation-packet.txt)"
 GEMINI_EXPLANATION="$(jq -r '.response' <<<"$RESULT_JSON")"
@@ -176,7 +176,7 @@ The helper:
 - preserves the final response and usage metadata in normalized JSON,
 - never silently falls back to another model.
 
-The empty workspace is an **epistemic aid, not a security sandbox**. It reduces accidental repository grounding; it does not prevent the child from accessing other paths if its tools and permissions allow that. Normal Antigravity auth/configuration remains available except for the parent-session linkage variables listed above. Do not forward sensitive material merely because the working directory is empty.
+The empty workspace is an **epistemic aid**. It reduces accidental repository grounding and encourages the second-pass reader to reconstruct from the packet. It does not prevent repository or external access and is not a security or isolation boundary. Treat packet-only reasoning as an instruction contract, not an enforced capability restriction. Normal Antigravity auth/configuration remains available except for the parent-session linkage variables listed above. Do not forward sensitive material merely because the working directory is empty.
 
 Do not pass `--dangerously-skip-permissions` for the normal explanation pass.
 
@@ -191,7 +191,9 @@ Check:
 3. **Lost mechanism** — Did compression remove the actual causal or technical mechanism and replace it with generic language such as "improves maintainability"?
 4. **Valid gaps** — Did Gemini expose a real missing premise, unexplained term, unsupported leap, or unresolved decision boundary?
 5. **Implementation learning** — Did it preserve the difference between the initial model and what implementation revealed?
-6. **Architecture lint** — If Gemini misunderstood something, is the packet incomplete, or is the underlying abstraction genuinely hard to explain because ownership, naming, invariants, or boundaries are unclear?
+6. **Architecture lint** — Treat misunderstanding as a diagnostic signal, not a design verdict. Consider explanation gaps, missing evidence, terminology or naming friction, abstraction or architecture issues, and Gemini's own misreading. Do not attribute reconstruction failure to the underlying design without additional evidence.
+
+A reconstruction failure alone does not distinguish among those causes. Architecture lint only indicates that the underlying design may be worth additional investigation; it does not establish a design defect.
 
 If Gemini is wrong, do not edit its text and still present the edited version as Gemini's reconstruction. Preserve the discrepancy and explain it separately.
 
@@ -213,7 +215,7 @@ For an explicit **感想戦**, preserve both viewpoints and compare:
 - claims Gemini added or flattened,
 - differences in conceptual organization,
 - implementation learnings preserved or lost,
-- architecture/naming friction exposed by explanation difficulty,
+- whether explanation difficulty signals architecture/naming friction worth investigating,
 - latency/token usage when relevant.
 
 ## Reader prompt contract
@@ -221,6 +223,7 @@ For an explicit **感想戦**, preserve both viewpoints and compare:
 The helper instructs Gemini to act as a reader, not as a replacement implementer. The intended behavior is:
 
 - Work only from the packet unless the user explicitly requests a repository-aware verification pass.
+- Treat packet-only reasoning as an instruction contract, not an enforced capability restriction. Never claim that the empty workspace prevents repository or external access or guarantees packet-only grounding.
 - Preserve distinctions among facts, decisions, inferences, and unknowns.
 - Write natural, plain, direct Japanese.
 - Preserve technical density and concrete mechanisms.
@@ -228,6 +231,7 @@ The helper instructs Gemini to act as a reader, not as a replacement implementer
 - Avoid ceremonial introductions, generic praise, repeated conclusions, invented motives, and generic quality claims with no mechanism.
 - Use original English technical terms when translation would reduce precision.
 - Treat a gap as a gap rather than repairing it with a plausible story.
+- Treat reconstruction failure as a diagnostic signal with multiple possible causes. Do not attribute it to the underlying design without additional evidence.
 
 Expected Gemini output:
 
@@ -257,7 +261,7 @@ The second pass earns its cost if it produces at least one of these:
 - a better conceptual organization of the same evidence,
 - a real gap in the primary explanation,
 - a hidden assumption worth making explicit,
-- evidence that a design or name is difficult to explain cleanly,
+- a diagnostic signal that naming or the underlying design may warrant additional investigation,
 - independent confirmation that a capable reader reconstructed the intended technical story correctly.
 
 Polished Japanese alone is not success.

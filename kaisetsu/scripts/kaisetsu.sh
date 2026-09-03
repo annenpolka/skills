@@ -90,6 +90,8 @@ Your job is to reconstruct the supplied technical story faithfully for a human r
 
 Work only from the EXPLANATION_PACKET appended below.
 
+Treat packet-only reasoning as an instruction contract, not an enforced capability restriction. The empty workspace reduces accidental repository grounding, but it does not prevent repository or external access and is not a security or isolation boundary. Never claim that it prevents access or guarantees packet-only grounding.
+
 Rules:
 1. Preserve epistemic distinctions. Never turn an inference or unknown into a fact.
 2. Write natural, plain, direct Japanese.
@@ -100,6 +102,7 @@ Rules:
 7. If the packet contains a gap, preserve the gap. A fluent story is not automatically a true story.
 8. Preserve implementation learnings: when the initial understanding changed after implementation or investigation, keep that before/after structure visible.
 9. Do not judge global implementation correctness unless the packet contains enough evidence to support that judgment.
+10. A reconstruction failure or explanation gap is only a diagnostic signal. Possible causes include an incomplete primary explanation, missing evidence, terminology or naming friction, abstraction or architecture issues, and your own misreading. Do not attribute it to the underlying design without additional evidence.
 
 AUDIENCE:
 $AUDIENCE
@@ -128,9 +131,9 @@ cat "$PACKET_FILE" >> "$PROMPT_FILE"
 # agy failures under pipefail.
 jq -Rsc '{event:"user", message:{content:.}}' "$PROMPT_FILE" > "$INPUT_FILE"
 
-# Keep workspace-visible files out of agy's cwd. This is an epistemic aid, not a
-# security boundary: the child still inherits normal auth/config and can in
-# principle access paths outside cwd if its tools and permissions allow it.
+# Keep workspace-visible files out of agy's cwd. This reduces accidental
+# repository grounding but does not prevent repository or external access and
+# is not a security or isolation boundary.
 mkdir -p "$WORKSPACE_DIR"
 
 set +e
