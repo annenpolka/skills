@@ -1,0 +1,267 @@
+---
+name: kaisetsu
+description: Runs an independent second-pass technical explanation and explanatory audit through Gemini 3.8 Flash via `agy`. Use after substantive architecture, refactoring, debugging, investigation, or implementation when a reader-facing Japanese reconstruction, rationale record, or explanation-gap check would add value, or when the user explicitly asks for a Gemini second pass, 解説, or 感想戦. Do not invoke for trivial edits, routine CRUD, ordinary short explanations, or before the primary agent has formed and stated its own technical understanding.
+---
+
+# Kaisetsu
+
+Use Gemini 3.8 Flash as an independent second-pass reader after the primary agent has already done the substantive technical work and explained it in its own words.
+
+The point is deliberately **not** to save explanation tokens. The two passes have different jobs:
+
+```text
+primary work + verification
+        ↓
+primary self-explanation
+        ↓
+bounded explanation packet
+        ↓
+Gemini reader reconstruction + audit
+        ↓
+primary discrepancy check
+        ↓
+reader-facing result
+```
+
+## Invariants
+
+1. **Two-pass principle** — Never outsource the primary reasoning. The primary agent investigates, decides, implements or reviews, verifies, and produces its own explanation before invoking Gemini.
+2. **Epistemic isolation** — By default Gemini reconstructs the work from a bounded explanation packet rather than independently exploring the repository. Running from an empty temporary directory helps keep the pass packet-grounded, but is not a security boundary.
+3. **Epistemic labeling** — Facts, decisions, inferences, and unknowns must remain distinct. Fluent prose must not manufacture certainty, evidence, or rationale.
+4. **Implementation learning is first-class** — Preserve broken assumptions, surprises, newly exposed constraints, and changes in understanding discovered while touching the implementation.
+5. **Discrepancies are signal** — Differences between the primary explanation and Gemini's reconstruction are useful observations. Do not silently merge them away.
+6. **Mechanism over polish** — Optimize for technical information retained per unit of reader effort, not minimum length or maximum rhetorical smoothness.
+
+## Trigger criteria
+
+### Invoke when
+
+- A substantive architectural or ownership decision was made.
+- A non-trivial refactor or implementation needs a durable rationale.
+- A subtle bug root cause needs to be reconstructed for another reader.
+- Investigation changed the working mental model of the system.
+- A reviewer or future maintainer should be able to understand the result without replaying the entire investigation.
+- An independent reader check could expose hidden assumptions, missing premises, naming problems, or abstraction friction.
+- The user explicitly requests a Gemini explanation pass, rationale audit, post-mortem comparison / 感想戦, or technical 解説.
+
+### Do not invoke when
+
+- The task is a typo fix, formatting change, mechanical rename, import sort, routine dependency bump, or straightforward CRUD.
+- The user only wants a quick conversational explanation.
+- No meaningful technical decision or non-obvious finding exists.
+- The primary agent cannot yet state why the result works, what evidence supports it, or what remains uncertain.
+
+If the primary agent is not ready to explain the work, continue the primary investigation instead of using Gemini to invent the missing story.
+
+## Defaults
+
+- **Language:** Japanese
+- **Audience:** Technically capable developer unfamiliar with the immediate work
+- **Behavior:** Reader reconstruction followed by a compact explanatory audit
+- **Model:** `gemini-3.8-flash-medium`
+- **Scope:** Explanation packet only
+
+Use `gemini-3.8-flash-high` when the packet contains genuinely difficult architectural causality, several interacting alternatives, subtle concurrency/state ownership, or important ambiguity. Do not escalate merely for nicer prose.
+
+## Workflow
+
+### 1. Produce the primary self-explanation
+
+Before invoking `agy`, write the primary agent's own faithful explanation of the work.
+
+At minimum, establish:
+
+- What problem or question was addressed?
+- What changed or was concluded?
+- Why was this approach chosen?
+- What concrete evidence supports the result?
+- Which alternatives materially affected the decision?
+- What did implementation or investigation reveal that was not known initially?
+- What remains unverified, provisional, environment-dependent, or out of scope?
+
+Use `UNKNOWN` when something is not established. Do not fabricate a rationale after the fact simply because an explanation feels incomplete.
+
+### 2. Build the bounded explanation packet
+
+Use semantic sections for **role in the technical story** and epistemic tags for **how strongly the statement is known**. Do not mix these two axes.
+
+Epistemic tags:
+
+- `[FACT]` — directly observed or verified from code, tests, commands, measurements, or supplied documents
+- `[DECISION]` — an intentional technical choice
+- `[INFERENCE]` — an interpretation or hypothesis supported by evidence but not directly established
+- `[UNKNOWN]` — not established, weakly verified, provisional, or outside scope
+
+Recommended packet:
+
+```text
+<EXPLANATION_PACKET>
+
+AUDIENCE
+Who will read this and what they should be able to understand or do afterward.
+
+OUTPUT_GOAL
+For example: understand the change, review a design decision, remember why it exists later, operate/debug it, or assess whether the rationale is complete.
+
+TASK
+The original problem or question.
+
+RESULT
+What was changed, fixed, concluded, or discovered.
+
+FACTS_AND_EVIDENCE
+- [FACT] Concrete observation, source location, test result, command result, benchmark, or other evidence.
+
+DECISIONS
+- [DECISION] Choice made, including the constraint or evidence that made it preferable.
+
+ALTERNATIVES
+- [FACT] Alternative A was actually considered.
+- [INFERENCE] Why it appeared weaker under the current constraints, when that judgment is interpretive.
+- [UNKNOWN] What evidence could still change the choice, when applicable.
+
+IMPLEMENTATION_LEARNINGS
+Initial understanding:
+- [INFERENCE] What was expected before implementation/investigation.
+
+Discovery:
+- [FACT] What was actually observed.
+
+Adaptation:
+- [DECISION] How the design or implementation changed in response.
+
+UNCERTAINTIES_AND_LIMITS
+- [UNKNOWN] Unverified behavior, scope limit, environmental dependency, missing measurement, or unresolved question.
+
+PRIMARY_EXPLANATION
+The primary agent's complete self-explanation.
+
+</EXPLANATION_PACKET>
+```
+
+Do not manufacture alternatives merely to make the packet look rigorous. Include alternatives that were genuinely considered or that are necessary to explain the decision boundary.
+
+Before sending the packet externally, remove credentials, tokens, private keys, unrelated personal data, unnecessary production data, and source dumps that are not needed as evidence.
+
+### 3. Run the second pass
+
+Resolve this skill's directory and invoke the helper by its actual path. Do not assume the target project's working directory contains `scripts/kaisetsu.sh`.
+
+Example:
+
+```bash
+RESULT_JSON="$(/absolute/path/to/kaisetsu-skill/scripts/kaisetsu.sh /path/to/explanation-packet.txt)"
+GEMINI_EXPLANATION="$(jq -r '.response' <<<"$RESULT_JSON")"
+```
+
+For a reasoning-dense packet:
+
+```bash
+RESULT_JSON="$(/absolute/path/to/kaisetsu-skill/scripts/kaisetsu.sh \
+  --model gemini-3.8-flash-high \
+  /path/to/explanation-packet.txt)"
+GEMINI_EXPLANATION="$(jq -r '.response' <<<"$RESULT_JSON")"
+```
+
+The helper:
+
+- verifies `agy` and `jq` are available,
+- builds the reader prompt,
+- stages one NDJSON input event before launching `agy`,
+- sends the prompt through `agy` using stdin streaming rather than a large command-line argument,
+- runs `agy` from a separate empty workspace directory so prompt/event files are not visible in its cwd,
+- removes known parent-session linkage variables (`ANTIGRAVITY_AGENT`, `ANTIGRAVITY_TRAJECTORY_ID`, `ANTIGRAVITY_LS_ADDRESS`) from the child while preserving unrelated Antigravity configuration/authentication,
+- parses a terminal structured result even when `agy` exits non-zero, so `.result.error` is not masked by the process exit code,
+- requires an explicit `SUCCESS` result and non-empty response,
+- preserves the final response and usage metadata in normalized JSON,
+- never silently falls back to another model.
+
+The empty workspace is an **epistemic aid, not a security sandbox**. It reduces accidental repository grounding; it does not prevent the child from accessing other paths if its tools and permissions allow that. Normal Antigravity auth/configuration remains available except for the parent-session linkage variables listed above. Do not forward sensitive material merely because the working directory is empty.
+
+Do not pass `--dangerously-skip-permissions` for the normal explanation pass.
+
+### 4. Audit Gemini's reconstruction
+
+Before presenting the result, compare it with the packet and primary explanation.
+
+Check:
+
+1. **Added facts** — Did Gemini introduce claims that are not grounded in the packet?
+2. **Certainty creep** — Did an `[INFERENCE]` or `[UNKNOWN]` become an established fact?
+3. **Lost mechanism** — Did compression remove the actual causal or technical mechanism and replace it with generic language such as "improves maintainability"?
+4. **Valid gaps** — Did Gemini expose a real missing premise, unexplained term, unsupported leap, or unresolved decision boundary?
+5. **Implementation learning** — Did it preserve the difference between the initial model and what implementation revealed?
+6. **Architecture lint** — If Gemini misunderstood something, is the packet incomplete, or is the underlying abstraction genuinely hard to explain because ownership, naming, invariants, or boundaries are unclear?
+
+If Gemini is wrong, do not edit its text and still present the edited version as Gemini's reconstruction. Preserve the discrepancy and explain it separately.
+
+### 5. Present the result
+
+For ordinary use, present:
+
+1. Gemini's reader-facing explanation.
+2. Gemini's material explanation gaps, if any.
+3. A short primary-agent note only when there is a meaningful discrepancy, correction, or design insight.
+
+Do not bury the second-pass output under a long meta-analysis unless the user asked for one.
+
+For an explicit **感想戦**, preserve both viewpoints and compare:
+
+- primary self-explanation,
+- Gemini reconstruction,
+- gaps Gemini identified,
+- claims Gemini added or flattened,
+- differences in conceptual organization,
+- implementation learnings preserved or lost,
+- architecture/naming friction exposed by explanation difficulty,
+- latency/token usage when relevant.
+
+## Reader prompt contract
+
+The helper instructs Gemini to act as a reader, not as a replacement implementer. The intended behavior is:
+
+- Work only from the packet unless the user explicitly requests a repository-aware verification pass.
+- Preserve distinctions among facts, decisions, inferences, and unknowns.
+- Write natural, plain, direct Japanese.
+- Preserve technical density and concrete mechanisms.
+- Compress redundancy rather than substance.
+- Avoid ceremonial introductions, generic praise, repeated conclusions, invented motives, and generic quality claims with no mechanism.
+- Use original English technical terms when translation would reduce precision.
+- Treat a gap as a gap rather than repairing it with a plausible story.
+
+Expected Gemini output:
+
+```markdown
+# 説明
+
+<Reader-facing reconstruction. Structure by concepts and causality rather than mechanically mirroring packet headings.>
+
+# 説明上の未解決点
+
+<Only material gaps, missing premises, ambiguities, or unsupported leaps. For each, say what is unclear, why the packet does not establish it, and what evidence or clarification would resolve it. If none, say so briefly.>
+```
+
+## Failure handling
+
+- **`agy` or `jq` unavailable:** Report that the external pass could not run. The primary self-explanation remains valid output.
+- **Gemini 3.8 Flash unavailable:** Fail loudly. Do not silently substitute another model family or version.
+- **Authentication failure / non-zero exit / timeout:** Report the actual failure. Do not fabricate a Gemini response.
+- **No terminal `result` event, non-`SUCCESS` status, or empty response:** Treat the pass as failed.
+- **Gemini materially changes technical meaning:** Preserve what Gemini wrote and separately identify the disagreement and packet evidence.
+
+## Success criteria
+
+The second pass earns its cost if it produces at least one of these:
+
+- a substantially easier explanation to read without losing technical content,
+- a better conceptual organization of the same evidence,
+- a real gap in the primary explanation,
+- a hidden assumption worth making explicit,
+- evidence that a design or name is difficult to explain cleanly,
+- independent confirmation that a capable reader reconstructed the intended technical story correctly.
+
+Polished Japanese alone is not success.
+
+The final question is:
+
+> Did the second reader preserve the work accurately, and did comparing the two explanations teach us anything?
