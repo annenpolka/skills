@@ -1,6 +1,6 @@
 ---
 name: kaisetsu
-description: Runs an independent second-pass technical explanation and explanatory audit through Gemini 3.8 Flash via `agy`. Use after substantive architecture, refactoring, debugging, investigation, or implementation when a reader-facing Japanese reconstruction, rationale record, or explanation-gap check would add value, or when the user explicitly asks for a Gemini second pass, 解説, or 感想戦. Do not invoke for trivial edits, routine CRUD, ordinary short explanations, or before the primary agent has formed and stated its own technical understanding.
+description: Runs an independent second-pass technical explanation and explanatory audit through Gemini 3.8 Flash via `agy`, presenting the reconstruction as a self-contained HTML artifact. Use after substantive architecture, refactoring, debugging, investigation, or implementation when a reader-facing Japanese reconstruction, rationale record, or explanation-gap check would add value, or when the user explicitly asks for a Gemini second pass, 解説, or 感想戦. Do not invoke for trivial edits, routine CRUD, ordinary short explanations, or before the primary agent has formed and stated its own technical understanding.
 ---
 
 # Kaisetsu
@@ -57,7 +57,7 @@ If the primary agent is not ready to explain the work, continue the primary inve
 
 - **Language:** Japanese
 - **Audience:** Technically capable developer unfamiliar with the immediate work
-- **Behavior:** Reader reconstruction followed by a compact explanatory audit
+- **Behavior:** Reader reconstruction as semantic HTML followed by a compact explanatory audit
 - **Model:** `gemini-3.8-flash-medium`
 - **Scope:** Explanation packet only
 
@@ -165,7 +165,7 @@ GEMINI_EXPLANATION="$(jq -r '.response' <<<"$RESULT_JSON")"
 
 The helper:
 
-- verifies `agy` and `jq` are available,
+- verifies `agy`, `jq`, `python3`, and its HTML renderer are available,
 - builds the reader prompt,
 - stages one NDJSON input event before launching `agy`,
 - sends the prompt through `agy` using stdin streaming rather than a large command-line argument,
@@ -173,7 +173,10 @@ The helper:
 - removes known parent-session linkage variables (`ANTIGRAVITY_AGENT`, `ANTIGRAVITY_TRAJECTORY_ID`, `ANTIGRAVITY_LS_ADDRESS`) from the child while preserving unrelated Antigravity configuration/authentication,
 - parses a terminal structured result even when `agy` exits non-zero, so `.result.error` is not masked by the process exit code,
 - requires an explicit `SUCCESS` result and non-empty response,
-- saves each successful response to `/tmp/kaisetsu.*.md` and attempts to display it with macOS `open -t` in the default text editor,
+- treats the successful `.response` as Gemini's raw semantic HTML fragment and preserves it unchanged in the normalized JSON for the primary discrepancy audit,
+- validates that fragment before publication: exactly one `<main>` root, exactly one stable explanation-gaps section, balanced supported markup, and no script, style, event handler, embedded media, or external resource dependency,
+- wraps only a valid fragment in the helper-owned self-contained HTML shell and CSS,
+- saves the resulting page to `/tmp/kaisetsu.*.html` and attempts to display it with macOS `open` through the normal file association,
 - treats failure to launch `open` as a warning while keeping the second pass successful,
 - preserves the final response and usage metadata in normalized JSON,
 - never silently falls back to another model.
@@ -187,8 +190,8 @@ A successful Gemini pass and a successful local display are separate outcomes. I
    kaisetsu.sh: warning: could not open response file: <path>
    ```
 
-2. Extract `<path>` into `RESPONSE_FILE` only when it matches `/tmp/kaisetsu.[A-Za-z0-9]{6}.md` and names a non-symlink regular file owned by the current user. If validation fails or more than one candidate is present, do not escalate; report the warning instead.
-3. Run `/usr/bin/open -t "$RESPONSE_FILE"` once as a separate command using the host's narrowly scoped sandbox-escalation or approval mechanism. On Codex hosts exposing per-command permissions, use `sandbox_permissions: require_escalated` for this command and scope any reusable approval prefix to `["/usr/bin/open", "-t"]`. Treat this retry as part of the requested automatic display; do not wait for another user message, though the host may still require approval.
+2. Extract `<path>` into `RESPONSE_FILE` only when it matches `/tmp/kaisetsu.[A-Za-z0-9]{6}.html` and names a non-symlink regular file owned by the current user. If validation fails or more than one candidate is present, do not escalate; report the warning instead.
+3. Run `/usr/bin/open "$RESPONSE_FILE"` once as a separate command using the host's narrowly scoped sandbox-escalation or approval mechanism. On Codex hosts exposing per-command permissions, use `sandbox_permissions: require_escalated` for this exact command. Treat this retry as part of the requested automatic display; do not wait for another user message, though the host may still require approval. Do not request a broader reusable rule when the host cannot constrain it to this validated artifact shape.
 4. Escalate only that exact display command. Do not rerun or elevate the helper, `agy`, or the Gemini pass, and do not use `sudo`.
 5. If scoped escalation is unavailable, denied, or the retry still returns non-zero, report the warning and saved path. The second pass remains successful.
 
@@ -208,6 +211,7 @@ Check:
 4. **Valid gaps** — Did Gemini expose a real missing premise, unexplained term, unsupported leap, or unresolved decision boundary?
 5. **Implementation learning** — Did it preserve the difference between the initial model and what implementation revealed?
 6. **Architecture lint** — Treat misunderstanding as a diagnostic signal, not a design verdict. Consider explanation gaps, missing evidence, terminology or naming friction, abstraction or architecture issues, and Gemini's own misreading. Do not attribute reconstruction failure to the underlying design without additional evidence.
+7. **Representation fidelity** — Did the chosen prose, table, tree, diff, code, flow, or small diagram clarify the actual technical structure without hiding substance or implying false certainty? Extra visual variety is not a success signal.
 
 A reconstruction failure alone does not distinguish among those causes. Architecture lint only indicates that the underlying design may be worth additional investigation; it does not establish a design defect.
 
@@ -215,7 +219,14 @@ If Gemini is wrong, do not edit its text and still present the edited version as
 
 ### 5. Present the result
 
-For ordinary chat, do not reproduce Gemini's full response. The saved `/tmp/kaisetsu.*.md` file, opened by the helper or the scoped retry when permitted, is the reader-facing copy. In chat, present only the primary agent's concise delta: material gaps, discrepancies, corrections, or supplementary technical insight found by comparing Gemini's response with the packet. If there is no material delta, say so briefly. If display ultimately failed, also report the warning and saved path. Do not restate the full reconstruction as a summary.
+For ordinary chat, do not reproduce Gemini's full response. The saved `/tmp/kaisetsu.*.html` page, opened by the helper or the scoped retry when permitted, is the reader-facing copy. In chat, present only the primary agent's concise delta: material gaps, discrepancies, corrections, or supplementary technical insight found by comparing Gemini's raw semantic response with the packet. If there is no material delta, say so briefly. If display ultimately failed, also report the warning and saved path. Do not restate the full reconstruction as a summary.
+
+A normal no-delta completion can be as short as:
+
+```text
+kaisetsu 完了。解説をブラウザで開きました。
+重要な認識差・説明ギャップはありません。
+```
 
 For an explicit **感想戦**, preserve both viewpoints and compare:
 
@@ -238,31 +249,46 @@ The helper instructs Gemini to act as a reader, not as a replacement implementer
 - Write natural, plain, direct Japanese.
 - Preserve technical density and concrete mechanisms.
 - Compress redundancy rather than substance.
+- Choose the smallest representation that makes the technical mechanism clear. Prose is neither mandatory nor privileged.
+- Match the representation to the content: concise prose for causal explanation; before/discovery/after for real changes in understanding; compact tables for meaningful comparisons; shallow trees for ownership; diff-shaped blocks for changes; focused code when code shape matters; and simple diagrams only when direction or space materially improves understanding.
+- Prefer one strong representation over multiple redundant ones. Do not add visual structure for decoration, and prioritize reconstruction fidelity over appearance.
+- Treat every representation as a reading cost. Use one primary representation by default, and add another only when it exposes a different material relationship. Never repeat one mechanism as prose, flow, and table.
+- For one short causal chain, one boundary, or one concept without a real comparison matrix or changed understanding, concise prose is the minimum view; do not manufacture a diagram or table from the same sentences.
+- Tables require a real multi-field comparison; flow/grid requires order, branching, ownership, or direction that prose would make materially harder to retain. Two concepts or two sequential steps alone do not justify boxes, and cards are not a substitute for paragraphs.
+- Apply an admission gate: learning-flow requires a real before/discovery/after; comparison tables require at least two genuine alternatives/entities across at least two meaningful fields; trees require meaningful hierarchy; diff/code requires exact shape to carry meaning; flow/SVG requires non-trivial topology among at least three interacting nodes. Mere chronology, two serial stages, or a binary success/failure boundary stays prose.
+- Prefer HTML/CSS layout, then `<pre>` tree/flow, then table/grid, and only then a small inline SVG. Do not use Mermaid or external resources.
+- When an inline SVG is genuinely necessary, keep it small, use `role="img"`, provide an accessible name with at least `<title>` (plus `<desc>` when useful) and `aria-labelledby`, add a concise `<figcaption>`, and never encode a technical distinction by color alone.
+- Preserve epistemic distinctions visually when they matter by using stable `data-epistemic` attributes, without mechanically labeling every sentence.
+- When implementation learning exists, keep its before/discovery/after change visible; do not force that layout when no real change occurred.
 - Avoid ceremonial introductions, generic praise, repeated conclusions, invented motives, and generic quality claims with no mechanism.
 - Use original English technical terms when translation would reduce precision.
 - Treat a gap as a gap rather than repairing it with a plausible story.
 - Treat reconstruction failure as a diagnostic signal with multiple possible causes. Do not attribute it to the underlying design without additional evidence.
 
-Expected Gemini output:
+Expected Gemini output contract:
 
-```markdown
-# 説明
-
-<Reader-facing reconstruction. Structure by concepts and causality rather than mechanically mirroring packet headings.>
-
-# 説明上の未解決点
-
-<Only material gaps, missing premises, ambiguities, or unsupported leaps. For each, say what is unclear, why the packet does not establish it, and what evidence or clarification would resolve it. If none, say so briefly.>
+```html
+<main>
+  <header><h1>技術解説の題名</h1></header>
+  <section><p>読者向け再構成</p></section>
+  <section class="explanation-gaps" data-section="explanation-gaps">
+    <h2>説明上の未解決点</h2>
+    <p>material gaps、または未解決点がない旨</p>
+  </section>
+</main>
 ```
+
+This is a schematic semantic fragment, not a fixed layout or a complete document. The helper owns the doctype, document root, metadata, base typography, responsive layout, common callout/table/code styles, light/dark colors, and restrictive content-security policy. Gemini must not emit Markdown fences, HTML comments, CSS, JavaScript, remote assets, or document boilerplate. The explanation-gaps section may be placed where it best supports the reconstruction, but its stable `data-section="explanation-gaps"` marker and non-empty content are mandatory so the primary agent can distinguish unresolved points in the raw response.
 
 ## Failure handling
 
-- **`agy` or `jq` unavailable:** Report that the external pass could not run. The primary self-explanation remains valid output.
+- **`agy`, `jq`, `python3`, or the bundled renderer unavailable:** Report that the external pass could not run. The primary self-explanation remains valid output.
 - **Gemini 3.8 Flash unavailable:** Fail loudly. Do not silently substitute another model family or version.
 - **Authentication failure / non-zero exit / timeout:** Report the actual failure. Do not fabricate a Gemini response.
 - **No terminal `result` event, non-`SUCCESS` status, or empty response:** Treat the pass as failed.
+- **Invalid, incomplete, unsafe, or contract-breaking HTML fragment / renderer failure:** Treat the pass as failed. Do not publish or open a partial artifact; keep renderer diagnostics on stderr.
 - **Initial `open` attempt returns non-zero after a successful response:** Keep the second pass successful and perform the single scoped display retry described above.
-- **Scoped display retry unavailable, denied, or still non-zero:** Report a warning with the saved Markdown path. Do not retry again or turn it into a second-pass failure.
+- **Scoped display retry unavailable, denied, or still non-zero:** Report a warning with the saved HTML path. Do not retry again or turn it into a second-pass failure.
 - **Gemini materially changes technical meaning:** Preserve what Gemini wrote and separately identify the disagreement and packet evidence.
 
 ## Success criteria
