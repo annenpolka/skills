@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenCode Delegate"
+  short_description: "Call OpenCode with a chosen model and verify its result"
+  default_prompt: "Use $opencode-delegate to run this task through OpenCode with the selected model and verify the result."
