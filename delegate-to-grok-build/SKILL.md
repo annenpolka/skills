@@ -1,11 +1,15 @@
 ---
 name: delegate-to-grok-build
-description: Delegate a frozen, authorized code implementation, bug fix, refactor, or cleanup to Grok Build while Codex remains the author and auditor. Use only when the user explicitly asks Codex to have Grok or Grok Build edit code; do not use for consultation, exploration, deploys, production data, external or irreversible operations, or work without frozen scope and mechanical completion oracles.
+description: Delegate authorized code changes or image generation to Grok Build while Codex authors the request and verifies the result. Use when the user explicitly asks to use Grok or Grok Build to implement code or generate images. Code changes require frozen scope and mechanical completion oracles; image requests use the separate image-only workflow. Do not use for general consultation, deploys, or production operations.
 ---
 
 # Delegate to Grok Build
 
-Codex owns the task contract, authorization, verification, and final judgment. Grok Build is only the executor inside a transaction-local clone.
+Codex owns the request, authorization, verification, and final judgment.
+
+For **image generation**, read [references/image-generation.md](references/image-generation.md) and use `scripts/grok-image.mjs`. It generates one image in a fresh private directory, checks the returned local artifact, and leaves visual review to Codex. The user's explicit request to generate with Grok authorizes this bounded workflow; do not impose the code transaction's Git, verifier, or final-apply approval steps on it. For a task needing both code and images, generate and review the image separately, then include the approved asset in the code task's scope.
+
+For **code changes**, follow the workflow below. Grok Build executes inside a transaction-local clone.
 
 Before starting:
 

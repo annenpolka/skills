@@ -3319,6 +3319,7 @@ async function prepareGrokEnvironment(
   source,
   inheritedEnvBindingHash,
   expectedPathEnvironmentBindingHash,
+  { authProtectedRoots = null } = {},
 ) {
   if (inheritedEnvironmentBindingHash(task.agent.inheritEnv) !== inheritedEnvBindingHash) {
     throw new DelegateError("environment_binding", "Frozen inherited environment changed since transaction start");
@@ -3390,7 +3391,7 @@ async function prepareGrokEnvironment(
 
   let authSource = null;
   if (task.agent.executionProfile === "trusted_local" && !environment.XAI_API_KEY) {
-    const protectedRoots = [
+    const protectedRoots = authProtectedRoots ?? [
       path.dirname(transactionDir),
       source?.root,
       source?.gitDir,
@@ -5013,4 +5014,14 @@ async function main() {
   }
 }
 
-await main();
+// Share the tested transport and private-runtime/auth handling with the image entrypoint.
+export {
+  AcpPeer, DelegateError, buildGrokArgs, chooseAuthMethod, exactKeys,
+  inheritedEnvironmentBindingHash, inspectCachedAuthSource, pathEnvironmentBindingHash,
+  prepareGrokEnvironment, readJsonStdin, safeWorkspacePath, stableJson, stopAcp,
+  writeSecureFile,
+};
+
+if (process.argv[1] && await realpath(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await main();
+}

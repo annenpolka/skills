@@ -2,6 +2,8 @@
 
 This file is for maintaining `scripts/grok-delegate.mjs`, not for ordinary delegation.
 
+`scripts/grok-image.mjs` shares this client's transport, cancellation, and private-runtime/auth helpers through module exports, but uses its own image-only observation audit. Importing the code wrapper does not run its CLI. The code permission policy remains unchanged; native `image_gen` is not an Edit/Write grant. Read [image-generation.md](image-generation.md) for that separate protocol and its observed limitations.
+
 ## Process boundary
 
 The client uses UTF-8 newline-delimited JSON-RPC over stdio. Root options precede the agent command:
