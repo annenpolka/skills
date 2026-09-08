@@ -1249,6 +1249,67 @@ test("tampered or cross-transaction session binding cannot be loaded", async (t)
   assert.equal(logs.some((item) => item.type === "load"), false);
 });
 
+test("observed Grok aliases preserve list/read plus two approved write provenance records", async (t) => {
+  const fixture = await makeRepo(t);
+  const before = await sourceSnapshot(fixture.root);
+  const result = runCli({ args: startArgs(fixture.stateDir), input: baseTask(fixture.root),
+    scenario: "compat_list_two_writes", logPath: fixture.logPath });
+  assert.equal(result.status, 0, `${result.stderr}\n${JSON.stringify(result.json)}`);
+  assert.equal(result.json.state, "candidate_ready");
+  assert.equal(result.json.permissionAudit.allowedCount, 2);
+  assert.equal(result.json.permissionAudit.rejectedCount, 0);
+  assert.deepEqual(result.json.permissionAudit.violations, []);
+  const manifest = JSON.parse(await readFile(path.join(transactionDir(fixture.stateDir, result.json), "manifest.json"), "utf8"));
+  assert.deepEqual(manifest.executedApprovedPaths, ["src/result0.txt", "src/result1.txt"]);
+  assert.deepEqual(await sourceSnapshot(fixture.root), before);
+});
+
+test("observed Grok aliases route terminal execution through exact existing argv permission", async (t) => {
+  const fixture = await makeRepo(t);
+  const task = baseTask(fixture.root);
+  task.task.expectedChange = "optional";
+  const result = runCli({ args: startArgs(fixture.stateDir), input: task,
+    scenario: "compat_terminal_alias", logPath: fixture.logPath });
+  assert.equal(result.status, 0, `${result.stderr}\n${JSON.stringify(result.json)}`);
+  assert.equal(result.json.permissionAudit.allowedCount, 1);
+  assert.deepEqual(result.json.permissionAudit.violations, []);
+  const manifest = JSON.parse(await readFile(path.join(transactionDir(fixture.stateDir, result.json), "manifest.json"), "utf8"));
+  assert.deepEqual(manifest.permissionAudit.decisions[0].argv, ["node", "--test", "test/focused.test.mjs"]);
+  const response = (await readLog(fixture.logPath)).find((item) => item.type === "permission_response" && item.id === 984);
+  assert.equal(response?.result?.outcome?.optionId, "once");
+});
+
+test("observed Grok aliases reject near matches, contradictory displays and unsafe argv", async (t) => {
+  const cases = [
+    ["compat_list_namespace", "unknown_xai_tool_identity"],
+    ["compat_list_name", "unknown_xai_tool_identity"],
+    ["compat_list_case", "unknown_xai_tool_identity"],
+    ["compat_list_mutating", "unknown_xai_tool_identity"],
+    ["compat_read_other", "incompatible_tool_identity"],
+    ["compat_list_delta_read", "incompatible_tool_identity"],
+    ["compat_list_delta_name", "xai_tool_identity_changed"],
+    ["compat_list_identity_change", "xai_tool_identity_changed"],
+    ["compat_terminal_namespace", "unknown_xai_tool_identity"],
+    ["compat_terminal_name", "unknown_xai_tool_identity"],
+    ["compat_terminal_case", "unknown_xai_tool_identity"],
+    ["compat_terminal_readonly", "unknown_xai_tool_identity"],
+    ["compat_terminal_display", "incompatible_tool_identity"],
+    ["compat_terminal_unapproved_argv", "permission_rejected:argv_not_frozen"],
+    ["compat_terminal_metachar", "unparsable_argv"],
+    ["compat_terminal_conflicting_argv", "ambiguous_argv"],
+  ];
+  for (const [scenario, code] of cases) {
+    const fixture = await makeRepo(t);
+    const task = baseTask(fixture.root);
+    task.task.expectedChange = "optional";
+    const result = runCli({ args: startArgs(fixture.stateDir), input: task, scenario, logPath: fixture.logPath });
+    assert.equal(result.status, 1, `${scenario}: ${result.stderr}\n${JSON.stringify(result.json)}`);
+    assert.equal(result.json.permissionAudit.allowedCount, 0, scenario);
+    assert.ok(result.json.permissionAudit.violations.some((item) => item.code === code),
+      `${scenario}: ${JSON.stringify(result.json.permissionAudit)}`);
+  }
+});
+
 test("real Grok Write deltas merge by toolCallId and bind allow-once provenance", async (t) => {
   const fixture = await makeRepo(t);
   const result = runCli({

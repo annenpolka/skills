@@ -396,6 +396,28 @@ function sendNextPermission() {
 
 async function handlePermissionResponse(message) {
   await log({ type: "permission_response", id: message.id, result: message.result, error: message.error });
+  if (scenario.startsWith("compat_")) {
+    const selected = message.result?.outcome?.optionId === "once";
+    if (scenario === "compat_list_two_writes" && [982, 983].includes(message.id)) {
+      const index = message.id - 982;
+      const relative = `src/result${index}.txt`;
+      if (selected) {
+        await write(relative, "delegated\n");
+        completeRealWrite({ toolCallId: `compat-write-${index}`, relative });
+      }
+      if (message.id === 982 && selected) {
+        const second = { toolCallId: "compat-write-1", relative: "src/result1.txt" };
+        announceRealWrite(second.toolCallId, second.relative);
+        enrichRealWrite(second);
+        requestRealWritePermission({ ...second, id: 983 });
+      } else await finishPrompt(report("Synthetic compatibility fixture"));
+    } else {
+      update({ sessionUpdate: "tool_call_update", toolCallId: "compat-terminal",
+        status: selected ? "completed" : "failed" });
+      await finishPrompt(report("Synthetic compatibility fixture"));
+    }
+    return;
+  }
   if (scenario === "permissions") {
     const current = permissionQueue.shift();
     if (current.id === 901 && message.result?.outcome?.optionId === "once") {
@@ -557,6 +579,59 @@ async function handlePrompt(message) {
         || key === "GROK_DEFAULT_SELECTED_PERMISSION"
         || /^GROK_(?:CLAUDE|CURSOR|CODEX)_(?:SKILLS|RULES|AGENTS|MCPS|HOOKS|SESSIONS)_ENABLED$/.test(key))),
   });
+  if (scenario.startsWith("compat_")) {
+    if (scenario.startsWith("compat_list") || scenario === "compat_read_other") {
+      const native = { version: 1, namespace: "grok_build", kind: "list", name: "list_dir",
+        label: "List directory", read_only: true };
+      if (scenario === "compat_list_namespace") native.namespace = "grok_build_concise";
+      if (scenario === "compat_list_name") native.name = "list_directory";
+      if (scenario === "compat_list_case") native.kind = "List";
+      if (scenario === "compat_list_mutating") native.read_only = false;
+      if (scenario === "compat_read_other") { native.kind = "read"; native.name = "read_file"; }
+      update({ sessionUpdate: "tool_call", toolCallId: "compat-list", _meta: { "x.ai/tool": native } });
+      update({ sessionUpdate: "tool_call_update", toolCallId: "compat-list", kind: "other",
+        _meta: { "x.ai/tool": native } });
+      const delta = { sessionUpdate: "tool_call_update", toolCallId: "compat-list", kind: "other" };
+      if (scenario === "compat_list_delta_read") delta.kind = "read";
+      if (scenario === "compat_list_delta_name") delta.name = "read_file";
+      if (scenario === "compat_list_identity_change") delta._meta = {
+        "x.ai/tool": { ...native, kind: "read", name: "read_file" },
+      };
+      update(delta);
+      update({ sessionUpdate: "tool_call_update", toolCallId: "compat-list", status: "completed" });
+      if (scenario === "compat_list_two_writes") {
+        // Existing read_file stays read, while only the exact list tuple uses other.
+        const read = { ...native, kind: "read", name: "read_file" };
+        update({ sessionUpdate: "tool_call", toolCallId: "compat-read", kind: "read", _meta: { "x.ai/tool": read } });
+        update({ sessionUpdate: "tool_call_update", toolCallId: "compat-read", status: "completed" });
+        announceRealWrite("compat-write-0", "src/result0.txt");
+        enrichRealWrite({ toolCallId: "compat-write-0", relative: "src/result0.txt" });
+        requestRealWritePermission({ id: 982, toolCallId: "compat-write-0", relative: "src/result0.txt" });
+      } else await finishPrompt(report("Synthetic compatibility fixture"));
+      return;
+    }
+    const native = { version: 1, namespace: "grok_build", kind: "execute",
+      name: "run_terminal_command", label: "Run Command", read_only: false };
+    if (scenario === "compat_terminal_namespace") native.namespace = "grok_build_concise";
+    if (scenario === "compat_terminal_name") native.name = "run_terminal_commands";
+    if (scenario === "compat_terminal_case") native.name = "Run_terminal_command";
+    if (scenario === "compat_terminal_readonly") native.read_only = true;
+    const displayKind = scenario === "compat_terminal_display" ? "bash" : "execute";
+    const input = { command: "node --test test/focused.test.mjs" };
+    if (scenario === "compat_terminal_unapproved_argv") input.command = "node --test test/other.test.mjs";
+    if (scenario === "compat_terminal_metachar") input.command += "; echo forbidden";
+    if (scenario === "compat_terminal_conflicting_argv") native.input = { cmd: "node --test test/other.test.mjs" };
+    update({ sessionUpdate: "tool_call", toolCallId: "compat-terminal", rawInput: input,
+      _meta: { "x.ai/tool": native } });
+    update({ sessionUpdate: "tool_call_update", toolCallId: "compat-terminal", kind: displayKind,
+      rawInput: input, _meta: { "x.ai/tool": native } });
+    update({ sessionUpdate: "tool_call_update", toolCallId: "compat-terminal", kind: displayKind });
+    send({ jsonrpc: "2.0", id: 984, method: "session/request_permission", params: {
+      sessionId, toolCall: { toolCallId: "compat-terminal", kind: displayKind, rawInput: input,
+        _meta: { "x.ai/tool": native } }, options: realOptions,
+    } });
+    return;
+  }
   if ([
     "real_write_delta",
     "real_granted_failed",

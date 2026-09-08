@@ -1833,8 +1833,10 @@ const XAI_NATIVE_IDENTITIES = new Map([
   ["opencode\0edit\0edit", "edit"],
   ["opencode\0execute\0bash", "bash"],
   ["grok_build\0read\0read_file", "read"],
+  ["grok_build\0list\0list_dir", "read"],
   ["grok_build\0edit\0search_replace", "edit"],
   ["grok_build\0execute\0bash", "bash"],
+  ["grok_build\0execute\0run_terminal_command", "bash"],
   ["grok_build_concise\0read\0read_file", "read"],
   ["grok_build_concise\0edit\0search_replace", "edit"],
   ["grok_build_concise\0execute\0bash", "bash"],
@@ -1845,6 +1847,16 @@ const DISPLAY_COMPATIBILITY = new Map([
   ["write", new Set(["edit"])],
   ["bash", new Set(["execute"])],
 ]);
+
+function compatibleNativeDisplay(identity, value) {
+  // Observed Grok 1.0.13 lists use ACP's display-only `other` kind. Keep
+  // this exception bound to the exact native tuple, including sparse deltas.
+  if (identity.namespace === "grok_build"
+    && identity.nativeKind === "list" && identity.name === "list_dir") {
+    return value === "other";
+  }
+  return DISPLAY_COMPATIBILITY.get(identity.kind)?.has(value) ?? false;
+}
 
 function xaiToolIdentity(toolCall, params) {
   const envelopes = [];
@@ -1942,7 +1954,7 @@ function resolveToolIdentity(toolCall, params, current = null) {
     for (const value of outer.values) {
       const candidate = value;
       if (!ACP_DISPLAY_KINDS.has(candidate)
-        || !DISPLAY_COMPATIBILITY.get(xai.kind)?.has(candidate)) {
+        || !compatibleNativeDisplay(xai.nativeIdentity, candidate)) {
         return {
           kind: xai.kind,
           displayKind: candidate,
@@ -1981,7 +1993,7 @@ function resolveToolIdentity(toolCall, params, current = null) {
     }
     for (const value of outer.values) {
       if (!ACP_DISPLAY_KINDS.has(value)
-        || !DISPLAY_COMPATIBILITY.get(currentKind)?.has(value)
+        || !compatibleNativeDisplay(current.nativeIdentity, value)
         || (displayKind && displayKind !== value)) {
         return {
           kind: currentKind,
