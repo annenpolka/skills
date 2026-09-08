@@ -1,4 +1,4 @@
 interface:
   display_name: "Delegate to Grok Build"
-  short_description: "Delegate code changes or image generation to Grok Build"
-  default_prompt: "Use $delegate-to-grok-build to have Grok Build implement this authorized code change or generate this image, while Codex verifies the result."
+  short_description: "Delegate code changes, image creation and editing to Grok"
+  default_prompt: "Use $delegate-to-grok-build to have Grok Build implement this authorized code change or generate or edit this image, while Codex verifies the result."

@@ -1,13 +1,13 @@
 ---
 name: delegate-to-grok-build
-description: Delegate authorized code changes or image generation to Grok Build while Codex authors the request and verifies the result. Use when the user explicitly asks to use Grok or Grok Build to implement code or generate images. Code changes require frozen scope and mechanical completion oracles; image requests use the separate image-only workflow. Do not use for general consultation, deploys, or production operations.
+description: Delegate authorized code changes, image generation, or reference-image editing to Grok Build while Codex authors the request and verifies the result. Use when the user explicitly asks to use Grok or Grok Build to implement code or generate or edit images. Code changes require frozen scope and mechanical completion oracles; image requests use the separate image-only workflow. Do not use for general consultation, deploys, or production operations.
 ---
 
 # Delegate to Grok Build
 
 Codex owns the request, authorization, verification, and final judgment.
 
-For **image generation**, read [references/image-generation.md](references/image-generation.md) and use `scripts/grok-image.mjs`. It generates one image in a fresh private directory, checks the returned local artifact, and leaves visual review to Codex. The user's explicit request to generate with Grok authorizes this bounded workflow; do not impose the code transaction's Git, verifier, or final-apply approval steps on it. For a task needing both code and images, generate and review the image separately, then include the approved asset in the code task's scope.
+For **image generation or editing**, read [references/image-generation.md](references/image-generation.md) and use `scripts/grok-image.mjs`. It produces one image in a fresh private directory, checks the returned local artifact, and leaves visual review to Codex. To preserve an existing character or edit supplied art, pass its local path in `referenceImages`: the helper passes private image copies to native `image_edit` and also attaches them to the prompt when ACP supports it. Without references it selects `image_gen`. The user's explicit request to generate or edit with Grok authorizes this bounded workflow; do not impose the code transaction's Git, verifier, or final-apply approval steps on it. For a task needing both code and images, generate and review the image separately, then include the approved asset in the code task's scope.
 
 For **code changes**, follow the workflow below. Grok Build executes inside a transaction-local clone.
 
