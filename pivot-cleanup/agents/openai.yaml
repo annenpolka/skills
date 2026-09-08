@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pivot Cleanup"
+  short_description: "Remove obsolete implementation remnants after a pivot"
+  default_prompt: "Use $pivot-cleanup to align the affected implementation, tests, and current documentation with the settled design decision."

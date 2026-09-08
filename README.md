@@ -16,6 +16,7 @@ Claude Code 用のスキルとプラグイン。
 | **hydrafusion-orchestrator** | CodexでLuna主体に調査・実装を委譲し、必要な判断だけAstraで補って消費を抑える。明示呼び出し専用 |
 | **kaisetsu** | Gemini 3.8 Flash による独立した技術解説・感想戦。自己完結HTMLでの読者向け再構成と説明ギャップの監査 |
 | **opencode-delegate** | 指定モデルでOpenCodeに実装・調査・レビュー・相談を依頼。実行結果とセッションIDを保存し、検証と再開を支援 |
+| **pivot-cleanup** | 設計方針の変更後に旧実装の残骸を整理し、コード・テスト・現行文書を採用済み設計に揃える |
 | **preact-zero-mock** | Preact + HTM でゼロビルドWebモック。npm不要、ブラウザで直接開けるプロトタイプ |
 | **sanitize-artifacts** | 生成成果物からプロンプト履歴・制作制約・修正痕跡を除去し、会話なしで成立する一貫した最終成果物へ再構成 |
 | **spec-interview** | 仕様書インタビュー。AskUserQuestion で仕様を対話的に明確化・拡充 |
