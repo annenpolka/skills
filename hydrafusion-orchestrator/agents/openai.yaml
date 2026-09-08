@@ -1,0 +1,6 @@
+interface:
+  display_name: "HydraFusion Orchestrator"
+  short_description: "Luna主体で実作業を進め、必要な判断だけAstraへ渡して消費を抑える"
+  default_prompt: "$hydrafusion-orchestrator を使い、この作業をLuna主体で完成させ、必要な判断だけAstraで補ってください。"
+policy:
+  allow_implicit_invocation: false

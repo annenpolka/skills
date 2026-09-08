@@ -13,6 +13,7 @@ Claude Code 用のスキルとプラグイン。
 | **emergent-engine** | 創発的LLM実行環境。allow/deny list で出力を制御し、入力に存在しない新規の跳躍のみを出力 |
 | **godoku** | 誤読による創造的変形。入力テキストを構造的に誤読し、歪みの幾何学から新規の創造物を生成 |
 | **hdd-loop** | Hallucination-Driven Design。未実装の道具を既に存在するものとして使わせ、批評・制約・現実化を反復して新しいアフォーダンスを発掘 |
+| **hydrafusion-orchestrator** | CodexでLuna主体に調査・実装を委譲し、必要な判断だけAstraで補って消費を抑える。明示呼び出し専用 |
 | **kaisetsu** | Gemini 3.8 Flash による独立した技術解説・感想戦。自己完結HTMLでの読者向け再構成と説明ギャップの監査 |
 | **opencode-delegate** | 指定モデルでOpenCodeに実装・調査・レビュー・相談を依頼。実行結果とセッションIDを保存し、検証と再開を支援 |
 | **preact-zero-mock** | Preact + HTM でゼロビルドWebモック。npm不要、ブラウザで直接開けるプロトタイプ |
