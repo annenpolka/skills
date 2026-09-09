@@ -76,6 +76,12 @@ is provider/CLI metadata and does not establish that the call was free.
   escalates to SIGKILL after two seconds. Inspect partial edits before resuming.
 - **Aborted / signal exit:** SIGINT, SIGTERM, and SIGHUP received during dispatch use
   the same group cleanup and publish an aborted result after the process closes.
+  To end a stalled run deliberately, use the host's managed interrupt or send SIGINT
+  to the exact owned relay process after verifying its identity. Let the helper stop
+  its child group, then wait for exit and inspect `result.json` and the partial diff.
+  Do not broadly kill OpenCode processes or assume that sending the signal proves
+  shutdown. Completed edits and passing checks can justify accepting a partial diff
+  after independent verification; they do not change `aborted` into `completed`.
 - **Process gone without a result:** treat the outcome as incomplete. SIGKILL, a host
   crash, or an artifact-write failure can prevent final publication. Inspect the
   process tree, raw logs, and working tree before rerunning.
@@ -110,6 +116,18 @@ following observed outcomes:
 - A `plan` follow-up through the helper resumed the exact captured session ID and
   returned the marker from the prior brief without being told its value again.
   Both helper runs reported `completed`, with the requested model and `auto: false`.
+
+A further implementation exercise on 2026-09-09 used the same explicitly selected
+model and a single session for two bounded build calls. The caller supplied working
+code, a one-file edit scope, and prewritten behavioral tests. The first call passed
+all 32 runner tests, but independent review found that an immediately resolving wait
+with a stopped clock could starve its watchdog, and cancellation reactions accumulated.
+A new failing test and a precise delta brief led to a passing correction in that session.
+The caller separately fixed late connection completion mutating an already returned
+result and verified the real system integration. These observations motivate the
+[implementation guidance](implementation.md); they do not establish general model
+quality or a delegation speedup. The CLI/result contract and earlier smoke records
+remain applicable to their stated scope.
 
 ## Upstream references
 

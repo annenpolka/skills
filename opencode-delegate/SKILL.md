@@ -6,8 +6,9 @@ description: Call the OpenCode CLI with an explicitly selected model for impleme
 # OpenCode Delegate
 
 OpenCode receives a self-contained brief through stdin. The calling agent owns scope,
-verification, and the answer to the user. Use the installed directory containing this
-file as `<skill-dir>`; do not resolve the helper relative to the target repository.
+shared interfaces, acceptance, integration, and the answer to the user. Use the
+installed directory containing this file as `<skill-dir>`; do not resolve the helper
+relative to the target repository.
 
 ## Prepare
 
@@ -23,12 +24,18 @@ Use existing OpenCode authentication; never put credentials into a brief or prin
 credential files. A normal run writes OpenCode's own logs and session database in
 addition to the helper's artifacts, so the host must permit those runtime writes.
 
-Inspect target instructions and current changes before delegating edits. A brief
-must contain the goal, relevant context, permitted files/actions, acceptance criteria,
-and actual verification commands when applicable. OpenCode does not receive this
-conversation. Ask it to report changes, checks, and unresolved issues. Keep commits,
-pushes, and external publishing with the calling agent under the user's authorization.
-For a question, a short brief with the necessary context and desired answer is enough.
+Inspect target instructions and current changes. Carry forward the user's existing
+model and scoped external-transfer authorization; compare any new data, destination,
+or operation against that scope. Exclude credentials and unrelated private runtime
+data from both the brief and the delegate's permitted reads.
+
+For implementation, read [references/implementation.md](references/implementation.md)
+to choose a bounded task, supply working examples and acceptance tests, and match
+ownership to the user's cost or time priority. Include permitted checks and first
+repairs in the delegate's scope. Use the task's actual paths and commands. Keep
+shared environment operations, integration, and publishing with the caller unless
+specifically assigned within the user's authorization. A simple question only needs its
+context and the desired answer; it does not require an implementation workflow.
 
 ## Call
 
@@ -69,21 +76,31 @@ means the CLI emitted a normal closing step and exited successfully; it does not
 certify that the task is correct. Consult [references/runner.md](references/runner.md)
 for the result contract and failure recovery.
 
-For edits, review the actual diff, including untracked files, and run the relevant
-checks yourself. `gitBefore` and `gitAfter` are status snapshots, not attribution of
-which files OpenCode changed; existing edits can retain the same status. Use a separate
-checkout when concurrent work or fragile local changes make direct edits unsuitable.
-For consultation, assess the answer and verify claims as the task requires.
+For edits, inspect the diff and untracked files against the assigned scope, confirm
+protected tests and references stayed intact, and independently check the affected
+behavior. Reuse verified evidence for unchanged areas; expand checks when new changes,
+failures, or uncertainty justify it. A returned identifier, packet, or successful
+mock does not by itself prove the resulting effect. Validate caller-side integration
+changes as well. `gitBefore` and `gitAfter` are status snapshots, not edit attribution;
+existing edits can retain the same status. For consultation, verify the claims that
+matter to the task.
 
-If rework is needed within scope, resume the captured session with concrete feedback.
-After a timeout, interrupted run, or missing result, inspect partial changes before
-resuming. Report the useful result, validation, and material limitations to the user.
+Resume when a concrete counterexample or clarified contract gives the delegate a
+bounded correction. Send the failing input, actual result, expected behavior, and
+required regression check to the captured session with the same explicit model.
+Stop implementation retries when the same failure recurs without useful progress,
+progress depends on an unresolved contract decision, or review and rework outweigh
+the remaining edit. Take over that part or separate out a concrete investigation.
+Respect a user-requested cutoff. If edits and checks have finished but the final
+response stalls without useful progress, use the user's cost priority to decide
+whether to end that run.
+Follow the owned-process shutdown procedure in [runner.md](references/runner.md).
+Preserve its interrupted status; partial changes can be accepted only after independent
+verification. Confirm the run has stopped before taking over its files. Do not substitute
+a provider or expand permissions to keep delegation going.
+
+Report the model/session, useful changes, caller verification, and remaining limits.
+Keep raw evidence local and record only necessary, non-sensitive provenance. Do not
+claim time or cost savings without comparable measurements. Distinguish work delegated,
+caller effort, reported usage, and actual billing.
 Commit, push, or install only when the user requested it or existing authorization covers it.
-
-## Sources and validation
-
-Inspired by [amElnagdy/delegate-skills: opencode-delegate](https://github.com/amElnagdy/delegate-skills/tree/b781ee2e23089630e2fbee1cfd6174afe4edeb76/skills/opencode-delegate).
-The brief → captured run → independent review flow is retained; this implementation
-has no fleet-skill dependency, requires an explicit model on every call, and keeps
-automatic permission approval opt-in. See [references/runner.md](references/runner.md)
-for the verified CLI version and model trial.
