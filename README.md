@@ -9,6 +9,7 @@ Claude Code 用のスキルとプラグイン。
 | **codebase-investigator** | リポジトリの網羅的静的調査。アーキテクチャレビュー、技術的負債評価、オンボーディング |
 | **constraint-as-output** | 成果物の代わりに制約セット（CaO）を生成。shape/invariants/deny/bounds で出力空間を定義 |
 | **debug-mode** | 構造化されたprintf デバッグ。仮説生成→計装→ログ分析→verdict のワークフロー |
+| **devin-delegate** | Devin ACPに明示モデルで委譲。承認・中断・再開と実行証拠の保存を支援 |
 | **deep-research** | Web検索を活用した多層リサーチ。9層の因果構造フレームワークで表層から根本要因まで分析 |
 | **emergent-engine** | 創発的LLM実行環境。allow/deny list で出力を制御し、入力に存在しない新規の跳躍のみを出力 |
 | **godoku** | 誤読による創造的変形。入力テキストを構造的に誤読し、歪みの幾何学から新規の創造物を生成 |

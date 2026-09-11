@@ -1,0 +1,67 @@
+{
+  "checkedAt": "2026-09-11",
+  "cliVersion": "3000.10.21",
+  "model": "swe-2-max",
+  "billingCost": null,
+  "protocolChecks": {
+    "newSession": true,
+    "fixedResponse": true,
+    "denyPreventedWrite": true,
+    "allowOnceFileVerified": true,
+    "loadRecalledMarker": true,
+    "cancelStopReason": "cancelled",
+    "cancelSeconds": 0.008113207994028926,
+    "lateWriteAbsentAfter17Seconds": true
+  },
+  "runnerChecks": [
+    {
+      "sessionId": "vigorous-twist",
+      "requestedModel": "swe-2-max",
+      "reportedModel": "SWE-2 Max",
+      "status": "turn_completed",
+      "stopReason": "end_turn",
+      "elapsedSeconds": 9.434,
+      "config": {
+        "mode": "accept-edits",
+        "model": "swe-2-max"
+      },
+      "usage": {
+        "totalTokens": 22476,
+        "inputTokens": 22440,
+        "outputTokens": 36,
+        "cachedReadTokens": 22273
+      },
+      "cleanupErrors": [
+        "[Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "sessionId": "vigorous-twist",
+      "requestedModel": "swe-2-max",
+      "reportedModel": "SWE-2 Max",
+      "status": "turn_completed",
+      "stopReason": "end_turn",
+      "elapsedSeconds": 8.02,
+      "config": {
+        "mode": "ask",
+        "model": "swe-2-max"
+      },
+      "usage": {
+        "totalTokens": 17900,
+        "inputTokens": 17833,
+        "outputTokens": 67
+      },
+      "cleanupErrors": [
+        "[Errno 1] Operation not permitted"
+      ]
+    }
+  ],
+  "rawEvidenceSha256": {
+    "approve-cancel.jsonl": "5afa600c5dc806afaf438c4e8914e5ba2e4ef376a79149e1cb03632b10f8be6c",
+    "turns.jsonl": "3ee3ef5ca8fe71fbbb0b8072202e84681d4ad4d2cfdd676b3f4903371cf74a5e",
+    "handshake.jsonl": "da60007e48abc4ef0a3e597f8d6f7ee082acf0ecd865f4f1924e9f25f79d532e",
+    "reload.jsonl": "9ddb5d89169c66b0ce72638396ceee09a6278b8c3ee10187b3bde033b4d7d3b4",
+    "evidence/devin-acp-gsee80fh/events.jsonl": "b127d2f87836a38e5dac6cde02c14197aed20c6d09c8757a4f427e94066c5223",
+    "evidence/devin-acp-gtnpr18f/events.jsonl": "3402aee1bf2c34ecb9ff6644ac487a953d9c3e3df86cf5ddd023b829294213ef"
+  }
+}

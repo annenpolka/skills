@@ -1,0 +1,54 @@
+{
+  "checkedAt": "2026-09-11",
+  "cliVersion": "3000.10.21 (611c1cba)",
+  "scope": "Fixed response, explicit resume and one-file sandbox write; not a coding benchmark or security isolation audit",
+  "runs": [
+    {
+      "run": "devin-delegate-cie812a_",
+      "sessionId": "turquoise-brie",
+      "models": [
+        "swe-2-medium"
+      ],
+      "usage": {
+        "total_prompt_tokens": 23218,
+        "total_completion_tokens": 28,
+        "total_cached_tokens": 1755,
+        "total_steps": 10
+      },
+      "exportSha256": "beaa463a5503d11ca12ca5a4652047dad78ba6c3f3141841b7a05c2660c23910"
+    },
+    {
+      "run": "devin-delegate-nkjtwwna",
+      "sessionId": "turquoise-brie",
+      "models": [
+        "swe-2-medium"
+      ],
+      "usage": {
+        "total_prompt_tokens": 46515,
+        "total_completion_tokens": 52,
+        "total_cached_tokens": 1755,
+        "total_steps": 12
+      },
+      "exportSha256": "f6ec047a0d268f973875d3d82721514f6b1e12ab77c3bb1a8b034132be4c6980"
+    },
+    {
+      "run": "devin-delegate-uto65wm0",
+      "sessionId": "pickle-flare",
+      "models": [
+        "swe-2-medium"
+      ],
+      "usage": {
+        "total_prompt_tokens": 47527,
+        "total_completion_tokens": 109,
+        "total_cached_tokens": 30305,
+        "total_steps": 12
+      },
+      "exportSha256": "b6c62b1929d3d14f9a67db0bb126c5a5779973bd856787b5046477d59b786a42"
+    }
+  ],
+  "fileWriteCheck": {
+    "expected": "forty-two\\n",
+    "passed": true
+  },
+  "billingCost": null
+}

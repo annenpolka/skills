@@ -1,0 +1,4 @@
+interface:
+  display_name: "Devin Delegate"
+  short_description: "Delegate to Devin with model and session evidence"
+  default_prompt: "Use $devin-delegate to delegate this task to Devin and verify its result."
