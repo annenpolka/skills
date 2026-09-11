@@ -185,9 +185,10 @@ def main(argv=None):
     p.add_argument('--brief', required=True)
     p.add_argument('--model', default='swe-2-max')
     p.add_argument('--session')
-    p.add_argument('--mode', choices=['ask', 'accept-edits', 'smart', 'plan'], default='accept-edits')
+    p.add_argument('--mode', choices=['ask', 'accept-edits', 'smart', 'plan'], default='smart')
     p.add_argument('--allow-commands', help='JSON array of exact authorized shell command strings')
-    p.add_argument('--timeout', type=float, default=1800)
+    p.add_argument('--timeout', type=float, default=1800,
+                   help='Wall seconds for one prompt, not an idle timeout or spending cap (default: 1800)')
     p.add_argument('--output-root')
     args = p.parse_args(argv)
     if os.name != 'posix' or not math.isfinite(args.timeout) or args.timeout <= 0:
@@ -206,6 +207,7 @@ def main(argv=None):
     os.chmod(run, 0o700)
     (run/'brief.txt').write_text(brief)
     result = {'status': 'starting', 'transport': 'acp', 'requestedModel': args.model,
+              'requestedMode': args.mode, 'promptTimeoutSeconds': args.timeout,
               'sessionId': args.session, 'verification': 'not_performed', 'cost': None,
               'gitBefore': snapshot(cwd), 'artifacts': str(run), 'cwd': str(cwd)}
     write_result(run/'result.json', result)
