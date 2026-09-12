@@ -21,6 +21,7 @@ Claude Code 用のスキルとプラグイン。
 | **preact-zero-mock** | Preact + HTM でゼロビルドWebモック。npm不要、ブラウザで直接開けるプロトタイプ |
 | **sanitize-artifacts** | 生成成果物からプロンプト履歴・制作制約・修正痕跡を除去し、会話なしで成立する一貫した最終成果物へ再構成 |
 | **spec-interview** | 仕様書インタビュー。AskUserQuestion で仕様を対話的に明確化・拡充 |
+| **speculative-research** | 構想を調査台帳へ蓄積。Devin／DeepSeekの相互レビュー、原本からの引用生成、同session訂正と親の受入を支援 |
 | **syntax-reference** | 文体DNA抽出・再現。12の構造層で文体をYAML符号化し、LLMによる高精度な文体模倣を実現 |
 | **ui-exploration** | 基準画像と制御された複数案を比較し、人間の視覚判断でUIを反復改善 |
 

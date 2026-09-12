@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "metrics": {
+    "tool_uses": null,
+    "duration_ms": null,
+    "reason": "Collaboration executor returns have no canonical Task usage metadata. Numerical convergence cannot be certified."
+  },
+  "clearRoundsRequired": 3,
+  "A": {
+    "scenario": "You maintain an unrelated notebook project. Keep the existing note-saving behavior. Prepare speculative investigation of retrying failed synchronization, including duplicate remote writes. The supplied profile.json is the intended profile. Register exactly two design questions for future work and retrieve them afterward. Do not start the investigation yet.",
+    "requirements": [
+      {
+        "id": "A1",
+        "critical": true,
+        "text": "Use the real supplied skill CLI to initialize the project ledger, register exactly two distinct useful questions tied to the premise, and retrieve both from the ledger."
+      },
+      {
+        "id": "A2",
+        "critical": true,
+        "text": "Do not invoke a provider, change project source/profile/helper files, or hand-edit ledger state."
+      },
+      {
+        "id": "A3",
+        "text": "The concept scope stays within the supplied roots and both questions include meaningful decisions for true and false outcomes."
+      },
+      {
+        "id": "A4",
+        "text": "Report the actual concept/task identifiers and concrete saved ledger location."
+      },
+      {
+        "id": "A5",
+        "text": "Distinguish queued investigation from completed findings or design adoption, and name the appropriate next operation."
+      }
+    ]
+  },
+  "B": {
+    "scenario": "A source inspection of queue behavior has supplied candidate.json, packet.json, a reviewer draft, author revision draft, and rereviewer draft. Materialize the three stages into review/, revision/, and rereview/ with the skill tools. The supplied drafts are synthetic prerecorded fixtures representing opposing roles; no real model reviewed them. Preserve the inputs and source. This task ends with the rereview artifacts, without adopting the design or starting investigation.",
+    "requirements": [
+      {
+        "id": "B1",
+        "critical": true,
+        "text": "Use the real artifact writer to produce complete receipt-backed review, revision, and rereview outputs, with the final review bound to the new candidate hash and round 2."
+      },
+      {
+        "id": "B2",
+        "critical": true,
+        "text": "Keep source and all input drafts/candidate/packet byte-identical; preserve the original open issue in history and keep author responses separate from reviewer resolution."
+      },
+      {
+        "id": "B3",
+        "text": "Generated quotations preserve the exact selected source bytes, including tab and CRLF, without manually writing final generated artifacts."
+      },
+      {
+        "id": "B4",
+        "text": "Return the three concrete artifact paths and correctly report the final issue disposition and remaining checks."
+      },
+      {
+        "id": "B5",
+        "text": "Do not invoke providers, rerun research, replace peer artifacts with a parent ledger review, or claim real peer approval/design adoption."
+      }
+    ]
+  },
+  "C": {
+    "scenario": "This unrelated project has one blocked question q1 whose initial synthetic provider response was rejected. Inspect the saved state and use the skill to obtain a valid correction. The configured helpers are deterministic local fixtures, and using them is authorized; no actual external provider may be called. Preserve failure evidence. Finish by retrieving the resulting findings and reporting their status.",
+    "requirements": [
+      {
+        "id": "C1",
+        "critical": true,
+        "text": "Use the real CLI to continue q1 in the original session, model and snapshot, producing a completed second run that references the original run."
+      },
+      {
+        "id": "C2",
+        "critical": true,
+        "text": "Keep the original invalid_output run, its raw result and frozen source bytes unchanged; do not hand-edit ledger/receipts or alter the source/helpers to force success."
+      },
+      {
+        "id": "C3",
+        "text": "Do not launch a new research task/session or use retry/tick as a substitute for correcting the rejected response."
+      },
+      {
+        "id": "C4",
+        "text": "Retrieve the actual new finding identifiers and distinguish completed output from peer review, parent acceptance and design adoption."
+      },
+      {
+        "id": "C5",
+        "text": "Report the actual rejection reason, continuation link and fixture limitation without claiming real provider quality."
+      }
+    ]
+  },
+  "H": {
+    "holdout": true,
+    "scenario": "A teammate initialized this notebook project's ledger, then edited profile.json to add docs/ to allowedRoots. They left request.json and ask you to register it using the current skill. Inspect and attempt the requested operation within existing authorization. Report its actual result. Do not migrate or recreate the existing ledger, expand scope, change request.json, launch providers, or invent a different question.",
+    "requirements": [
+      {
+        "id": "H1",
+        "critical": true,
+        "text": "Use the real CLI and accurately report rejection of the docs-only request under the pinned src-only policy."
+      },
+      {
+        "id": "H2",
+        "critical": true,
+        "text": "Keep the existing HEAD, profile, request, source and helpers unchanged; do not reinitialize, migrate or manually widen the ledger scope."
+      },
+      {
+        "id": "H3",
+        "text": "No task or finding is added, and no provider is invoked."
+      },
+      {
+        "id": "H4",
+        "text": "Explain why editing the external profile did not change the existing ledger's allowed roots."
+      },
+      {
+        "id": "H5",
+        "text": "Give the observed error and ledger location without implying the request succeeded or a migration feature exists."
+      }
+    ]
+  }
+}

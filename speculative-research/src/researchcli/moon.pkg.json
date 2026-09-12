@@ -1,0 +1,1 @@
+{"import":["portable/research/io","portable/research/research","portable/research/researchartifacts","moonbitlang/core/json"],"link":{"js":{"exports":["run_cli"],"format":"esm"}}}

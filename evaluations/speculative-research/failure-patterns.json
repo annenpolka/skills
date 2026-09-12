@@ -1,0 +1,110 @@
+{
+  "skill": "speculative-research",
+  "patterns": [
+    {
+      "name": "Capability advertised without an operational path",
+      "seenIn": [
+        "iteration0-static"
+      ],
+      "example": "description claimed improvement but body did not provide the workflow",
+      "generalFixRule": "Supply a bounded operational path for each advertised capability, or narrow the description",
+      "fix": "Observe friction; fix scope/acceptance; delegate author/opposite review/repair; parent acceptance; integrate after shutdown",
+      "requirementsAddressed": "Iteration 0 description/body consistency (static, not a behavioral clear round)",
+      "fixStatus": "verified-static-and-final-workflow-cases"
+    },
+    {
+      "name": "Fresh session inside an inherited instruction tree",
+      "seenIn": [
+        "iter1-diagnostic"
+      ],
+      "example": "Fresh OpenCode sessions were underneath Runeweave; --pure did not suppress ancestor AGENTS loading, confounding no-git deviations",
+      "generalFixRule": "Verify automatic instruction sources and launch isolated sessions outside the project with supported suppression flags; new session IDs alone are insufficient",
+      "fix": "Clean baseline rerun outside Runeweave with three verified instruction-suppression flags; fixed scenarios unchanged",
+      "requirementsAddressed": "Empirical blank-slate invocation contract, not a new checklist requirement",
+      "category": "evaluation-harness",
+      "fixStatus": "corrected-isolation-for-clean-cohorts-and-holdout"
+    },
+    {
+      "name": "Search and status labels without exact result semantics",
+      "seenIn": [
+        "iter1-diagnostic",
+        "clean1",
+        "clean2-documented-wishes-rejected"
+      ],
+      "example": "Concept-id query returned empty; constant revalidation flag and peerExport completion were misread",
+      "generalFixRule": "Document searchable fields, exact keys, bounds and each result annotation separately from validation/adoption state",
+      "requirementsAddressed": [
+        "A1",
+        "A5",
+        "C4"
+      ],
+      "fixStatus": "verified-clean2-through-clean5-with-parent-rejection-of-documented-feature-wishes",
+      "fix": "Document search fields, caps, constant annotations and separate parent/peer artifacts; four static-review corrections retained."
+    },
+    {
+      "name": "Lifecycle stage names without artifact handoff mapping",
+      "seenIn": [
+        "iter1-diagnostic",
+        "clean1",
+        "clean2"
+      ],
+      "example": "Rereview has no own verb; remainingChecks locations and continuation directory wording required interpretation; B4 reported a real draft value without identifying its source artifact",
+      "generalFixRule": "Map each lifecycle stage to exact input/output identities and preserve independent author/reviewer histories",
+      "requirementsAddressed": [
+        "B1",
+        "B4",
+        "C1",
+        "C2"
+      ],
+      "fixStatus": "verified-three-consecutive-clean3-clean4-clean5-cohorts",
+      "fix": "Operation selection first; complete review/revise/review file handoff; distinct remaining-check and receipt sources; same-session correction creates new immutable-history-linked run."
+    },
+    {
+      "name": "Detailed contract narrowed but summaries remain universal",
+      "seenIn": [
+        "search-semantics-v1",
+        "search-semantics-v2",
+        "artifact-handoff-v1",
+        "artifact-handoff-v3"
+      ],
+      "example": "Concept-ID incidental matches, already reviewed records, and review-list bounds were overgeneralized; old basicflow contradicted new retrieval guidance",
+      "generalFixRule": "Check summaries and examples against counterexamples as well as the detailed field contract; agreement does not replace parent consistency checks",
+      "requirementsAddressed": [
+        "A1",
+        "A5",
+        "C4"
+      ],
+      "fix": "Same author/reviewer repaired H1 output paths, H2 prerequisite ordering and Node/cwd exemption, H3 generated versus issue/reference IDs, H4 arbitrary review round; parent accepted v5 receipt clarification.",
+      "fixStatus": "resolved-static"
+    },
+    {
+      "name": "Prerequisites applied before selecting the requested operation",
+      "seenIn": [
+        "clean2"
+      ],
+      "example": "A invoked a prohibited Git version probe although registration did not need snapshot provenance",
+      "generalFixRule": "Choose the operation first, then apply only needed prerequisites within the task command restrictions",
+      "requirementsAddressed": [
+        "B5",
+        "unchanged execution protocol"
+      ],
+      "fixStatus": "operation-selection-verified-harmless-probes-nonblocking-by-explicit-user-policy",
+      "fix": "Operation selection first; complete review/revise/review file handoff; distinct remaining-check and receipt sources; same-session correction creates new immutable-history-linked run.",
+      "outcome": "Standalone writer workflow passes. Version probes still occurred; do not claim the documentation eliminated them. Parent checked actual effects and retained literal deviations under user intent."
+    },
+    {
+      "name": "Concurrent CLI initialization contends on shared session storage",
+      "category": "evaluation-harness",
+      "seenIn": [
+        "clean3-startup"
+      ],
+      "example": "Two simultaneous OpenCode launches exited before session creation with database is locked; zero events and unchanged fixture bytes.",
+      "generalFixRule": "Separate transport startup failures from instruction execution and preserve them; stagger shared CLI initialization while retaining fresh sessions and overlapping independent work.",
+      "fix": "Five-second startup stagger authorized after byte/session checks; failed outputs preserved; no model or global configuration substitution.",
+      "fixStatus": "two-startup-failures-preserved-fresh-relaunches-and-later-staggered-cohorts-completed",
+      "limits": "Observed startup recovery only; not a universal concurrency guarantee. No session or fixture mutation occurred before failed launches."
+    }
+  ],
+  "unresolvedTargetPatterns": [],
+  "interpretation": "Raw reflections include documented limitations, scenario questions and hypothetical runtime features. Parent classifies actionable target defects using fixed requirements and actual evidence; every reflection is not automatically a missing instruction."
+}

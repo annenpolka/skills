@@ -1,0 +1,1 @@
+{"import":["portable/research/io","moonbitlang/core/json","moonbitlang/core/ref"],"link":{"js":{"exports":["run_process_json"],"format":"esm"}}}

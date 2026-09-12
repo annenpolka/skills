@@ -1,0 +1,468 @@
+{
+  "schemaVersion": 1,
+  "target": "speculative-research",
+  "executor": "opencode-go/deepseek-v4.1-flash",
+  "reviewer": "Devin swe-2-max/ask",
+  "method": "Fresh external agent sessions; opposite-provider review followed by parent checks.",
+  "canonicalTaskMetrics": {
+    "tool_uses": null,
+    "duration_ms": null
+  },
+  "canonicalNumericalConvergence": false,
+  "qualitativeClearRounds": 3,
+  "holdoutPassed": true,
+  "limitations": [
+    "Collaboration agent capacity was exhausted; independent new CLI sessions were used.",
+    "The first diagnostic cohort may have inherited ancestor instructions and does not count toward clear rounds.",
+    "Clean cohorts run outside the project with automatic project, Claude and external-skill instruction loading disabled.",
+    "Synthetic local inner providers and prerecorded peer drafts measure skill operation, not real provider research quality.",
+    "Canonical Task usage metadata is unavailable; strict numerical convergence is not certified."
+  ],
+  "rounds": [
+    {
+      "round": "iter1",
+      "classification": "diagnostic_confounded",
+      "candidate": "iteration0",
+      "checklist": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "A1": "○",
+            "A2": "○",
+            "A3": "○",
+            "A4": "○",
+            "A5": "○"
+          }
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "B1": "○",
+            "B2": "○",
+            "B3": "○",
+            "B4": "○",
+            "B5": "○"
+          }
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "C1": "○",
+            "C2": "○",
+            "C3": "○",
+            "C4": "○",
+            "C5": "○"
+          }
+        }
+      },
+      "canonicalTaskMetrics": {
+        "tool_uses": null,
+        "duration_ms": null
+      },
+      "protocolViolations": [
+        "A: git --version",
+        "C: git status --short"
+      ],
+      "attributionLimit": "Potential inherited Runeweave AGENTS instruction context; cannot isolate target skill effects. Do not count as a clear round.",
+      "targetAmbiguities": [
+        "requiresRevalidation is unconditional at envelope and finding level, independently of freshness/reviews",
+        "peerExport completion identifies packet export, not peer review completion"
+      ],
+      "otherReflections": [
+        "Scenario root interpretation already says use workspace as cwd",
+        "Rereview maps to review with revised inputs",
+        "Revision remainingChecks is preserved in draft.json, not only stdout",
+        "Run vs session and synthetic language are already scoped distinctions"
+      ],
+      "parentAcceptance": "Artifacts meet all 15 fixed requirements; representative receipt and protected-byte checks recomputed. Execution protocol and causal attribution limitations remain.",
+      "clearRoundCount": 0,
+      "next": "Repeat unchanged candidate with isolated instruction loading before selecting a prompt fix."
+    },
+    {
+      "round": "clean1",
+      "classification": "valid_baseline",
+      "candidate": "iteration0",
+      "checklist": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "A1": "○",
+            "A2": "○",
+            "A3": "○",
+            "A4": "○",
+            "A5": "○"
+          }
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "B1": "○",
+            "B2": "○",
+            "B3": "○",
+            "B4": "○",
+            "B5": "○"
+          }
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "C1": "○",
+            "C2": "○",
+            "C3": "○",
+            "C4": "○",
+            "C5": "○"
+          }
+        }
+      },
+      "canonicalTaskMetrics": {
+        "tool_uses": null,
+        "duration_ms": null
+      },
+      "retries": {
+        "A": 1,
+        "B": 0,
+        "C": 0
+      },
+      "protocolViolations": [],
+      "targetAmbiguities": [
+        "Undocumented query search fields, exact-ID matching, cap and result annotations",
+        "Standalone artifact flow, rereview mapping and distinct remainingChecks sources",
+        "Continuation run identity wording and peerExport completion meaning"
+      ],
+      "parentAcceptance": "All 15 requirements supported by independent reviewer and parent mechanical checks. Self-report query tokenization inference corrected from source; peer artifacts and parent ledger reviews remain distinct.",
+      "clearRoundCount": 0,
+      "nextTheme": "search/result interpretation tied to A1/A5/C4; defer artifact workflow/continuation wording to next iteration"
+    },
+    {
+      "round": "clean2",
+      "classification": "valid_improvement_with_unresolved_gaps",
+      "candidate": "search-semantics-v3",
+      "checklist": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "A1": "○",
+            "A2": "○",
+            "A3": "○",
+            "A4": "○",
+            "A5": "○"
+          }
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 90,
+          "items": {
+            "B1": "○",
+            "B2": "○",
+            "B3": "○",
+            "B4": "partial",
+            "B5": "○"
+          }
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "C1": "○",
+            "C2": "○",
+            "C3": "○",
+            "C4": "○",
+            "C5": "○"
+          }
+        }
+      },
+      "canonicalTaskMetrics": {
+        "tool_uses": null,
+        "duration_ms": null
+      },
+      "retries": {
+        "A": 0,
+        "B": 0,
+        "C": 0
+      },
+      "protocolViolations": [
+        "A invoked git --version despite the fixed no-git protocol; read-only output did not modify protected bytes."
+      ],
+      "targetAmbiguities": [
+        "Operation-specific prerequisites were applied too broadly",
+        "Artifact handoff and exact remaining-check source paths",
+        "Continuation task ID and new-run directory wording"
+      ],
+      "parentAcceptance": "All critical items pass. B4 remains partial: caller behavior is verified in revision/draft.json, but the report labels it as revision top-level without its source path. Original reviewer missed A Git execution; same reviewer corrected it and narrowed B4. Parent independently recomputed protected bytes, three receipts, quote bytes, run linkage and session/model/snapshot identity. All failures and reviews retained.",
+      "clearRoundCount": 0,
+      "nextTheme": "Operation-specific entrypoints and artifact handoff tied to B1/B2/B4/B5/C1/C2 and unchanged execution protocol.",
+      "rejectedSelfReportInferences": [
+        "A retry is absent from title is contradicted by Retrying in the title under documented ASCII substring matching.",
+        "Dedicated concept-ID navigation and peerExport renaming are feature wishes; documented task-ID/result semantics already support the requested operations."
+      ]
+    },
+    {
+      "round": "clean3",
+      "classification": "qualitative_clear_with_nonblocking_observations",
+      "candidate": "artifact-handoff-v5",
+      "checklist": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "A1": "○",
+            "A2": "○",
+            "A3": "○",
+            "A4": "○",
+            "A5": "○"
+          }
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "B1": "○",
+            "B2": "○",
+            "B3": "○",
+            "B4": "○",
+            "B5": "○"
+          }
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "C1": "○",
+            "C2": "○",
+            "C3": "○",
+            "C4": "○",
+            "C5": "○"
+          }
+        }
+      },
+      "canonicalTaskMetrics": {
+        "tool_uses": null,
+        "duration_ms": null
+      },
+      "retries": {
+        "A": 0,
+        "B": 0,
+        "C": 0
+      },
+      "protocolViolations": [
+        "C executed git --version under the original no-git instruction; verified harmless and nonblocking under the subsequent explicit user instruction."
+      ],
+      "targetAmbiguities": [],
+      "parentAcceptance": "All 15 fixed artifact requirements pass, including B4 exact remaining-check source identity. Parent mechanical checks pass A13/B14/C28. Raw self-reports and peer comments retained. User explicitly permits intrinsically harmless command probes; no protected bytes, research scope or evidence changed. Formatting aliases do not replace independent canonical parent grades. Documented receipt/author-response/query rules address repeated reflections; naming a next action does not execute it, source scope applies to concept.scope, and original-run preservation is distinct from the expected new ledger generation.",
+      "clearRoundCount": 1,
+      "nextTheme": "Keep the exact candidate and execute clean4/clean5; do not patch hypothetical feature wishes or harmless probes into the skill.",
+      "rejectedSelfReportInferences": [
+        "B receipt-null and author/reviewer state distinctions are already explicitly documented in v5.",
+        "A exact task-ID query is documented; alternative concept-ID navigation is a feature wish.",
+        "C fixture/checklist ID namespace observation concerns the evaluation harness; its overlapping conditions do not contradict the fixed checklist.",
+        "Source-scope validation of concept.scope does not prohibit an authorized scratch add-input file; preserving the old run does not freeze ledger HEAD or the new run."
+      ],
+      "reportFormattingNotes": [
+        "A used pass and B used OK instead of the requested grade symbols; raw reports were not repaired.",
+        "C represented retries as a one-item list; the reported count remains zero."
+      ],
+      "transportStartupFailures": {
+        "count": 2,
+        "reason": "Shared OpenCode database lock before session creation",
+        "sessionCreated": false,
+        "workspaceBytesUnchanged": true,
+        "recovery": "Fresh A/B output directories with five-second launch stagger; original failures retained."
+      },
+      "acceptancePolicyUpdate": {
+        "source": "Explicit user instruction during this task",
+        "policy": "Intrinsically harmless command probes are nonblocking; modifications, disclosures, evidence contamination and scope escapes remain material.",
+        "fixedArtifactChecklistChanged": false
+      }
+    },
+    {
+      "round": "clean4",
+      "classification": "qualitative_clear",
+      "candidate": "artifact-handoff-v5",
+      "checklist": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "A1": "○",
+            "A2": "○",
+            "A3": "○",
+            "A4": "○",
+            "A5": "○"
+          }
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "B1": "○",
+            "B2": "○",
+            "B3": "○",
+            "B4": "○",
+            "B5": "○"
+          }
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "C1": "○",
+            "C2": "○",
+            "C3": "○",
+            "C4": "○",
+            "C5": "○"
+          }
+        }
+      },
+      "canonicalTaskMetrics": {
+        "tool_uses": null,
+        "duration_ms": null
+      },
+      "retries": {
+        "A": 0,
+        "B": 0,
+        "C": 0
+      },
+      "protocolViolations": [
+        "C git --version is a verified harmless read-only probe and is nonblocking under explicit user instruction."
+      ],
+      "targetAmbiguities": [],
+      "parentAcceptance": "All15 fixed requirements pass; parent A13/B14/C28 checks pass. Independent peer verified actual stage/ID/field projections and read accepted documentation to distinguish residual caution from target defects. Parent read reports and peer verdict; C synthetic classification/limitations are present in the original fixture manifest, closing the reviewer truncated-query view limit. No new actionable target ambiguity.",
+      "clearRoundCount": 2,
+      "nextTheme": "Keep the exact candidate and execute clean4/clean5; do not patch hypothetical feature wishes or harmless probes into the skill.",
+      "rejectedSelfReportInferences": [
+        "Documented default ledger path, argument inheritance, continuation linkage, receipt-null, review binding and peer-export semantics remain unchanged and were correctly applied.",
+        "Concept cardinality and output directory questions concern fixture choices; executors used the supplied schema/destinations and preserved all inputs."
+      ],
+      "reportFormattingNotes": [],
+      "transportStartupFailures": {
+        "count": 0
+      },
+      "acceptancePolicyUpdate": {
+        "source": "Explicit user instruction during this task",
+        "policy": "Intrinsically harmless command probes are nonblocking; modifications, disclosures, evidence contamination and scope escapes remain material.",
+        "fixedArtifactChecklistChanged": false
+      }
+    },
+    {
+      "round": "clean5",
+      "classification": "qualitative_clear",
+      "candidate": "artifact-handoff-v5",
+      "checklist": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "A1": "○",
+            "A2": "○",
+            "A3": "○",
+            "A4": "○",
+            "A5": "○"
+          }
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "B1": "○",
+            "B2": "○",
+            "B3": "○",
+            "B4": "○",
+            "B5": "○"
+          }
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "C1": "○",
+            "C2": "○",
+            "C3": "○",
+            "C4": "○",
+            "C5": "○"
+          }
+        }
+      },
+      "canonicalTaskMetrics": {
+        "tool_uses": null,
+        "duration_ms": null
+      },
+      "retries": {
+        "A": 0,
+        "B": 0,
+        "C": 0
+      },
+      "protocolViolations": [
+        "A git --version is a harmless probe under explicit user instruction.",
+        "C used its OpenCode local temp directory for generated checksum lists and CLI output, outside the fixture workspace; bounded inspection found no material impact, and the original deviation is retained."
+      ],
+      "targetAmbiguities": [],
+      "parentAcceptance": "All15 fixed requirements pass; root A13/B14/C28 checks pass. Parent read peer and raw self-reports, checked the three generated temp files, and distinguishes expected ledger HEAD changes from preserved original-run bytes. No new actionable target defect. Documented concept-ID limitations and scenario conventions do not warrant a target edit.",
+      "clearRoundCount": 3,
+      "nextTheme": "Keep exact candidate and run the untouched holdout.",
+      "rejectedSelfReportInferences": [
+        "Concept-ID navigation is explicitly documented as unavailable; reviewer surface-gap inference rejected using commands.md.",
+        "Fixture requirement-ID overlap, output-path example choices and stopping-point questions were correctly resolved within the unchanged task.",
+        "Peer wording implying every baseline hash row unchanged is too broad: HEAD advances normally; independent checks establish exact original run/snapshot preservation."
+      ],
+      "reportFormattingNotes": [],
+      "transportStartupFailures": {
+        "count": 0
+      },
+      "acceptancePolicyUpdate": {
+        "source": "Explicit user instruction during this task",
+        "policy": "Intrinsically harmless command probes are nonblocking; modifications, disclosures, evidence contamination and scope escapes remain material.",
+        "fixedArtifactChecklistChanged": false
+      }
+    },
+    {
+      "round": "holdout",
+      "classification": "holdout_passed",
+      "candidate": "artifact-handoff-v5",
+      "checklist": {
+        "H": {
+          "success": "○",
+          "accuracy": 100,
+          "items": {
+            "H1": "○",
+            "H2": "○",
+            "H3": "○",
+            "H4": "○",
+            "H5": "○"
+          }
+        }
+      },
+      "canonicalTaskMetrics": {
+        "tool_uses": null,
+        "duration_ms": null
+      },
+      "retries": {
+        "H": 0
+      },
+      "protocolViolations": [
+        "Harmless git --version probe retained under explicit user policy."
+      ],
+      "targetAmbiguities": [],
+      "parentAcceptance": "All five fixed H requirements pass. Parent independently hashed all initial files and final/frozen workspace, inspected the real rejection with captured CLI exit 1, pinned src-only policy, docs-only request and widened external profile; no concepts/tasks/findings/runs/reviews added and no provider call in trace. The CLI-created released-lock artifact is disclosed and preserves every initial byte.",
+      "clearRoundCount": 3,
+      "rejectedSelfReportInferences": [
+        "Lock lifecycle artifact is a disclosed expected CLI effect, not prohibited scope widening or state recreation.",
+        "More detailed scope error text is a runtime feature request; existing profile reference already explains pinning."
+      ],
+      "reportCorrections": [
+        "Deliverable labels generation hash as HEAD hash; parent records the distinct actual hashes. Correct ledger location, rejection and unchanged HEAD are independently verified."
+      ],
+      "nextTheme": "Publish and install the accepted immutable candidate.",
+      "viewLimits": [
+        "This single holdout verifies add refusal under pinned roots; no general all-verb proof or real provider quality claim.",
+        "Canonical Task metrics remain unavailable."
+      ]
+    }
+  ]
+}
