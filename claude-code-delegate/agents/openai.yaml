@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude Code Delegate"
+  short_description: "Delegate to Claude Code with model and session evidence"
+  default_prompt: "Use $claude-code-delegate to delegate this task to Claude Code and verify its result."

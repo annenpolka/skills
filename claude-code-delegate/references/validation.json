@@ -1,0 +1,129 @@
+{
+  "checkedAt": "2026-09-15",
+  "cliVersion": "2.1.272 (Claude Code)",
+  "environment": {
+    "os": "macOS",
+    "authMethod": "claude.ai (Pro subscription)",
+    "apiKeySource": "none",
+    "workspace": "empty scratch directory",
+    "model": "claude-haiku-4-5-20251001 (requested as --model haiku)"
+  },
+  "scope": "Print-mode contract probes for delegation: success decision, permission denials, resume flag loss, limits, SIGTERM, stream events, flag availability. Not a model-quality, cost, or security-isolation audit.",
+  "probes": [
+    {
+      "id": "p1",
+      "intent": "Baseline json output fields",
+      "command": "claude -p '<reply OK>' --model haiku --output-format json",
+      "observed": "exit 0; subtype success; is_error false; num_turns 1; permission_denials []; modelUsage key claude-haiku-4-5-20251001; total_cost_usd 0.0236831; usage includes cache fields but excludes subagents"
+    },
+    {
+      "id": "p2",
+      "intent": "Write request in default (Manual) mode with no approval host",
+      "command": "claude -p '<create a file>' --model haiku --output-format json",
+      "observed": "exit 0; subtype success; is_error false; permission_denials [Write]; file not created"
+    },
+    {
+      "id": "p3",
+      "intent": "Write request with acceptEdits",
+      "command": "claude -p '<create a file>' --model haiku --permission-mode acceptEdits --output-format json",
+      "observed": "exit 0; subtype success; is_error false; permission_denials []; file created; session id captured for resume probes"
+    },
+    {
+      "id": "p4",
+      "intent": "Resume the p3 session without re-passing flags",
+      "command": "claude -p --resume <p3-session> '<create another file>' --model haiku --output-format json",
+      "observed": "exit 0; subtype success; is_error false; permission_denials [Write]; file not created. The permission mode was not restored"
+    },
+    {
+      "id": "p5",
+      "intent": "Resume the same p3 session with flags re-passed",
+      "command": "claude -p --resume <p3-session> '<create another file>' --model haiku --permission-mode acceptEdits --output-format json",
+      "observed": "exit 0; subtype success; is_error false; permission_denials []; file created"
+    },
+    {
+      "id": "p6",
+      "intent": "Turn limit reached mid-task",
+      "command": "claude -p '<list files with a tool>' --model haiku --max-turns 1 --output-format json",
+      "observed": "exit 1; subtype error_max_turns; is_error true; num_turns 2; result null; terminal_reason max_turns; stop_reason tool_use"
+    },
+    {
+      "id": "p7",
+      "intent": "Reuse an existing session id for a new conversation",
+      "command": "claude -p '<prompt>' --session-id <p3-session> --model haiku --output-format json",
+      "observed": "exit 1; no JSON on stdout; stderr: Error: Session ID <id> is already in use."
+    },
+    {
+      "id": "p8",
+      "intent": "stream-json event shape",
+      "command": "claude -p '<prompt>' --model haiku --output-format stream-json --verbose",
+      "observed": "133 lines; first events are system/hook_started and system/hook_response (SessionStart); system/init reports model claude-haiku-4-5-20251001, permissionMode default, 155 tools, 9 user MCP servers (some needs-auth/pending), 94 slash commands, apiKeySource none; last line is the result message"
+    },
+    {
+      "id": "p9",
+      "intent": "--bare under subscription login without API key",
+      "command": "claude -p '<prompt>' --model haiku --bare --output-format json",
+      "observed": "exit 1; subtype success; is_error true; result 'Not logged in · Please run /login'; ANTHROPIC_API_KEY unset"
+    },
+    {
+      "id": "p10",
+      "intent": "Tiny budget",
+      "command": "claude -p '<write an essay>' --model haiku --max-budget-usd 0.0001 --output-format json",
+      "observed": "exit 1; subtype error_max_budget_usd; is_error true; result null"
+    },
+    {
+      "id": "p11",
+      "intent": "SIGTERM mid-turn, then resume the same session",
+      "command": "claude -p '<sleep via Bash>' --model haiku --session-id <preassigned> --permission-mode acceptEdits --allowedTools 'Bash(sleep *)' ... then kill -TERM",
+      "observed": "SIGTERM: exit 143; result stdout empty. Resume with the preassigned id: exit 0; subtype success; result 'RESUMED-OK'"
+    },
+    {
+      "id": "p13",
+      "intent": "Read-only request in default mode",
+      "command": "claude -p '<read a file and report contents>' --model haiku --output-format json",
+      "observed": "exit 0; subtype success; permission_denials []"
+    },
+    {
+      "id": "p14",
+      "intent": "Bash write in default mode",
+      "command": "claude -p '<run: echo pink > probe-bash.txt>' --model haiku --output-format json",
+      "observed": "exit 0; subtype success; is_error false; permission_denials [Bash, Write]; file not created"
+    },
+    {
+      "id": "p15",
+      "intent": "Resume a nonexistent session id",
+      "command": "claude -p --resume 00000000-0000-0000-0000-000000000000 '<prompt>' --model haiku --output-format json",
+      "observed": "exit 1; no JSON on stdout; stderr: No conversation found with session ID: <id>"
+    },
+    {
+      "id": "p16",
+      "intent": "Flag availability in claude --help",
+      "command": "claude --help | grep <flag> for a fixed list",
+      "observed": "present: --safe-mode, --strict-mcp-config, --setting-sources, --permission-prompts, --fork-session, --json-schema, --max-budget-usd, --effort, --bg, --cloud, --bare, --session-id, --allowedTools, --disallowedTools, --permission-mode; absent from help: --max-turns (still functional in p6). Help does not list every flag"
+    },
+    {
+      "id": "p17",
+      "intent": "Startup permission mode under --safe-mode with no --permission-mode (user settings set permissions.defaultMode = auto)",
+      "command": "claude -p '<reply OK>' --model haiku --safe-mode --output-format stream-json --verbose",
+      "observed": "system/init permissionMode: 'auto'. The same command without --safe-mode reported 'default'. The documented built-in -p default is Manual, so the flag interaction changes the effective startup mode"
+    },
+    {
+      "id": "p18",
+      "intent": "Write request under --safe-mode without --permission-mode on a model that supports auto mode",
+      "command": "claude -p '<create a file>' --model sonnet --safe-mode --output-format json",
+      "observed": "exit 0; subtype success; is_error false; permission_denials []; the file was created with no denial (auto-approved). modelUsage keys: claude-sonnet-5 and claude-haiku-4-5-20251001"
+    },
+    {
+      "id": "p19",
+      "intent": "Control for p18: explicit Manual mode denies the same write",
+      "command": "claude -p '<create a file>' --model sonnet --permission-mode default --output-format json; and the same with --model haiku --safe-mode",
+      "observed": "both exit 0 with permission_denials [Write] and no file created"
+    },
+    {
+      "id": "p20",
+      "intent": "Init shape under --safe-mode versus an unflagged run (load-boundary signal baseline)",
+      "command": "claude -p '<reply OK>' --model haiku --safe-mode --output-format stream-json --verbose; compare with p8",
+      "observed": "safe-mode: mcp_servers 0 (vs 9), tools 29 (vs 155), slash commands 51 (vs 94), skills 16 (vs 56), plugins 5 (vs 5), no hook_started events. The advertised skill and plugin lists persist, so judge suppression from the behavioral signals, not the lists"
+    }
+  ],
+  "billingCost": null
+}

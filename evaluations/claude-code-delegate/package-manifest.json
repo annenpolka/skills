@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "target": "claude-code-delegate",
+  "shippedCandidate": "v11",
+  "shippedAt": "2026-09-15",
+  "skillDir": "claude-code-delegate",
+  "files": {
+    "SKILL.md": "f685413dc8e3854fee389d67dbfddd97d9a583942d116645fd2493c3c457a923",
+    "references/cli-contract.md": "dbae7566d6e3f081f57de04495e5413a6d780b01bdcb31c852b7a8a8fa1e4075",
+    "references/constraints.md": "4296303355f3726c7e515562bf69194b8aaa9474b44388fa2b1705486d460f06",
+    "references/validation.json": "739082b48de96ce40a578afd3b14d06cdc14df40d8a7a66628f9c64d12f510d3",
+    "agents/openai.yaml": "dbed1b601b89306cbdb7b0ab865e8e5bb750beb5fc6fbdae763ecbdac96e9166"
+  },
+  "verification": {
+    "clearRoundsRequired": 3,
+    "clearRoundsAchieved": 3,
+    "holdout": "passed 5/5"
+  },
+  "sourceEvidence": "scratch/deep-research-claude-code-delegation.md (private; not distributed)",
+  "evaluationLimits": [
+    "No canonical Task usage metrics (tool_uses/duration_ms) were available; numerical convergence is not certified.",
+    "The requirements checklist is shown to the executors, so some items can be satisfied without reading the skill.",
+    "Fixtures are small scale; this measures skill operation, not large-project coding quality.",
+    "A harness sanity run left a pre-existing __pycache__ in two workspaces; the executors' baselines included it and no delegated run changed it."
+  ]
+}

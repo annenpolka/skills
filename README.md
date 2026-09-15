@@ -6,6 +6,7 @@ Claude Code 用のスキルとプラグイン。
 
 | Name | Description |
 |------|-------------|
+| **claude-code-delegate** | Claude Code CLI（`claude -p`）に明示モデルで実装・調査・レビューを委譲。JSON結果の検証と session 再開を支援 |
 | **codebase-investigator** | リポジトリの網羅的静的調査。アーキテクチャレビュー、技術的負債評価、オンボーディング |
 | **constraint-as-output** | 成果物の代わりに制約セット（CaO）を生成。shape/invariants/deny/bounds で出力空間を定義 |
 | **debug-mode** | 構造化されたprintf デバッグ。仮説生成→計装→ログ分析→verdict のワークフロー |

@@ -1,0 +1,660 @@
+{
+  "schemaVersion": 1,
+  "target": "claude-code-delegate",
+  "executor": "opencode subagent (general), fresh session per scenario",
+  "reviewer": "parent (independent artifact inspection, file-hash comparison, and acceptance reruns)",
+  "method": "Fixed scenarios and checklists frozen in scenarios.json before dispatch; fresh executor sessions per round; parent-side independent verification of artifacts, tests, and file hashes. Self-reported unclear points are adjudicated by the parent as skill-defect, checklist/harness-attributable, or tool-documentation before they count.",
+  "canonicalTaskMetrics": {
+    "tool_uses": null,
+    "duration_ms": null
+  },
+  "canonicalNumericalConvergence": false,
+  "qualitativeClearRounds": 3,
+  "holdoutPassed": true,
+  "limitations": [
+    "The harness exposes no canonical Task usage metadata (tool_uses/duration_ms); strict numerical convergence is not certified.",
+    "The requirements checklist is shown to the executor by the invocation contract; part of a checklist item can be satisfied from the checklist itself, so qualitative self-reports carry the instruction-side signal.",
+    "Scenario workspaces are small fixtures; they measure skill operation, not coding quality at scale.",
+    "Executors run inside the parent session's repository context; instruction-source isolation was not separately verified.",
+    "iter2 re-ran only A and C; iter3 and later re-ran the full panel."
+  ],
+  "candidates": {
+    "v1": { "frozenAt": "2026-09-15", "skillSha256": "ba729b7b25bc546381aaa1d6ee463b5eefb633bbba6f8f1659233fcdf10f5d53" },
+    "v2": { "frozenAt": "2026-09-15", "skillSha256": "226c0e0242db59719c410b914bfa116d65055f4c3400e03bd52e627e898de898" },
+    "v3": { "frozenAt": "2026-09-15", "skillSha256": "e663780b4364b54696b602758cf7f6143e239a45ff2a5eb28db6ff963c78a71e" },
+    "v4": {
+      "frozenAt": "2026-09-15",
+      "skillSha256": "34626315d527cd3036e444403c96d83b7eacde126899b6cc9f7b62076ac52211",
+      "note": "also updated references/cli-contract.md (a2ba3bc143e0392285159670a2c3b21a286aca40b3e38caec11e0580fc51372a)"
+    },
+    "v5": {
+      "frozenAt": "2026-09-15",
+      "skillSha256": "610e4c1c57c5f3d42cf2f05b5c931eb1bd55418e562534b9d7104ee512b21dca",
+      "description": "iter5 fixes: evidence owner decided before dispatch for read-only command evidence, file-creation rules paired with non-mutating evidence, duplicate yield bullet removed, (Manual) label clarified"
+    },
+    "v6": {
+      "frozenAt": "2026-09-15",
+      "skillSha256": "156cf4ce1a1138bf07851b5f7ba52c037cf7dfc72865e17e0191641df24331a8",
+      "description": "iter7 fixes: pin --permission-mode explicitly and verify system/init.permissionMode (ambient defaultMode finding), scoped file-creation rules for pre-existing runtime artifacts, resume re-pass includes load-boundary flags, allowlist derivation guidance; constraints/cli-contract/validation updated with the new probes"
+    },
+    "v7": {
+      "frozenAt": "2026-09-15",
+      "skillSha256": "d71c3014cf8dccda7edb1f4f3bb623117d8b081749f35209b098a99285ae46f6",
+      "description": "iter8 fixes: output format chosen from required evidence with an indirect-confirmation path for plain json, workspace no-change predicate stated explicitly, output language stated when quoting, first-limit-reached rule with headroom for the non-target bound"
+    },
+    "v8": {
+      "frozenAt": "2026-09-15",
+      "skillSha256": "dc36c812390a8730aa10eba606980adb5fc9cba04351e9f8f6fd89774a539e3c",
+      "description": "iter9 fixes: the copyable dispatch block carries the read-only variant as a comment, and the output-language clause scopes the constraint to the whole response"
+    },
+    "v9": {
+      "frozenAt": "2026-09-15",
+      "skillSha256": "45bae64cf1cdf1f2dbc4a71b26b84d6795cbc82639dadbb1a3bdd6e777218ee0",
+      "description": "iter12 fixes: prefer the bytecode-free form across brief/allowlist/rerun (scoping only as fallback), the caller owns no-change claims and the brief forbids baseline-dependent assertions, and the output format is chosen from the evidence the report must state"
+    },
+    "v10": {
+      "frozenAt": "2026-09-15",
+      "skillSha256": "2b83c372f20676fdf8fdc4365e3aae10f2098385f4a807d7241cce573039420e",
+      "description": "iter14 fixes: PII-safe auth check (filter the login state), safe-mode suppression judged from behavioral signals (constraints + a recorded init-shape probe), and first-run probe headroom guidance"
+    },
+    "v11": {
+      "frozenAt": "2026-09-15",
+      "skillSha256": "f685413dc8e3854fee389d67dbfddd97d9a583942d116645fd2493c3c457a923",
+      "description": "iter16 fixes: the brief must give the executor's closing format an explicit abstention line for baseline-dependent claims"
+    }
+  },
+  "rounds": [
+    {
+      "round": "iter1",
+      "candidate": "v1",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "valid_baseline_with_unclear_points",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "B": 0, "C": 0 } },
+      "newSkillDefects": 5,
+      "unclearPoints": [
+        { "scenario": "A", "issue": "Tracked-diff verification assumed a git repo; target is not one.", "class": "skill-defect" },
+        { "scenario": "A", "issue": "Supervision wording bound to a polling host; harness suspends the caller.", "class": "skill-defect" },
+        { "scenario": "B", "issue": "Read-only evidence path (test command) mutates the workspace via __pycache__; no non-mutating form named.", "class": "skill-defect" },
+        { "scenario": "B", "issue": "Caller-side rerun of a denied command: verification or workaround?", "class": "skill-defect" },
+        { "scenario": "C", "issue": "Resume example omitted --allowedTools against prose.", "class": "skill-defect" }
+      ],
+      "discretionaryFillIns": [
+        "A: --strict-mcp-config load boundary; caller-owned baseline git dir; bounds.",
+        "B: --safe-mode; python3 -B adaptation; explicit --permission-mode default.",
+        "C: --safe-mode; bare Bash rule alongside the prefix form; non-git baseline."
+      ],
+      "parentVerification": "All 15 items verified. Parent reruns: A and C 6/6 OK. Test files byte-equal to pristine fixtures (A bc2da067…, C a2c63435…). B workspace unchanged (hashes equal, no __pycache__), one Bash denial in result.json. C run1 error_max_turns / run2 success share session id 9da32021….",
+      "clearRoundCount": 0,
+      "actions": "v2: non-repo baseline fallback, supervision mapping, resume example includes --allowedTools."
+    },
+    {
+      "round": "iter2",
+      "candidate": "v2",
+      "scenariosRun": ["A", "C"],
+      "classification": "valid_improvement_with_new_unclear_points",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "C": 0 } },
+      "fixVerification": {
+        "nonRepoBaseline": "resolved (C used the fallback and cited it; A used it and flagged only the frozen checklist wording)",
+        "supervisionMapping": "resolved (A completed a single dispatch across a yield without polling or duplicating)",
+        "resumeExampleFlags": "resolved (C re-passed --allowedTools; no divergence reported)"
+      },
+      "newSkillDefects": 4,
+      "unclearPoints": [
+        { "scenario": "A", "issue": "Negative-only edit constraint leaves new-test-file creation undecided.", "class": "skill-defect" },
+        { "scenario": "A", "issue": "Exit code required by the success decision, but the example shows no capture mechanism.", "class": "skill-defect" },
+        { "scenario": "C", "issue": "Minimal-turn partial can contain zero edits; wording assumed partial edits exist.", "class": "skill-defect" },
+        { "scenario": "C", "issue": "New limits requested without a sizing basis.", "class": "skill-defect" },
+        { "scenario": "A", "issue": "Residual non-git mention.", "class": "checklist-attributable" }
+      ],
+      "discretionaryFillIns": [
+        "A: --safe-mode (again), bounds, baseline copy + checksums, exit-code capture, extra probe.",
+        "C: default load boundary after inspection, follow-up limits 20/$5 with a recorded basis."
+      ],
+      "parentVerification": "All 10 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/is_error false/no denials/session 4f016393…, exit_code.txt=0. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns and run2 success share session d7b59ec7…, both fixes present.",
+      "clearRoundCount": 0,
+      "actions": "v3: non-mutating evidence rule + attribution, load-boundary default, positive edit scope, exit-code persistence, limit-stop worktree state, limits basis."
+    },
+    {
+      "round": "iter3",
+      "candidate": "v3",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "valid_improvement_with_new_unclear_points",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "B": 0, "C": 1 } },
+      "fixVerification": {
+        "nonMutatingEvidence": "verified in iter3-B (python3 -B used; caller rerun attributed to the caller side)",
+        "loadBoundaryDefault": "partially resolved; iter3-B used --safe-mode and recorded the rationale, but the rule's wording keyed on relatedness (see iter3-C finding)",
+        "positiveEditScope": "verified in iter3-A and iter3-C (both stated a positive edit scope and a new-file rule)",
+        "exitCodePersistence": "verified in iter3-A/B/C (exit codes persisted and used)",
+        "limitStopWorktreeState": "verified in iter3-C (zero-edit partial stated explicitly)",
+        "limitsBasis": "verified in iter3-C (basis recorded)"
+      },
+      "newSkillDefects": 3,
+      "unclearPoints": [
+        { "scenario": "A", "issue": "Residual non-git mention.", "class": "checklist-attributable" },
+        { "scenario": "A", "issue": "Host harness forbids polling while the task requires a bounded wait.", "class": "harness-attributable" },
+        { "scenario": "B", "issue": "--permission-mode enum appears to lack 'default' in help.", "class": "tool-documentation", "adjudication": "Parent probe: both --permission-mode default and manual exit 0/success; help lists manual but not default, and system/init reports default. Not a skill defect; added a contract note." },
+        { "scenario": "C", "issue": "Second-dispatch template is labelled for corrections only; limit-continuation content lives in Verify, forcing a cross-section merge.", "class": "skill-defect" },
+        { "scenario": "C", "issue": "Load-boundary rule keys on a relatedness judgement rather than observed customizations.", "class": "skill-defect" },
+        { "scenario": "C", "issue": "No sizing heuristic for new limits.", "class": "skill-defect" }
+      ],
+      "discretionaryFillIns": [
+        "A: --safe-mode with recorded rationale; added the -B allowlist rule; property checks beyond the suite.",
+        "B: pre-approved exactly one non-mutating Bash rule (no denial occurred); preflight scratch copy; transcript read for tool-call confirmation.",
+        "C: --max-budget-usd 1 on the probe; 20/$5 follow-up with basis; full task brief reused as the run-1 brief."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, exit_code=0, session 07891b93…. B: workspace hashes equal to pristine fixtures, result success/no denials/session 200a3e6e…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session eae70949…, both fixes present.",
+      "clearRoundCount": 0,
+      "actions": "v4: second-dispatch template covers corrections and limit continuations, load boundary decided from observed customizations, limits sizing heuristic, cli-contract note on --permission-mode values."
+    },
+    {
+      "round": "iter4",
+      "candidate": "v4",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "valid_improvement_with_minor_new_items",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "B": 0, "C": 0 } },
+      "fixVerification": {
+        "secondDispatchTemplate": "verified in iter4-C (no unclear points; the two-phase pattern matched observed CLI behavior exactly)",
+        "loadBoundaryFromCustomizations": "verified in iter4-A/B/C (decided from observed customizations and recorded)",
+        "limitsSizing": "verified in iter4-C (sized from remaining edits and prior observed usage)",
+        "denialBranchOfCallerVerificationRule": "exercised in iter4-B: an executor Bash denial was reported as a limitation; the caller-side non-mutating rerun was attributed caller-side; no widening or re-dispatch"
+      },
+      "newSkillDefects": 2,
+      "unclearPoints": [
+        { "scenario": "A", "issue": "A no-new-files rule conflicts with the bytecode-writing test command; pairing guidance was missing.", "class": "skill-defect-minor" },
+        { "scenario": "A", "issue": "Residual non-git mention.", "class": "checklist-attributable" },
+        { "scenario": "A", "issue": "Harness no-poll policy versus the task's bounded wait.", "class": "harness-attributable" },
+        { "scenario": "B", "issue": "For read-only command evidence, no side was assigned as evidence owner before dispatch.", "class": "skill-defect" },
+        { "scenario": "B", "issue": "Harness no-poll policy versus the task's bounded wait.", "class": "harness-attributable" }
+      ],
+      "discretionaryFillIns": [
+        "A: --safe-mode from observed customizations; baseline copy + checksums; extra caller probe; variance(n=1) edge noted, not fixed.",
+        "B: --permission-prompts none; explicit --permission-mode default; stream-json init capture; PYTHONDONTWRITEBYTECODE=1; checksums + file lists.",
+        "C: --safe-mode; dual allowlist rules for both command forms; run-1 budget sized so the turn limit trips first."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session e99f819d…, exit_code 0. B: workspace hashes equal to pristine fixtures, tree unchanged (3 files, no __pycache__), result success with one Bash denial, session e53e1144…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session ec12836a….",
+      "clearRoundCount": 0,
+      "actions": "v5: assign the evidence owner before dispatch for read-only command evidence, pair file-creation rules with non-mutating evidence, remove the duplicate yield bullet, clarify the (Manual) label."
+    },
+    {
+      "round": "iter5",
+      "candidate": "v5",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "qualitative_clear",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "B": 0, "C": 0 } },
+      "fixVerification": {
+        "evidenceOwner": "verified in iter5-A/B/C: the executor received an exact non-mutating allowlist rule and the caller-side rerun was attributed caller-side",
+        "fileCreationEvidenceConsistency": "verified in iter5-A/B/C: the bytecode-free python3 -B form kept the no-new-files rule consistent with the acceptance command"
+      },
+      "newSkillDefects": 0,
+      "unclearPoints": [
+        { "scenario": "A", "issue": "Residual non-git mention; the executor states the skill covers both cases.", "class": "checklist-attributable" },
+        { "scenario": "A", "issue": "Checklist does not name the load boundary as an acceptance axis.", "class": "checklist-attributable" },
+        { "scenario": "C", "issue": "Harness no-poll policy versus the dispatch wrapper's bounded wait.", "class": "harness-attributable" }
+      ],
+      "discretionaryFillIns": [
+        "A: bytecode-free acceptance command; --safe-mode from observed customizations; extra probes; fix shape left to the executor.",
+        "B: --permission-mode default named explicitly; single -B allowlist rule; caller-side rerun as second evidence source.",
+        "C: dual allowlist rules (prefix and bare); probe budget sized so the turn limit trips first; resume re-passed --safe-mode."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session 03a463b4…, exit_code 0. B: workspace hashes equal to pristine fixtures, tree unchanged (3 files, no __pycache__), result success/no denials/session a638c6df…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session fc3276bd….",
+      "clearRoundCount": 1,
+      "actions": "none; candidate unchanged; ran the next clear round (iter6), which found defects that reset the streak."
+    },
+    {
+      "round": "iter6",
+      "candidate": "v5",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "valid_defect_finding_round",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 1, "B": 1, "C": 0 } },
+      "newSkillDefects": 5,
+      "unclearPoints": [
+        {
+          "scenario": "B",
+          "issue": "A run with --safe-mode and no --permission-mode reported permissionMode: \"auto\" in system/init and auto-approved an edit on a model that supports auto mode; the skill claimed -p always starts Manual and recommended --safe-mode without pinning the mode.",
+          "class": "skill-defect-major"
+        },
+        {
+          "scenario": "B",
+          "issue": "system/init still lists skills and plugins under --safe-mode, so the event alone does not show whether customizations were suppressed; no verification signal was defined.",
+          "class": "skill-defect-minor"
+        },
+        {
+          "scenario": "C",
+          "issue": "A no-new-files brief rule conflicted with pre-existing __pycache__ and the README-prescribed bytecode-writing command.",
+          "class": "skill-defect-minor"
+        },
+        {
+          "scenario": "C",
+          "issue": "The resume flag list did not state whether load-boundary flags such as --safe-mode are restored.",
+          "class": "skill-defect-minor"
+        },
+        {
+          "scenario": "A",
+          "issue": "The allowlist rule form and its derivation from the acceptance command were carried only in references.",
+          "class": "skill-defect-minor"
+        },
+        { "scenario": "A", "issue": "Residual non-git mention.", "class": "checklist-attributable" },
+        { "scenario": "A", "issue": "Checklist does not name the load boundary as an acceptance axis.", "class": "checklist-attributable" },
+        { "scenario": "B", "issue": "B1 wording does not say whether an inherited ambient mode or a rejected first attempt affects the item.", "class": "checklist-attributable" },
+        { "scenario": "C", "issue": "Making a turn-limit probe deterministic is scenario design, not skill guidance.", "class": "evaluator-side" }
+      ],
+      "discretionaryFillIns": [
+        "A: bytecode-free acceptance; --safe-mode; extra probes; retry only for its own baseline exit-code capture.",
+        "B: pre-decided non-mutating allowlist entry; stream-json init capture; re-dispatched with an explicit Manual mode after run-1 showed ambient auto; run-1 evidence retained.",
+        "C: --safe-mode re-passed on resume; probe budget sized so the turn limit trips first; dual allowlist rules."
+      ],
+      "parentVerification": "All 15 items verified independently for A and C (reruns, hashes, result fields). For B, the parent re-probed the permission-mode finding directly (validation.json p17-p19): --safe-mode without --permission-mode reported auto and auto-approved an edit on sonnet, while explicit --permission-mode default denied the same edit; the earlier no-flags probe still reported default. B's read-only outcome itself was verified by hashes and the absence of writes.",
+      "clearRoundCount": 0,
+      "actions": "v6: pin --permission-mode explicitly and verify system/init (SKILL/constraints/cli-contract/validation), scoped file-creation rules, resume re-pass includes load-boundary flags, allowlist derivation guidance. Clear counting restarts on v6."
+    },
+    {
+      "round": "iter7",
+      "candidate": "v6",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "valid_improvement_with_new_unclear_points",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 2, "B": 0, "C": 0 } },
+      "fixVerification": {
+        "explicitPermissionMode": "verified in iter7: all three runs pinned --permission-mode explicitly (default for read-only B, acceptEdits for A/C); iter7-B recorded that the machine's ambient defaultMode is auto and that pinning prevented it",
+        "loadBoundarySignals": "verified in iter7-B/C (stream-json used; mcp_servers [] recorded as the boundary signal)",
+        "fileCreationScoping": "verified in iter7-A/C (rules scoped to source/spec files where bytecode artifacts pre-existed)",
+        "resumeLoadBoundaryFlags": "verified in iter7-C (--safe-mode re-passed on resume)",
+        "allowlistDerivation": "verified in iter7-A/C (rules derived from the README acceptance command)"
+      },
+      "newSkillDefects": 4,
+      "unclearPoints": [
+        {
+          "scenario": "A+B+C",
+          "issue": "The v6 mode/boundary confirmation points at system/init, which exists only under stream-json --verbose while the skill still recommends plain json by default; the tie-breaker and the plain-json fallback were implicit.",
+          "class": "skill-defect"
+        },
+        { "scenario": "B", "issue": "The no-change predicate (identical file set versus identical bytes) was left implicit.", "class": "skill-defect-minor" },
+        { "scenario": "B", "issue": "The brief template does not state the expected output language for the closing text.", "class": "skill-defect-minor" },
+        { "scenario": "C", "issue": "When a run must exercise one stop path, the skill does not say that the first limit reached decides the subtype or that the other bound needs headroom.", "class": "skill-defect-minor" },
+        { "scenario": "A", "issue": "Residual non-git mention.", "class": "checklist-attributable" },
+        { "scenario": "A", "issue": "Checklist does not name the load boundary as an acceptance axis.", "class": "checklist-attributable" }
+      ],
+      "discretionaryFillIns": [
+        "A: scoped no-new-files rule to source/spec; derived the allowlist from the README command; regenerated two evidence artifacts after shell slips.",
+        "B: recovered the effective mode from the session transcript after using plain json; bytecode-free forms with PYTHONDONTWRITEBYTECODE=1.",
+        "C: sized the probe budget ($2) so the turn limit trips first; stream-json for init evidence; scoped the no-change rule to source/spec."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session 19a9782f…, exit_code 0. B: workspace hashes equal to pristine fixtures, tree unchanged (3 files, no __pycache__), result success/no denials/session 2c2098d2…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session c18c19c4….",
+      "clearRoundCount": 0,
+      "actions": "v7: output-format choice keyed to required evidence with an indirect path for plain json; workspace predicate and output language stated; first-limit-reached rule with headroom. Clear counting restarts on v7."
+    },
+    {
+      "round": "iter8",
+      "candidate": "v7",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "valid_improvement_with_minor_items",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "B": 0, "C": 0 } },
+      "fixVerification": {
+        "outputFormatEvidence": "verified in iter8-B/C (stream-json --verbose used so system/init carried permissionMode and mcp_servers)",
+        "workspacePredicate": "verified in iter8-A/B/C (identical file set plus identical bytes for the files in scope)",
+        "limitInteraction": "verified in iter8-C (probe budget sized so the turn limit trips first; headroom recorded)",
+        "outputLanguage": "partially verified in iter8-A (the brief constrained only the closing summary; refined in v8)"
+      },
+      "newSkillDefects": 2,
+      "unclearPoints": [
+        { "scenario": "B", "issue": "The copyable dispatch template shows --permission-mode acceptEdits only; a literal copy would grant an edit-enabling mode to a read-only task.", "class": "skill-defect-minor-safety-adjacent" },
+        { "scenario": "A", "issue": "The output-language clause did not scope the constraint to the whole response; the delegate opened the closing text in Japanese.", "class": "skill-defect-minor" },
+        { "scenario": "A", "issue": "Residual non-git mention.", "class": "checklist-attributable" },
+        { "scenario": "A", "issue": "A1 mandates --output-format json while mode evidence exists only in stream-json; the skill's indirect-confirmation path was used.", "class": "checklist-attributable" },
+        { "scenario": "A", "issue": "Harness no-poll policy versus the task's bounded wait.", "class": "harness-attributable" },
+        { "scenario": "B", "issue": "Harness no-poll policy versus the task's bounded wait.", "class": "harness-attributable" },
+        { "scenario": "B", "issue": "Suggests preflighting non-mutation on a copy before delegating; the skill already scopes the no-change rule and the executor applied it.", "class": "non-blocking-practice" }
+      ],
+      "discretionaryFillIns": [
+        "A: comma-joined allowlist with a -B variant; baseline copies + hashes + inventory; no-new-files scoped to source/spec.",
+        "B: executor-side non-mutating test evidence plus caller rerun; no-change predicate defined as identical file set + bytes.",
+        "C: dual allowlist rules; probe budget headroom; --safe-mode re-passed; stream-json init evidence."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session c2a22611…, exit_code 0. B: workspace hashes equal to pristine fixtures, tree unchanged (3 files, no __pycache__), stream ends in success/no denials/session 008eba9b…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session 2a3ea944….",
+      "clearRoundCount": 0,
+      "actions": "v8: the dispatch template carries the read-only variant comment, and the language clause covers the whole response. Clear counting restarts on v8."
+    },
+    {
+      "round": "iter9",
+      "candidate": "v8",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "qualitative_clear",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "B": 0, "C": 0 } },
+      "fixVerification": {
+        "templatePolicyVariant": "verified in iter9 (no executor copied the implementation variant into a read-only run; B and C pinned --permission-mode default explicitly)",
+        "languageScope": "verified in iter9-A (the brief constrained the whole response and the result was English)"
+      },
+      "newSkillDefects": 0,
+      "unclearPoints": [
+        { "scenario": "A", "issue": "Residual non-git mention.", "class": "checklist-attributable" },
+        { "scenario": "A", "issue": "Harness no-poll policy versus the task's bounded wait.", "class": "harness-attributable" },
+        { "scenario": "B", "issue": "Harness no-poll policy versus the task's bounded wait.", "class": "harness-attributable" },
+        { "scenario": "C", "issue": "Suggests making VCS detection an explicit preflight step rather than a subordinate clause.", "class": "non-blocking-observation" },
+        { "scenario": "C", "issue": "Suggests documenting the probe-dispatch briefing model in the skill.", "class": "non-blocking-observation" }
+      ],
+      "discretionaryFillIns": [
+        "A: indirect mode confirmation for plain json (v7 path); allowlist derived from the README command; randomized stdlib cross-check.",
+        "B: stream-json init evidence; numeric formula check; bytecode-free evidence command.",
+        "C: probe budget with headroom; self-sufficient delta brief; bytecode-free acceptance form."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session 75bec8a1…, exit_code 0. B: workspace hashes equal to pristine fixtures, tree unchanged (3 files, no __pycache__), result success/no denials/session 7ce330e2…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session 4d493ceb….",
+      "clearRoundCount": 1,
+      "actions": "none; iter10 and iter11 run in parallel as the next clear rounds."
+    },
+    {
+      "round": "iter10",
+      "candidate": "v8",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "valid_improvement_with_minor_items",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 1, "B": 0, "C": 0 } },
+      "newSkillDefects": 3,
+      "unclearPoints": [
+        { "scenario": "B", "issue": "The delegate's closing text asserted a baseline-dependent no-change predicate it could not evidence; the brief did not reserve that claim for the caller.", "class": "skill-defect-minor" },
+        { "scenario": "C", "issue": "File-creation rules give no precedence between the bytecode-free form and source/spec scoping when both could apply.", "class": "skill-defect-minor" },
+        { "scenario": "C", "issue": "The format-choice test ('when acceptance depends on the mode or the boundary') is not crisp for edit tasks that pin acceptEdits.", "class": "skill-defect-minor" }
+      ],
+      "discretionaryFillIns": [
+        "A: synthesized a git repo from the baseline to produce literal git status/diff evidence.",
+        "B: --permission-prompts none; manifest digest for the workspace state.",
+        "C: pinned the bytecode-free acceptance command everywhere; probe budget headroom."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session bab40594…, exit_code 0. B: workspace hashes equal to pristine fixtures, tree unchanged, result success/no denials/session c4eef13f…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run-01 error_max_turns / run-02 success share session 04fd7e7e….",
+      "clearRoundCount": 0,
+      "actions": "v9 applied after iter11 (items bundled)."
+    },
+    {
+      "round": "iter11",
+      "candidate": "v8",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "valid_improvement_with_minor_items",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "B": 0, "C": 0 } },
+      "newSkillDefects": 1,
+      "unclearPoints": [
+        { "scenario": "C", "issue": "Whether the allowlist may cover both the preferred and the documented command forms is unspecified.", "class": "skill-defect-minor" },
+        { "scenario": "C", "issue": "Probe-brief content rule unstated.", "class": "evaluator-side" }
+      ],
+      "discretionaryFillIns": [
+        "A: foreground wait path with a host cap instead of a background sleep loop.",
+        "B: bytecode-free form; one capped wait until the sentinel appeared.",
+        "C: allowlist carried both command forms; predicate scoped to source/spec."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session 0530d263…, exit_code 0. B: workspace hashes equal to pristine fixtures, tree unchanged, result success/no denials/session 7530778a…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run-1 error_max_turns / run-2 success share session 8a1d74d7….",
+      "clearRoundCount": 0,
+      "actions": "v9 applied (bundled with iter10 items)."
+    },
+    {
+      "round": "iter12",
+      "candidate": "v9",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "valid_improvement_with_minor_items",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "B": 0, "C": 0 } },
+      "newSkillDefects": 1,
+      "unclearPoints": [
+        { "scenario": "B", "issue": "system/init lists skills (14-16) and plugins (5) under --safe-mode; the evidence base did not record the safe-mode init shape, so suppression was judged only from mcp_servers and hook events.", "class": "skill-defect-minor" },
+        { "scenario": "A", "issue": "Residual non-git and format-vs-mode items.", "class": "checklist-attributable" },
+        { "scenario": "B", "issue": "Harness no-poll policy versus the task's bounded wait.", "class": "harness-attributable" },
+        { "scenario": "C", "issue": "Continuation limits 'a normal budget' unspecified; artifact enumeration; probe-brief content.", "class": "evaluator-side" }
+      ],
+      "discretionaryFillIns": [
+        "A: baseline copy + sha256; semantic probes; 'don't assert baseline facts' clause in the brief (v9 rule used).",
+        "B: stream-json init evidence; bytecode-free form; caller-side rerun on a scratch copy.",
+        "C: probe budget with headroom; limits sized from observed usage; artifact layout with a session-artifacts copy."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session 0ec55387…. B: workspace hashes equal to pristine fixtures, tree unchanged, result success/no denials/session db10c2a7…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session 3f0ff0bc….",
+      "clearRoundCount": 0,
+      "actions": "v10 applied after iter13."
+    },
+    {
+      "round": "iter13",
+      "candidate": "v9",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "valid_improvement_with_minor_items",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "B": 0, "C": 0 } },
+      "newSkillDefects": 2,
+      "unclearPoints": [
+        { "scenario": "B", "issue": "The mandated auth preflight prints the account email and org ID to stdout; the skill did not say to filter the output.", "class": "skill-defect-minor-privacy" },
+        { "scenario": "C", "issue": "Probe headroom guidance lacks a baseline for a first dispatch with no prior measurement.", "class": "skill-defect-minor" },
+        { "scenario": "A", "issue": "Residual non-git and format-vs-mode items.", "class": "checklist-attributable" },
+        { "scenario": "B", "issue": "Harness no-poll policy versus the task's bounded wait.", "class": "harness-attributable" },
+        { "scenario": "C", "issue": "Read policy for skill-required evidence paths outside the listed paths; probe-brief content.", "class": "evaluator-side" }
+      ],
+      "discretionaryFillIns": [
+        "A: baseline copy + sha256; bytecode-free acceptance; n=1 variance edge disclosed.",
+        "B: --permission-prompts none; caller-side rerun on a byte-identical scratch copy; explicit 'do not assert baseline facts' clause.",
+        "C: probe budget headroom; delta brief with verified state; transcript read-only marker check."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session a036c753…. B: workspace hashes equal to pristine fixtures, tree unchanged, result success/no denials/session 3f220d46…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session 48446d8d….",
+      "clearRoundCount": 0,
+      "actions": "v10 applied (bundled with iter12 items)."
+    },
+    {
+      "round": "iter14",
+      "candidate": "v10",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "valid_improvement_with_minor_items",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "B": 0, "C": 0 } },
+      "newSkillDefects": 1,
+      "unclearPoints": [
+        { "scenario": "B", "issue": "The delegate still asserted 'Workspace remains unchanged' although the brief forbade baseline-dependent claims; a purely negative rule is droppable at the formatting step.", "class": "skill-defect-minor" },
+        { "scenario": "A", "issue": "Residual non-git and allowlist-syntax phrasing items.", "class": "checklist-attributable" },
+        { "scenario": "C", "issue": "Harness no-poll policy versus the task's bounded wait.", "class": "harness-attributable" }
+      ],
+      "discretionaryFillIns": [
+        "A: bytecode-free acceptance; --safe-mode; baseline copies + checksums; English-only output.",
+        "B: stream-json init evidence; behavioral suppression signals (mcp_servers, no hook events); caller-side rerun.",
+        "C: probe budget $5 so the turn limit decides; continuation 10 turns / $5 with a recorded basis."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session 5b46a814…. B: workspace hashes equal to pristine fixtures, tree unchanged, result success/no denials/session 04749bc6…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session 79c048a9….",
+      "clearRoundCount": 0,
+      "actions": "v11 applied after iter15."
+    },
+    {
+      "round": "iter15",
+      "candidate": "v10",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "qualitative_clear",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 1, "B": 0, "C": 2 } },
+      "newSkillDefects": 0,
+      "unclearPoints": [
+        { "scenario": "A", "issue": "Residual non-git and format-vs-mode items.", "class": "checklist-attributable" },
+        { "scenario": "A", "issue": "Harness no-poll policy versus the task's bounded wait.", "class": "harness-attributable" },
+        { "scenario": "B", "issue": "Harness no-poll policy versus the task's bounded wait.", "class": "harness-attributable" },
+        { "scenario": "C", "issue": "Three executor-side tooling slips (jq field path, shell dependency order, a trailing-newline filename).", "class": "executor-side" }
+      ],
+      "discretionaryFillIns": [
+        "A: bytecode-free acceptance; baseline checksums; extra probes; limits from the scenario.",
+        "B: stream-json init evidence; bounded wait; English-only output.",
+        "C: probe budget $5; continuation 20 turns / $5; hash-verified reconstruction for a real diff."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session f3641b41…. B: workspace hashes equal to pristine fixtures, tree unchanged, result success/no denials/session c6ac000c…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session ec8135e8….",
+      "clearRoundCount": 1,
+      "actions": "none; v11 was cut for the iter14 finding, so clear counting restarts on v11."
+    },
+    {
+      "round": "iter16",
+      "candidate": "v11",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "qualitative_clear",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "B": 0, "C": 0 } },
+      "fixVerification": {
+        "abstentionSlot": "verified in iter16-B/iter17-A (the brief required the abstention line and the closing text carried it)"
+      },
+      "newSkillDefects": 0,
+      "unclearPoints": [
+        { "scenario": "A", "issue": "Residual non-git, README-vs-bytecode-free form, and format-vs-mode items.", "class": "checklist-attributable" },
+        { "scenario": "B", "issue": "Harness no-poll policy versus the task's bounded wait; README's bytecode-writing command versus the no-change requirement.", "class": "harness-and-checklist" },
+        { "scenario": "C", "issue": "Probe-brief content policy; session-artifacts wording; and a claim that the prefix allowlist would deny the bare command.", "class": "evaluator-and-adjudicated" }
+      ],
+      "adjudications": [
+        {
+          "claim": "Bash(python3 -B -m unittest *) would spuriously deny the bare python3 -B -m unittest",
+          "evidence": "Parent probe: the bare command ran under that allowlist with zero denials; the transcript shows the exact command 'python3 -B -m unittest'",
+          "verdict": "not a skill defect"
+        }
+      ],
+      "discretionaryFillIns": [
+        "A: bytecode-free acceptance; --safe-mode; baseline copies + checksums; abstention line in the brief.",
+        "B: stream-json init evidence cross-checked against validation.json p17/p20; abstention line; caller-side rerun.",
+        "C: probe budget $3 so the turn limit decides; dual allowlist forms (both matched); continuation 30 turns / $5."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session a77af906…. B: workspace hashes equal to pristine fixtures, tree unchanged, result success/no denials/session 0522140f…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session 20b8a61e….",
+      "clearRoundCount": 1,
+      "actions": "none; running the next clear round."
+    },
+    {
+      "round": "iter17",
+      "candidate": "v11",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "qualitative_clear",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 0, "B": 0, "C": 0 } },
+      "newSkillDefects": 0,
+      "unclearPoints": [
+        { "scenario": "A", "issue": "Residual non-git and format-vs-mode items.", "class": "checklist-attributable" },
+        { "scenario": "B", "issue": "None observed.", "class": "none" },
+        { "scenario": "C", "issue": "Harness no-poll policy versus the task's bounded wait; 'session artifacts' not enumerated in the checklist.", "class": "harness-and-checklist" }
+      ],
+      "discretionaryFillIns": [
+        "A: bytecode-free acceptance; baseline copies + sha256; abstention line; double acceptance rerun for a clean exit code.",
+        "B: stream-json init evidence; abstention line; bounded wait.",
+        "C: probe budget $5 so the turn limit decides; delta brief with verified state and limits basis; auth check filtered to loggedIn only (v10 rule used)."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session c2cdef6e…. B: workspace hashes equal to pristine fixtures, tree unchanged, result success/no denials/session ba07f50f…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session 78a21b3b….",
+      "clearRoundCount": 2,
+      "actions": "none; running the final clear round and the holdout."
+    },
+    {
+      "round": "iter18",
+      "candidate": "v11",
+      "scenariosRun": ["A", "B", "C"],
+      "classification": "qualitative_clear",
+      "checklist": {
+        "A": { "success": "○", "accuracy": 100, "items": { "A1": "○", "A2": "○", "A3": "○", "A4": "○", "A5": "○" } },
+        "B": { "success": "○", "accuracy": 100, "items": { "B1": "○", "B2": "○", "B3": "○", "B4": "○", "B5": "○" } },
+        "C": { "success": "○", "accuracy": 100, "items": { "C1": "○", "C2": "○", "C3": "○", "C4": "○", "C5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "A": 1, "B": 0, "C": 1 } },
+      "newSkillDefects": 0,
+      "unclearPoints": [
+        { "scenario": "A", "issue": "Residual non-git and README-vs-bytecode-free items.", "class": "checklist-attributable" },
+        { "scenario": "B", "issue": "None observed.", "class": "none" },
+        { "scenario": "C", "issue": "Harness no-poll policy versus the task's bounded wait; residual non-git item.", "class": "harness-and-checklist" }
+      ],
+      "harnessNote": "iter18-B's workspace carried a pre-existing __pycache__ created by the parent's fixture sanity run; the executor's baseline included it and all three recorded manifests are identical, so the delegated run itself added nothing. Source and spec files match the pristine templates byte-for-byte.",
+      "discretionaryFillIns": [
+        "A: bytecode-free acceptance; --safe-mode with explicit acceptEdits; baseline copies + manifest; property check.",
+        "B: stream-json init evidence; single non-mutating allowlist rule; caller-side rerun; single 300 s bounded wait.",
+        "C: probe budget $5; continuation 20 turns / $5 with basis; abstention line; bytecode-free acceptance."
+      ],
+      "parentVerification": "All 15 items verified. A: parent rerun 6/6 OK, test_stats.py byte-equal, result exit 0/no denials/session ec13e1af…, exit_code 0. B: source/spec hashes equal to pristine fixtures, all three manifests identical, result success/no denials/session 79dd62f2…. C: parent rerun 6/6 OK, test_inventory.py byte-equal, run1 error_max_turns / run2 success share session ce6f3a8f….",
+      "clearRoundCount": 3,
+      "actions": "none; three consecutive clear rounds reached on v11. Holdout H run in parallel."
+    },
+    {
+      "round": "holdout-H",
+      "candidate": "v11",
+      "scenariosRun": ["H"],
+      "classification": "holdout_passed",
+      "checklist": {
+        "H": { "success": "○", "accuracy": 100, "items": { "H1": "○", "H2": "○", "H3": "○", "H4": "○", "H5": "○" } }
+      },
+      "metrics": { "tool_uses": null, "duration_ms": null, "retries": { "H": 0 } },
+      "newSkillDefects": 0,
+      "unclearPoints": [
+        { "scenario": "H", "issue": "Claude Code's own Bash guard blocked the standalone `sleep 45` the scenario mandated, so the delegate relaunched it in the background; an allowlist rule does not make a command execute as written.", "class": "tool-behavior-observation" },
+        { "scenario": "H", "issue": "A resume can emit a zero-turn stub `result` event before the real one; outcomes must be read from the last result event and 'no result' counted by event presence.", "class": "observation-aligned-with-skill" },
+        { "scenario": "H", "issue": "Account rate-limit pressure appears only in `rate_limit_event` stream events; plain result JSON cannot show it.", "class": "evidence-source-observation" }
+      ],
+      "discretionaryFillIns": [
+        "Run 1: --max-turns 40 --max-budget-usd 10; SIGTERM at ~10 s with a 20 s escalation window; allowlist carried Bash(sleep *) plus the bytecode-free test rule.",
+        "Run 2: resumed with model, permission mode, allowlists, limits, and --safe-mode re-passed; delta brief waived the interrupted check and supplied the verified worktree state.",
+        "Transport stream-json --verbose for both runs; the killed run is evidenced by 0 result events."
+      ],
+      "parentVerification": "Holdout verified: run 1 exit code 143 with 0 result events and no result file; run 2 success with the same session 82f4d636…; parent rerun 6/6 OK; test_stats.py byte-equal to the pristine fixture; stats.py carries the two intended fixes.",
+      "clearRoundCount": 3,
+      "actions": "none; the candidate is frozen at v11 and the holdout passed. Holdout observations are recorded for a future revision."
+    }
+  ]
+}

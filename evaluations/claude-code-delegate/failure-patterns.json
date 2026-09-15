@@ -1,0 +1,339 @@
+{
+  "skill": "claude-code-delegate",
+  "patterns": [
+    {
+      "name": "VCS-shaped verification on a non-repo target",
+      "seenIn": ["iter1-A", "iter1-C", "iter2-A-residual", "iter3-A-residual"],
+      "generalFixRule": "When an acceptance step references VCS state, define the non-VCS fallback (caller-owned baseline copy or checksums) in the same instruction.",
+      "fix": "v2: caller-owned baseline before dispatch when the target is not a git repository.",
+      "fixStatus": "resolved; residual mentions are attributable to the frozen checklist wording"
+    },
+    {
+      "name": "Supervision instructions bound to one host process model",
+      "seenIn": ["iter1-A"],
+      "generalFixRule": "State the supervision invariant (never dispatch a duplicate on yield) and map it to both host models.",
+      "fix": "v2: suspend-until-complete mapping added.",
+      "fixStatus": "resolved (iter2-A, iter3-A/B/C)"
+    },
+    {
+      "name": "Example diverges from prose-mandated flags",
+      "seenIn": ["iter1-C"],
+      "generalFixRule": "Every example of an operation must include the flags the prose declares mandatory, or carry an explicit elision marker.",
+      "fix": "v2: resume example re-passes --allowedTools.",
+      "fixStatus": "resolved (iter2-C, iter3-C)"
+    },
+    {
+      "name": "Read-only evidence path not defined for the documented command",
+      "seenIn": ["iter1-B"],
+      "generalFixRule": "For read-only tasks, name an acceptable non-mutating evidence form or require the caller to state the adaptation and its verification.",
+      "fix": "v3: prefer a non-mutating form (for example python3 -B) and record the exact command.",
+      "fixStatus": "resolved (iter3-B used python3 -B and recorded it)"
+    },
+    {
+      "name": "Caller-side verification versus permission-workaround boundary undefined",
+      "seenIn": ["iter1-B"],
+      "generalFixRule": "State which caller-side verification actions remain permitted and require evidence attribution distinguishing delegate-obtained from caller-obtained results.",
+      "fix": "v3: caller-side rerun is not a workaround; attribute the evidence source.",
+      "fixStatus": "verified in iter4-B: an executor Bash denial was reported as a limitation, the caller-side non-mutating rerun was attributed caller-side, and no widening or re-dispatch occurred"
+    },
+    {
+      "name": "Negative-only edit constraint leaves new-file scope open",
+      "seenIn": ["iter2-A"],
+      "generalFixRule": "Pair every 'do not modify X' with the explicit positive edit scope and state whether creating new files of type X is allowed.",
+      "fix": "v3: the brief states the positive edit scope and the new-file rule.",
+      "fixStatus": "resolved (iter3-A and iter3-C stated the scope)"
+    },
+    {
+      "name": "Required exit code with no prescribed capture mechanism",
+      "seenIn": ["iter2-A"],
+      "generalFixRule": "When a decision depends on a process artifact, show how to capture and persist it in the canonical recipe.",
+      "fix": "v3: persist the exit code beside the result.",
+      "fixStatus": "resolved (iter3-A/B/C persisted exit codes)"
+    },
+    {
+      "name": "Limit-stop resume assumes partial edits exist",
+      "seenIn": ["iter2-C"],
+      "generalFixRule": "When resuming after a limit-hit, state the caller-verified worktree state explicitly, including 'no changes; checksums match baseline'.",
+      "fix": "v3: inspect the worktree and state the verified state in the delta brief.",
+      "fixStatus": "resolved (iter3-C stated the zero-edit partial)"
+    },
+    {
+      "name": "New limit values requested without a sizing basis",
+      "seenIn": ["iter2-C"],
+      "generalFixRule": "Require the caller to record the chosen new limits and the sizing basis in the report.",
+      "fix": "v3: record the chosen limits and their basis.",
+      "fixStatus": "resolved (iter3-C recorded the basis)"
+    },
+    {
+      "name": "Load boundary left implicit while requiring an explicit decision",
+      "seenIn": ["iter1-A", "iter1-B", "iter1-C", "iter2-A", "iter2-C", "iter3-C"],
+      "generalFixRule": "Ship a default recommendation for the common case and name the alternative when project configuration is part of the task; key the decision on observed customizations, not a relatedness judgement.",
+      "fix": "v3 defaulted to --safe-mode but keyed on relatedness; iter3-C showed the rule does not cover a workspace with no customizations at all. v4 rewrote it to be decided from the observed customizations.",
+      "fixStatus": "resolved in iter4 (A/B/C decided the boundary from observed customizations and recorded it)"
+    },
+    {
+      "name": "Second-dispatch template covers corrections only",
+      "seenIn": ["iter3-C"],
+      "generalFixRule": "Give each second-dispatch trigger its own labelled delta template, or one template whose field list covers both triggers.",
+      "fix": "v4: the delta-brief sentence now names both triggers and their contents (correction: failing input/actual/expected/regression; limit continuation: verified worktree state and new limits with basis).",
+      "fixStatus": "resolved in iter4-C (no unclear points; the two-phase pattern matched observed behavior)"
+    },
+    {
+      "name": "Limits sizing heuristic absent",
+      "seenIn": ["iter3-C"],
+      "generalFixRule": "Require the remaining work units and a headroom over the last run's observed usage, or publish a default sizing table.",
+      "fix": "v4: size by counting remaining edits, checks, and repairs, with headroom over the last run's observed usage.",
+      "fixStatus": "resolved in iter4-C (sized from remaining edits and prior observed usage)"
+    },
+    {
+      "name": "Evidence owner for read-only command evidence not assigned before dispatch",
+      "seenIn": ["iter4-B"],
+      "example": "The delegated run's only route to test status was denied, and the instruction never said whether the executor should receive an exact non-mutating allowlist entry or the caller should obtain the evidence.",
+      "generalFixRule": "For read-only delegations, assign an evidence owner per acceptance command before dispatch, prefer non-mutating forms, and report executor-side denials as limitations.",
+      "fix": "v5: decide before dispatch who produces the evidence - an exact non-mutating --allowedTools entry for the executor, or a caller-side rerun - and attribute which side produced each result.",
+      "fixStatus": "resolved in iter5 (A/B/C assigned the owner before dispatch; caller-side reruns attributed)"
+    },
+    {
+      "name": "File-creation prohibition inconsistent with command evidence",
+      "seenIn": ["iter4-A"],
+      "example": "The brief forbade new files while the acceptance command wrote __pycache__; the caller had to exempt interpreter artifacts after the fact.",
+      "generalFixRule": "Keep file-creation rules consistent with the acceptance commands; a no-new-files rule needs a bytecode-free test command.",
+      "fix": "v5: keep file-creation rules consistent with the acceptance commands (a no-new-files rule needs a bytecode-free test command, for example).",
+      "fixStatus": "resolved in iter5 (A/B/C used the bytecode-free form and kept the rule consistent)"
+    },
+    {
+      "name": "Help listing treated as the accepted-value set",
+      "seenIn": ["iter3-B"],
+      "example": "The executor reported that --permission-mode has no 'default' value because help lists only manual; the parent probe showed both spellings exit 0 and system/init reports default.",
+      "generalFixRule": "A help listing is not evidence of the accepted-value set or of availability; verify against behaviour when a decision depends on it.",
+      "fix": "v4: cli-contract.md records the help/behaviour mismatch for --permission-mode and generalizes the --max-turns note.",
+      "fixStatus": "adjudicated tool-documentation; contract note added; no SKILL.md change needed"
+    },
+    {
+      "name": "Startup permission mode can be ambient and is not pinned by --safe-mode",
+      "seenIn": ["iter6-B"],
+      "example": "A --safe-mode dispatch with no --permission-mode reported permissionMode: \"auto\" in system/init and auto-approved an edit on sonnet; an explicit --permission-mode default denied the same edit. The unflagged (no --safe-mode) run reported default.",
+      "generalFixRule": "Never rely on the startup default: pass --permission-mode explicitly on every dispatch and resume, and read system/init.permissionMode as the effective mode; treat a mode that is not the chosen one as a setup anomaly.",
+      "fix": "v6: the read-only and implementation bullets require an explicit --permission-mode (default/Manual for read-only, acceptEdits for implementation); Verify now requires confirming permissionMode from system/init; constraints.md and cli-contract.md carry the observed evidence; validation.json records probes p17-p19.",
+      "requirementsAddressed": ["B1", "A1", "B4"],
+      "fixStatus": "resolved in iter7 (all three runs pinned --permission-mode explicitly; iter7-B noted the ambient auto default and that pinning prevented it)"
+    },
+    {
+      "name": "Load-boundary verification signal undefined",
+      "seenIn": ["iter6-B"],
+      "example": "system/init still listed 16 skills and 5 plugins under --safe-mode; the event alone does not show whether customizations were suppressed.",
+      "generalFixRule": "Judge suppression from behavioral signals in the stream (empty mcp_servers, no hook events, no customization-driven actions) rather than from flag names or the advertised skill/plugin lists, and record which signals were used.",
+      "fix": "v6 (partial): Verify now says to confirm the load boundary from the run's own evidence (permissionMode, model, mcp_servers). The skills/plugins nuance and 'record which signals' are not yet spelled out.",
+      "requirementsAddressed": ["B1", "A5"],
+      "fixStatus": "partially-applied-in-v6; resolved in iter7-B/C (stream-json used and mcp_servers [] recorded as the boundary signal)"
+    },
+    {
+      "name": "Pre-existing runtime artifacts conflict with no-new-files rules",
+      "seenIn": ["iter6-C"],
+      "example": "The brief forbade creating files while the workspace already carried __pycache__ and the README prescribed the bytecode-writing test command; the run rewrote a .pyc.",
+      "generalFixRule": "Scope file-creation rules to source and spec files when runtime artifacts exist, and keep the bytecode-free form consistent across the brief, the allowlist, and the caller's rerun.",
+      "fix": "v6: the brief guidance scopes the rule to source and spec files when the workspace already carries runtime artifacts or the README prescribes a bytecode-writing command.",
+      "requirementsAddressed": ["C3", "A3"],
+      "fixStatus": "resolved in iter7-A/C (no-change rules scoped to source and spec files where bytecode artifacts pre-existed)"
+    },
+    {
+      "name": "Resume restore policy incomplete for load-boundary flags",
+      "seenIn": ["iter6-C"],
+      "example": "The skill listed which flags to re-pass and which are not restored, but never said whether --safe-mode survives a resume; the caller had to decide.",
+      "generalFixRule": "State that the restored/non-restored lists are open and require re-passing every flag that shapes the run or the load boundary.",
+      "fix": "v6: the resume paragraph requires re-passing every flag that shaped the load boundary such as --safe-mode, and the example carries a comment for it.",
+      "requirementsAddressed": ["C2"],
+      "fixStatus": "resolved in iter7-C (--safe-mode re-passed on the resume)"
+    },
+    {
+      "name": "Allowlist derivation guidance reference-only",
+      "seenIn": ["iter6-A"],
+      "example": "The checklist demanded an --allowedTools rule covering the test command, but the derivation rule (space before * for prefix matching) lived only in references.",
+      "generalFixRule": "Carry the canonical derivation of allowlist rules in the main instruction next to the permission choices.",
+      "fix": "v6: the implementation bullet shows the derivation and the prefix-matching rule inline.",
+      "requirementsAddressed": ["A1"],
+      "fixStatus": "resolved in iter7-A/C (rules derived from the README acceptance command)"
+    },
+    {
+      "name": "Output format and required evidence mismatch",
+      "seenIn": ["iter7-A", "iter7-B", "iter7-C"],
+      "example": "The mode/boundary confirmation points at system/init, which exists only under stream-json --verbose, while the default guidance says to keep plain json otherwise; callers recovered mode evidence from the session transcript.",
+      "generalFixRule": "Make output-format selection a function of the required evidence and name the fallback confirmation path for runs that keep plain json.",
+      "fix": "v7: choose the format from the evidence needed; when acceptance depends on mode or boundary, dispatch with stream-json --verbose and read system/init; with plain json, confirm indirectly from the flags, denials, and observed actions and say which evidence was available.",
+      "requirementsAddressed": ["A2", "B1", "B4", "C5"],
+      "fixStatus": "resolved in iter8-B/C (stream-json used for mode and boundary evidence)"
+    },
+    {
+      "name": "Workspace no-change predicate left implicit",
+      "seenIn": ["iter7-B"],
+      "example": "'Nothing in the workspace may be modified' left the added-artifact case undefined (new __pycache__ versus changed bytes).",
+      "generalFixRule": "State the no-change predicate explicitly (identical file set and identical bytes for the files in scope).",
+      "fix": "v7: the brief guidance requires stating the no-change predicate explicitly.",
+      "requirementsAddressed": ["B1", "B5"],
+      "fixStatus": "resolved in iter8-A/B/C (predicate stated as identical file set and identical bytes for the files in scope)"
+    },
+    {
+      "name": "Output language unspecified",
+      "seenIn": ["iter7-B"],
+      "example": "An English brief returned a Japanese result; the caller verified fields instead of quoting the text.",
+      "generalFixRule": "When the caller will quote or mechanically consume the closing text, state the expected output language in the brief.",
+      "fix": "v7: the brief guidance requires stating the expected output language when the text will be quoted.",
+      "requirementsAddressed": ["B4"],
+      "fixStatus": "partially verified in iter8-A; refined in v8 (the language clause now covers the whole response)"
+    },
+    {
+      "name": "Limit interaction unspecified when a stop path is targeted",
+      "seenIn": ["iter7-C"],
+      "example": "A probe intended to trip the turn limit could have tripped the budget first, changing the error subtype; the caller sized the budget by judgment.",
+      "generalFixRule": "State that the first limit reached decides the subtype and require explicit headroom for the bound that is not the target of the probe.",
+      "fix": "v7: the limits bullet states the first-limit-reached rule and requires headroom for the non-target bound.",
+      "requirementsAddressed": ["C1", "C5"],
+      "fixStatus": "resolved in iter8-C (the probe budget carried headroom so the turn limit tripped first)"
+    },
+    {
+      "name": "Copyable template encodes one policy variant",
+      "seenIn": ["iter8-B"],
+      "example": "The dispatch block showed --permission-mode acceptEdits only; a literal copy would grant an edit-enabling mode to a read-only task.",
+      "generalFixRule": "A copyable template whose literal values encode a policy choice must carry the alternative next to the code.",
+      "fix": "v8: the dispatch block opens with a read-only variant comment.",
+      "requirementsAddressed": ["B1", "A1"],
+      "fixStatus": "resolved in iter9 (no executor applied the implementation variant to a read-only run)"
+    },
+    {
+      "name": "Output language constraint scoped to a section",
+      "seenIn": ["iter8-A"],
+      "example": "The brief asked for an English closing summary but the delegate opened the closing text in Japanese.",
+      "generalFixRule": "When total language consistency matters, state the constraint over the whole response rather than a section.",
+      "fix": "v8: the language clause now says to state the expected output language over the whole response.",
+      "requirementsAddressed": ["A4", "B4"],
+      "fixStatus": "resolved in iter9-A (whole-response constraint used and observed)"
+    },
+    {
+      "name": "Executor asserts baseline-dependent invariants",
+      "seenIn": ["iter10-B"],
+      "example": "The delegate's closing text asserted the file set and bytes were unchanged although it had no baseline and ran no checksum.",
+      "generalFixRule": "Reserve baseline-dependent claims for the caller: the brief tells the executor not to assert invariants it cannot evidence from its own run.",
+      "fix": "v9: the read-only bullet states that the caller owns no-change claims and the brief forbids baseline-dependent assertions.",
+      "requirementsAddressed": ["B2", "B5"],
+      "fixStatus": "partially resolved: iter12/13 complied, but iter14-B showed a negative rule alone is dropped at the formatting step; strengthened in v11 with an explicit abstention slot in the closing format"
+    },
+    {
+      "name": "File-creation rule precedence unspecified",
+      "seenIn": ["iter10-A", "iter10-C", "iter11-C"],
+      "example": "When the documented command writes bytecode and a bytecode-free equivalent exists, the skill did not say whether to prefer the equivalent or to scope the rule to source/spec files, nor whether the allowlist may carry both forms.",
+      "generalFixRule": "Prefer the bytecode-free form across the brief, the allowlist, and the caller's rerun; scope the rule only when no bytecode-free form exists.",
+      "fix": "v9: the brief guidance states the preference order and keeps scoping as the fallback.",
+      "requirementsAddressed": ["A1", "C3", "B5"],
+      "fixStatus": "resolved in iter12/iter13 (bytecode-free form used consistently across brief, allowlist, and rerun)"
+    },
+    {
+      "name": "Format-choice criterion keyed on acceptance rather than report obligations",
+      "seenIn": ["iter10-C"],
+      "example": "Edit tasks pin acceptEdits, so 'acceptance depends on the mode' never fires; callers had no crisp test for choosing stream-json over plain json.",
+      "generalFixRule": "Choose the format from the evidence the report must state: capture system/init when the report must state the effective mode or load boundary, otherwise use plain json and confirm indirectly.",
+      "fix": "v9: the format bullet and the Verify sentence key on what the report must state and on saying which path was used.",
+      "requirementsAddressed": ["A2", "B4", "C5"],
+      "fixStatus": "resolved in iter12/iter13 (stream-json used when the report had to state mode/boundary; plain-json runs stated the indirect basis)"
+    },
+    {
+      "name": "Safe-mode init shape not recorded",
+      "seenIn": ["iter12-B"],
+      "example": "system/init listed skills (14-16) and plugins (5) under --safe-mode, so suppression had to be judged from mcp_servers and hook events alone.",
+      "generalFixRule": "Record the safe-mode init shape (tool, slash-command, skill, plugin, MCP counts) so callers can compare expected vs observed surface and judge suppression behaviorally.",
+      "fix": "v10: constraints.md names the behavioral signals and warns that a non-empty skill/plugin list is not evidence; validation.json adds probe p20 with the measured init shape.",
+      "requirementsAddressed": ["B1", "B4"],
+      "fixStatus": "resolved in iter14-B/iter15-B (behavioral signals cited: mcp_servers empty, no hook events)"
+    },
+    {
+      "name": "Auth preflight output carries PII",
+      "seenIn": ["iter13-B"],
+      "example": "claude auth status prints the account email and org ID, and the skill mandated the raw command.",
+      "generalFixRule": "For mandated diagnostics whose raw output may hold secrets or PII, capture only the needed fields and keep raw output out of reports and artifacts.",
+      "fix": "v10: the check is `claude auth status | jq '{loggedIn}'` with an explicit rule to keep raw auth output out of reports.",
+      "requirementsAddressed": ["B4", "A4"],
+      "fixStatus": "resolved in iter14/iter15 (no raw auth output in reports or artifacts)"
+    },
+    {
+      "name": "Probe headroom baseline for a first dispatch",
+      "seenIn": ["iter13-C"],
+      "example": "The rule asked for headroom 'over the expected usage', but a first dispatch has no prior measurement.",
+      "generalFixRule": "Express first-run headroom against a conservative single-run estimate with an explicit floor.",
+      "fix": "v10: the limits bullet says to keep the other bound well above a conservative single-run estimate, with a few-dollar floor for a one-turn probe.",
+      "requirementsAddressed": ["C1", "C5"],
+      "fixStatus": "resolved in iter14-C/iter15-C (the probe carried a $5 floor so the turn limit decided the stop)"
+    },
+    {
+      "name": "Baseline-dependent claim survives a negative rule",
+      "seenIn": ["iter14-B"],
+      "example": "The brief forbade baseline-dependent assertions, yet the delegate's closing text still said 'Workspace remains unchanged'; a purely negative rule was dropped at the formatting step.",
+      "generalFixRule": "Require an explicit abstention slot in the executor's closing format (for example, 'No-change: not claimed — caller-owned') so the abstention is part of the required output instead of an easily skipped prohibition.",
+      "fix": "v11: the brief guidance requires an explicit abstention line in the closing format.",
+      "requirementsAddressed": ["B2", "B5"],
+      "fixStatus": "resolved in iter16/iter17 (the brief required the abstention line and the closing text carried it)"
+    }
+  ],
+  "pendingReEvaluation": [],
+  "acceptedMinorObservations": [
+    {
+      "name": "Allowlist prefix form and the bare command",
+      "seenIn": ["iter16-C"],
+      "note": "Claimed that Bash(python3 -B -m unittest *) denies the bare command. Parent probe refuted it: the bare command ran with zero denials and the transcript shows the exact command. Prefix matching with a trailing space-star covers the bare form."
+    },
+    {
+      "name": "Probe-brief content policy",
+      "seenIn": ["iter11-C", "iter16-C", "iter17-C"],
+      "note": "The deliberate-probe pattern (a bounded first dispatch) is scenario-side; the skill's delta-brief contents already cover the continuation, and executors briefed the probe like a normal run."
+    },
+    {
+      "name": "Session artifacts not enumerated",
+      "seenIn": ["iter17-C"],
+      "note": "Checklist wording; the skill names system/init and the result message as evidence sources."
+    },
+    {
+      "name": "README-prescribed bytecode-writing command versus a no-change task",
+      "seenIn": ["iter16-B/C", "iter17-C"],
+      "note": "Scenario-side: the skill's v9/v10 rules resolve it (prefer the bytecode-free form), and all executors applied the preference."
+    },
+    {
+      "name": "Frozen checklist carries VCS wording",
+      "seenIn": ["every A and C round"],
+      "note": "The checklist asks for a tracked diff although the fixture is not a git repo; executors apply the skill's non-git baseline rule. Checklist-attributable, not a skill gap."
+    },
+    {
+      "name": "Harness no-poll policy versus the task's bounded wait",
+      "seenIn": ["iter2-A", "iter3-A", "iter4-A/B", "iter6-*", "iter8-A/B", "iter9-A/B"],
+      "note": "The dispatch wrapper asks for a capped in-session wait while the subagent harness advertises notification-based resume. Harness-attributable; the skill's own supervision rule (never duplicate on yield) was followed throughout."
+    },
+    {
+      "name": "VCS detection as an explicit preflight step",
+      "seenIn": ["iter9-C"],
+      "note": "Non-blocking framing preference; the skill already defines the non-git fallback."
+    },
+    {
+      "name": "Probe-dispatch briefing model",
+      "seenIn": ["iter9-C"],
+      "note": "Non-blocking; the skill's delta-brief contents already cover the continuation, and executors briefed the probe like a normal run."
+    },
+    {
+      "name": "Preflight non-mutation validation on a copy",
+      "seenIn": ["iter8-B"],
+      "note": "Non-blocking good practice performed by several executors; the skill's scoping rule already prevents the inconsistency."
+    },
+    {
+      "name": "Standalone sleep blocked by the CLI's own Bash guard",
+      "seenIn": ["holdout-H"],
+      "note": "A mandated `sleep 45` was rejected by Claude Code's tool guard even though `Bash(sleep *)` was allowlisted; the delegate relaunched it in the background. An allowlist rule is not a guarantee about how a command executes. For a controlled idle interval, use a loop shape the guard accepts or a backgrounded task the brief waits on, and confirm the wait from the stream."
+    },
+    {
+      "name": "Resume emits a zero-turn stub result",
+      "seenIn": ["holdout-H"],
+      "note": "The resumed run's stream carried a stub `result` (num_turns 0, empty text) before the real result. Reading the last result event, as the skill already says, resolves it."
+    },
+    {
+      "name": "Rate-limit state visible only in stream events",
+      "seenIn": ["holdout-H"],
+      "note": "Account rate windows and overage state appear in `rate_limit_event` stream events and not in plain result JSON. The skill's format-selection rule already ties the transport to the evidence the report must state."
+    }
+  ],
+  "interpretation": "Self-reported friction is classified against the frozen requirements and parent verification before it becomes a fix. A documented limitation, an explicit discretionary choice, or a tool-documentation quirk is not automatically a missing instruction. Materiality bar for fix rounds: an item is actionable when it changes the run's correctness, safety, or evidence quality; wording preferences and checklist/harness artifacts are recorded without cutting a new candidate."
+}
