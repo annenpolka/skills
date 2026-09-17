@@ -48,7 +48,8 @@ When nothing was asserted, say so in the deliverable with the reason.
 
 ## Write assertions
 
-Three separate tool calls, in order. The helper refuses to send a file that was not
+Three separate tool calls, in order. Run the helper with `bash` (installers may drop
+the executable bit). The helper refuses to send a file that was not
 inspected or that changed after inspection (exit `4`), so do not batch them.
 
 ```bash
@@ -64,9 +65,9 @@ jq -n --arg report "$REPORT" --arg diff "$DIFF" '{
   }
 }' > request.json
 # 2. inspect: prints state keys and questions, scans for credential patterns, records the inspection
-<skill-dir>/scripts/jev-crosscheck --inspect request.json
+bash <skill-dir>/scripts/jev-crosscheck --inspect request.json
 # 3. after reading the summary, send
-<skill-dir>/scripts/jev-crosscheck request.json
+bash <skill-dir>/scripts/jev-crosscheck request.json
 ```
 
 - One assertion per claim against one source. Split compound claims; nearby claims in
