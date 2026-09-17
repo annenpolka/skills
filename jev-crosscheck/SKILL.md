@@ -29,6 +29,14 @@ have already reached yourself. Typical assertions:
   completion conditions.
 - Review findings or logs: Score severity or Choice a category.
 
+For tests, first name the contract the test protects, a concrete wrong implementation
+it should catch, and implementation changes it should tolerate. Then assert whether
+the assertions distinguish that wrong implementation, whether the test boundary or a
+mock removes the behavior under test, and whether each detail the test depends on is
+needed to verify that contract. Depending on internals is not wrong by itself: counting
+calls to a notification client can be the contract ("never notify twice"), while
+pinning calls to a private helper usually is not.
+
 Do not assert only these:
 
 - Anything the data boundary below forbids sending.
@@ -50,7 +58,8 @@ When nothing was asserted, say so in the deliverable with the reason.
 
 Three separate tool calls, in order. Run the helper with `bash` (installers may drop
 the executable bit). The helper refuses to send a file that was not
-inspected or that changed after inspection (exit `4`), so do not batch them.
+inspected, or whose bytes or endpoint changed after inspection (exit `4`), so do not
+batch them. It is a guard against accidents, not a sandbox.
 
 ```bash
 # 1. write the request
@@ -64,7 +73,8 @@ jq -n --arg report "$REPORT" --arg diff "$DIFF" '{
     }
   }
 }' > request.json
-# 2. inspect: prints state keys and questions, scans for credential patterns, records the inspection
+# 2. inspect: prints endpoint, state keys, each question with its instructions and criteria;
+#    scans for credential patterns; records the inspection for these bytes and this endpoint
 bash <skill-dir>/scripts/jev-crosscheck --inspect request.json
 # 3. after reading the summary, send
 bash <skill-dir>/scripts/jev-crosscheck request.json
@@ -73,6 +83,25 @@ bash <skill-dir>/scripts/jev-crosscheck request.json
 - One assertion per claim against one source. Split compound claims; nearby claims in
   the same material get their own assertions. Send all assertions over the same state
   in one request (`questions` map; `model` defaults to `jev-latest`).
+- Pair each assertion your conclusion relies on with a sufficiency assertion that
+  names the specific fact the claim needs and asks whether the shown material states
+  it directly, not through names of definitions that are absent. One sufficiency
+  assertion may cover several claims that depend on the same fact in the same source. For example: "Does
+  `test_code` show which HTTP statuses the fake server returns, without relying on
+  imported constants whose definitions are not shown?" In trials, a generic "is this
+  enough to judge the claim?" and a Choice option `insufficient_evidence` both missed
+  absent definitions; the specific form separated them. A low sufficiency answer means
+  read more material, not that the claim is false, and any claim answer that depends
+  on that fact counts as unsupported however high it is (in trials, claim answers of
+  0.8 to 0.97 rested on names whose definitions were absent).
+- When no material for a claim is available at all, do not assert it; list it in the
+  deliverable as not checkable, naming the source you would need.
+- The content of material you cannot see (the value of an absent constant, the body of
+  an absent fixture) is not a meaning assumption. You may ask a conditional assertion
+  that states a hypothetical value explicitly ("If `EXPECTED_ATTEMPTS` is 2, would...")
+  only together with the same assertion without that hypothesis. Report the
+  conditional answer as "if", never as support. In trials the pair differed sharply
+  (0.98 conditional, 0.29 without the hypothesis).
 - Keep assertions independent of your own findings. Describe both outcomes at the
   same level of detail and do not put what you found or expect (for example "only the
   log message changed") into the instructions or criteria. Examples inside criteria
@@ -88,10 +117,10 @@ bash <skill-dir>/scripts/jev-crosscheck request.json
   is your finding and stays out.
 - Requires `jq`, `curl`, and macOS `security`. `TYPESAFE_BASE_URL` overrides the endpoint.
 - Exit codes: `0` success; `2` invalid request JSON or usage (fix it, inspect again);
-  `3` key missing or empty (see below); `4` not inspected or changed since (inspect
-  again as its own step); `5` credential-like pattern in the request (remove it from
-  state, then inspect again); any other value comes from curl, such as `7` cannot
-  connect or `22` HTTP error with the body on stderr. For those, call once more
+  `3` key missing or empty (see below); `4` not inspected, or file or endpoint changed
+  since (inspect again as its own step); `5` credential-like content, reported by
+  category and state key without the value (remove it, then inspect again); any other value comes from curl, such as `7` cannot
+  connect or `22` HTTP error; the response body goes to stderr. For those, call once more
   at most, then stop and report. Never work around a failure by calling the API
   yourself or changing the endpoint.
 - The key lives in the login Keychain as service `typesafe-api`. The helper never
@@ -119,13 +148,22 @@ value, even partly.
 
 ## Report results
 
-- Put your own findings and conclusion first. Then a TypeSafe section with the helper
-  exit code, the returned `model`, the state keys sent and their source files or
-  lines, and for each assertion its id, `instructions` text (quoted, or a summary
-  pointing to the saved request), and answer fields as returned: `noul` for Noul;
-  `choice`, `probabilities`, `confidence` for Choice; `score`, `probabilities`,
-  `confidence` for Score. Noul has no `confidence`; do not invent one. `usage` is
-  optional.
+- Keep the full record in files: save the response next to its request (for example
+  `request.json` and `response.json` in a scratch folder the task allows) and keep both. The deliverable points to them
+  instead of listing every assertion.
+- In the deliverable, put your own findings and conclusion first. Then a short
+  TypeSafe section with the helper exit code, the returned `model`, the state keys
+  sent and their sources, the saved file paths, and only the assertions that matter:
+  low or disputed answers, low sufficiency answers, and any answer your conclusion
+  uses. For those, give the id, the instructions (quoted or summarized), the answer
+  fields as returned (`noul`; or `choice`, `probabilities`, `confidence`; or `score`,
+  `probabilities`, `confidence`; Noul has no `confidence`), and the effect on your
+  conclusion. `usage` is optional.
+- Give each finding that matters a status and update it when later work resolves it:
+  `confirmed by execution`, `confirmed by reading` (a direct comparison of material you
+  have, such as a config value against a documented number), `counterexample found`
+  (say whether by execution or by reading), or `unresolved`. An assertion
+  suggests where to look; the status records what actually checked it.
 - Do not turn a probability into PASS/FAIL or present it as verified fact. A low or
   disputed answer is a reason to inspect the evidence or send the work back; a high
   one is not acceptance. Tests, real runs, proofs, and your own review still decide.

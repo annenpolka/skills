@@ -3,15 +3,18 @@
 # The API key is read from the macOS Keychain at call time and never exported.
 #
 # Usage (two separate steps):
-#   jev-crosscheck --inspect request.json   # validate, summarize, scan for credentials, record inspection
-#   jev-crosscheck request.json             # send; refused unless this exact file was inspected
+#   bash jev-crosscheck --inspect request.json   # validate, show endpoint and questions, scan for credentials, record inspection
+#   bash jev-crosscheck request.json             # send; refused unless these exact bytes were inspected for this endpoint
 #
 # request.json = {"state": ..., "questions": {...}}   (model defaults to jev-latest)
 #
 # Exit codes:
-#   0 ok  2 invalid request or usage  3 key missing or empty
-#   4 not inspected, or changed after inspection  5 credential pattern found (not recorded as inspected)
-#   other: curl (7 cannot connect, 22 HTTP error; body on stderr)
+#   0 ok (answers on stdout)  2 invalid request or usage  3 key missing or empty
+#   4 not inspected, or file or endpoint changed after inspection
+#   5 credential-like pattern found (category and state key reported; not recorded as inspected)
+#   other: curl (7 cannot connect, 22 HTTP error; response body on stderr)
+#
+# This is a guard against accidents, not a sandbox against a hostile caller.
 #
 # Register the key in a normal terminal (a Claude Code `!` command cannot take hidden input):
 #   security add-generic-password -U -a "$USER" -s typesafe-api -w
@@ -19,6 +22,7 @@ set -euo pipefail
 
 service="typesafe-api"
 base_url="${TYPESAFE_BASE_URL:-https://api.typesafe.ai}"
+endpoint="$base_url/v1/systemone"
 
 usage() { echo "usage: jev-crosscheck --inspect request.json | jev-crosscheck request.json" >&2; exit 2; }
 
@@ -28,16 +32,22 @@ if [ "${1:-}" = "--inspect" ]; then mode=inspect; shift; fi
 file=$1
 stamp="$file.inspected"
 
+# Read the file exactly once; every later step uses this snapshot.
+snapshot=$(mktemp)
+trap 'rm -f "$snapshot"' EXIT
+cat "$file" > "$snapshot"
+
 body=$(jq -ce '
   if (type == "object") and has("state") and (.questions | type == "object") and (.questions | length > 0)
   then .model //= "jev-latest"
   else error("request needs state and a non-empty questions map")
-  end' "$file") || { echo "jev-crosscheck: invalid request JSON" >&2; exit 2; }
+  end' "$snapshot") || { echo "jev-crosscheck: invalid request JSON" >&2; exit 2; }
 
-digest=$(shasum -a 256 "$file" | cut -d' ' -f1)
+digest=$({ printf '%s\n' "$endpoint"; cat "$snapshot"; } | shasum -a 256 | cut -d' ' -f1)
 
 if [ "$mode" = inspect ]; then
   rm -f "$stamp"
+  printf 'endpoint: %s\n' "$endpoint"
   jq -r '
     "model: \(.model)",
     "state keys:",
@@ -45,22 +55,46 @@ if [ "$mode" = inspect ]; then
       then to_entries[] | "  \(.key): \(.value | type), \(.value | tostring | length) chars"
       else "  (\(type)), \(tostring | length) chars" end),
     "questions:",
-    (.questions | to_entries[] | "  \(.key): \(.value.type)")' <<<"$body"
-  patterns='ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|whsec_[A-Za-z0-9]{8,}|xox[abprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY|[a-z][a-z0-9+.-]*://[^/[:space:]:@"]+:[^/[:space:]@"]+@|(password|passwd|secret|token|api[_-]?key)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[^[:space:]"'"'"'\\]{6,}'
-  if hits=$(grep -Eoi "$patterns" <<<"$body" | sed -E 's/^(.{0,6}).*/\1…/' | sort -u) && [ -n "$hits" ]; then
-    echo "credential-like patterns found (prefixes only):" >&2
-    sed 's/^/  /' <<<"$hits" >&2
-    echo "jev-crosscheck: not recorded as inspected; remove them from state and inspect again" >&2
+    (.questions | to_entries[] |
+      "  \(.key) [\(.value.type)]",
+      "    instructions: \(.value.instructions | if type == "string" then . else tojson end)",
+      (if .value.criteria then "    criteria: \(.value.criteria | tojson)" else empty end))' <<<"$body"
+
+  categories=(
+    "GitHub token|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}"
+    "API secret key|sk-[A-Za-z0-9_-]{20,}"
+    "AWS access key|AKIA[0-9A-Z]{16}"
+    "webhook secret|whsec_[A-Za-z0-9]{8,}"
+    "Slack token|xox[abprs]-[A-Za-z0-9-]{10,}"
+    "private key|-----BEGIN [A-Z ]*PRIVATE KEY"
+    "URL with credentials|[a-z][a-z0-9+.-]*://[^/[:space:]:@\"]+:[^/[:space:]@\"]+@"
+    "credential assignment|(password|passwd|secret|token|api[_-]?key)[\"']?[[:space:]]*[:=][[:space:]]*[\"']?[^[:space:]\"'\\\\]{6,}"
+  )
+  found=()
+  while IFS=$'\t' read -r where text; do
+    for entry in "${categories[@]}"; do
+      name=${entry%%|*}
+      pattern=${entry#*|}
+      if grep -Eqi -- "$pattern" <<<"$text"; then found+=("$name in $where"); fi
+    done
+  done < <(jq -r '
+    (.state | if type == "object" then to_entries[] | ["state.\(.key)", (.value | tostring)] else ["state", tostring] end),
+    ["questions", (.questions | tostring)]
+    | @tsv' <<<"$body")
+  if [ ${#found[@]} -gt 0 ]; then
+    echo "credential-like content found (values not shown):" >&2
+    printf '  %s\n' "${found[@]}" >&2
+    echo "jev-crosscheck: not recorded as inspected; remove it from the request and inspect again" >&2
     exit 5
   fi
   echo "no credential-like patterns found (this scan does not replace your own review)"
   echo "$digest" > "$stamp"
-  echo "recorded inspection of $file; read the summary above before sending in a separate step"
+  echo "recorded inspection of $file for this endpoint; read the summary above, then send in a separate step"
   exit 0
 fi
 
 if [ ! -f "$stamp" ] || [ "$(cat "$stamp")" != "$digest" ]; then
-  echo "jev-crosscheck: $file was not inspected, or changed after inspection; run --inspect first as a separate step" >&2
+  echo "jev-crosscheck: $file was not inspected, or the file or endpoint changed after inspection; run --inspect first as a separate step" >&2
   exit 4
 fi
 
@@ -70,9 +104,14 @@ if ! key=$(security find-generic-password -a "$USER" -s "$service" -w 2>/dev/nul
 fi
 
 # The key goes through a process-substituted curl config, never argv; the body goes through stdin.
-curl -sS --fail-with-body --max-time 60 \
+rc=0
+response=$(curl -sS --fail-with-body --max-time 60 \
   -K <(printf 'header = "Authorization: Bearer %s"\n' "$key") \
   -H "Content-Type: application/json" \
   --data-binary @- \
-  "$base_url/v1/systemone" <<<"$body"
-echo
+  "$endpoint" <<<"$body") || rc=$?
+if [ "$rc" -ne 0 ]; then
+  [ -n "$response" ] && printf '%s\n' "$response" >&2
+  exit "$rc"
+fi
+printf '%s\n' "$response"

@@ -1,13 +1,149 @@
 {
   "skill": "jev-crosscheck",
   "patterns": [
-    {"name": "Reporting fields assumed uniform across answer types", "seenIn": ["iter1-A","iter1-B"], "generalFixRule": "Tie each required reporting field to the answer types that return it.", "fix": "v2: per-type field list verified against the API reference.", "fixStatus": "resolved"},
-    {"name": "Skip rule boundary drawn by reading effort instead of mechanism", "seenIn": ["iter1-C","iter2-A","iter2-B","iter3-A","iter3-C"], "generalFixRule": "Define exclusions by whether a deterministic mechanism decides the fact, and keep examples consistent with the rule.", "fix": "v4 (user direction): exclude only mechanism-decided facts; example changed to a meaning question.", "fixStatus": "resolved"},
-    {"name": "Provenance of relayed mechanism output", "seenIn": ["iter6-A","iter7-A","iter7-C","iter8-C","iter10-A","iter10-C","iter12-A","iter13-C"], "generalFixRule": "Binary rule: unless you ran it, it is not reproduced; read counts directly; assert only what the output shows when the conclusion relies on it.", "fix": "v9/v11/v14/v17 converging wording; structural rewrite at v9.", "fixStatus": "resolved (no recurrence iter18-21)"},
-    {"name": "Inspection and send not separated", "seenIn": ["iter6-A","iter16-A","iter17-B","iter18-A","iter19-A","iter19-B"], "generalFixRule": "When prose ordering keeps being violated and the example contradicts it, enforce the order mechanically.", "fix": "v19: helper requires --inspect stamp matching the file hash (exit 4) and refuses credential patterns (exit 5); example rewritten as three calls.", "fixStatus": "resolved (iter20-21 all sequential)"},
-    {"name": "Assumptions folded into one criteria set degrade judgments", "seenIn": ["iter6-B","iter10-B","iter15-B"], "generalFixRule": "One reading per assertion; split whenever readings could change the answer.", "fix": "v7, v15.", "fixStatus": "resolved"},
-    {"name": "Agent findings leaking into criteria", "seenIn": ["iter8-A","iter11-A","iter15-A"], "generalFixRule": "Describe outcomes symmetrically; examples in criteria only from the claim being checked.", "fix": "v9, v12, v15.", "fixStatus": "resolved"},
-    {"name": "Assumption vs finding boundary", "seenIn": ["iter10-A","iter11-A","iter12-A","iter12-B","iter13-A"], "generalFixRule": "Meaning assumptions allowed when the answer depends on them; observed outcomes never; give a contrasting example pair.", "fix": "v13, v14 example.", "fixStatus": "resolved"},
-    {"name": "Credentials found in checked material", "seenIn": ["iter15-H2"], "generalFixRule": "Name category and location in the deliverable, never the value.", "fix": "v15.", "fixStatus": "resolved"}
+    {
+      "name": "Reporting fields assumed uniform across answer types",
+      "seenIn": [
+        "iter1-A",
+        "iter1-B"
+      ],
+      "generalFixRule": "Tie each required reporting field to the answer types that return it.",
+      "fix": "v2: per-type field list verified against the API reference.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Skip rule boundary drawn by reading effort instead of mechanism",
+      "seenIn": [
+        "iter1-C",
+        "iter2-A",
+        "iter2-B",
+        "iter3-A",
+        "iter3-C"
+      ],
+      "generalFixRule": "Define exclusions by whether a deterministic mechanism decides the fact, and keep examples consistent with the rule.",
+      "fix": "v4 (user direction): exclude only mechanism-decided facts; example changed to a meaning question.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Provenance of relayed mechanism output",
+      "seenIn": [
+        "iter6-A",
+        "iter7-A",
+        "iter7-C",
+        "iter8-C",
+        "iter10-A",
+        "iter10-C",
+        "iter12-A",
+        "iter13-C"
+      ],
+      "generalFixRule": "Binary rule: unless you ran it, it is not reproduced; read counts directly; assert only what the output shows when the conclusion relies on it.",
+      "fix": "v9/v11/v14/v17 converging wording; structural rewrite at v9.",
+      "fixStatus": "resolved (no recurrence iter18-21)"
+    },
+    {
+      "name": "Inspection and send not separated",
+      "seenIn": [
+        "iter6-A",
+        "iter16-A",
+        "iter17-B",
+        "iter18-A",
+        "iter19-A",
+        "iter19-B"
+      ],
+      "generalFixRule": "When prose ordering keeps being violated and the example contradicts it, enforce the order mechanically.",
+      "fix": "v19: helper requires --inspect stamp matching the file hash (exit 4) and refuses credential patterns (exit 5); example rewritten as three calls.",
+      "fixStatus": "resolved (iter20-21 all sequential)"
+    },
+    {
+      "name": "Assumptions folded into one criteria set degrade judgments",
+      "seenIn": [
+        "iter6-B",
+        "iter10-B",
+        "iter15-B"
+      ],
+      "generalFixRule": "One reading per assertion; split whenever readings could change the answer.",
+      "fix": "v7, v15.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Agent findings leaking into criteria",
+      "seenIn": [
+        "iter8-A",
+        "iter11-A",
+        "iter15-A"
+      ],
+      "generalFixRule": "Describe outcomes symmetrically; examples in criteria only from the claim being checked.",
+      "fix": "v9, v12, v15.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Assumption vs finding boundary",
+      "seenIn": [
+        "iter10-A",
+        "iter11-A",
+        "iter12-A",
+        "iter12-B",
+        "iter13-A"
+      ],
+      "generalFixRule": "Meaning assumptions allowed when the answer depends on them; observed outcomes never; give a contrasting example pair.",
+      "fix": "v13, v14 example.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Credentials found in checked material",
+      "seenIn": [
+        "iter15-H2"
+      ],
+      "generalFixRule": "Name category and location in the deliverable, never the value.",
+      "fix": "v15.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Helper inspected bytes differ from sent bytes",
+      "seenIn": [
+        "external review (v19)"
+      ],
+      "generalFixRule": "Read input once and derive display, scan, hash, and send from the same snapshot; bind the endpoint into the approval.",
+      "fix": "v20 helper: single snapshot, endpoint in digest, values never printed, HTTP body to stderr; regression tests.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Claim answers trusting names of absent definitions",
+      "seenIn": [
+        "design trial",
+        "iter22-D"
+      ],
+      "generalFixRule": "Pair claim assertions with specific sufficiency assertions; a low sufficiency answer makes dependent claim answers unsupported.",
+      "fix": "v20, v21.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Status vocabulary missing reading-based confirmation",
+      "seenIn": [
+        "iter22-A",
+        "iter22-B"
+      ],
+      "generalFixRule": "Statuses must cover every check the agent can actually perform.",
+      "fix": "v21: confirmed by reading; counterexample found says by execution or reading.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Guessing content of unseen material",
+      "seenIn": [
+        "iter23-D"
+      ],
+      "generalFixRule": "Hypothetical values only as explicit conditionals paired with the unconditional assertion; never counted as support.",
+      "fix": "v22.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Sufficiency grouping unspecified",
+      "seenIn": [
+        "iter25-B"
+      ],
+      "generalFixRule": "State whether one check may cover several claims resting on the same fact.",
+      "fix": "v23.",
+      "fixStatus": "resolved"
+    }
   ]
 }

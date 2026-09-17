@@ -1,23 +1,25 @@
 {
   "schemaVersion": 1,
   "target": "jev-crosscheck",
-  "shippedCandidate": "v19",
+  "shippedCandidate": "v23",
   "shippedAt": "2026-09-17",
   "skillDir": "jev-crosscheck",
   "files": {
-    "SKILL.md": "9e6aa88dc84bf54bc9dafd72e9de72f48777214692326f178020959b5519fabe",
-    "scripts/jev-crosscheck": "8526dc90f0741bc48bd72d8f181418d37c89df6941937d04609476202a3f47a0",
-    "agents/openai.yaml": "47264e9c61213c701cad5ec4115f5c1f73c10d3a68c0badbf1dab9515c4498ae"
+    "SKILL.md": "e0fb1e30a038da1627f19c92a9f7f8064bbfbf28ec01d0b4633698df03d1db13",
+    "scripts/jev-crosscheck": "07e1b299bca83f8e60a3225f2b8c8939d3d543a26808f304d40048469f018b73",
+    "agents/openai.yaml": "47264e9c61213c701cad5ec4115f5c1f73c10d3a68c0badbf1dab9515c4498ae",
+    "tests/helper.test.mjs": "72609c7ad2c0b75d2bbef34845e74752630c614e19d815df73cd74a45d580d64"
   },
   "verification": {
     "clearRoundsRequired": 2,
     "clearRoundsAchieved": 2,
-    "holdout": "H3 passed",
-    "numericalConvergence": false
+    "holdout": "H5 passed",
+    "numericalConvergence": true,
+    "helperTests": "10/10"
   },
   "evaluationLimits": [
-    "Numeric step/duration thresholds not met between the two clear rounds (single runs).",
     "Checklists visible to executors.",
-    "Synthetic fixtures; Jev answer quality on real material not measured."
+    "Synthetic fixtures; Jev accuracy on real material not measured.",
+    "Design trials of question forms are single calls."
   ]
 }

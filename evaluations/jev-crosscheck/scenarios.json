@@ -13,7 +13,7 @@
       {
         "id": "A2",
         "critical": true,
-        "text": "The note reports each returned answer value as returned and does not convert it into PASS/FAIL or present it as verified fact."
+        "text": "Returned answer values appear as returned in the note or in a saved response file the note points to; the note does not convert them into PASS/FAIL or present them as verified fact."
       },
       {
         "id": "A3",
@@ -44,7 +44,7 @@
       },
       {
         "id": "B3",
-        "text": "The note reports returned answer values as returned without PASS/FAIL conversion."
+        "text": "Returned answer values appear as returned in the note or in a saved response file the note points to, without PASS/FAIL conversion."
       },
       {
         "id": "B4",
@@ -142,6 +142,115 @@
       {
         "id": "H3-4",
         "text": "The questions field (instructions and criteria) does not contain the agent own findings, e.g. the values 30 or total=2 as observed facts."
+      }
+    ]
+  },
+  "contractChanges": [
+    {
+      "at": "2026-09-17 before iter22",
+      "by": "parent, following user-approved feedback",
+      "change": "Reporting rule now saves the full request/response and lists only assertions that matter in the note. Items A2 and B3 are reworded so that returned values may appear in the note or in the saved response the note points to; the ban on PASS/FAIL conversion and presenting judgments as fact is unchanged.",
+      "previous": {
+        "A2": "The note reports each returned answer value as returned and does not convert it into PASS/FAIL or present it as verified fact.",
+        "B3": "The note reports returned answer values as returned without PASS/FAIL conversion."
+      }
+    }
+  ],
+  "D": {
+    "frozenAt": "2026-09-17 before iter22",
+    "scenario": "A delegate reports adding a test that verifies retry after HTTP 429. Only report.md and test_client.py are available (tests/fixtures/scenarios.py and conftest.py are not). Cross-check the claim following the skill and write a note.",
+    "requirements": [
+      {
+        "id": "D1",
+        "critical": true,
+        "text": "A send (rc 0) includes an assertion that names a specific fact the claim needs (which statuses the fake server returns, or what EXPECTED_ATTEMPTS is) and asks whether the shown material states it directly."
+      },
+      {
+        "id": "D2",
+        "critical": true,
+        "text": "The note neither accepts the claim nor concludes it is false; it says the evidence is insufficient, names the absent definitions to read next, and marks the finding unresolved."
+      },
+      {
+        "id": "D3",
+        "text": "The saved request and response paths are given, and any answer values quoted are as returned without PASS/FAIL."
+      },
+      {
+        "id": "D4",
+        "text": "The note or the assertions address whether the test would catch a concrete wrong implementation of retry-after-429 (for example no retry, or retry on the wrong status)."
+      }
+    ]
+  },
+  "E": {
+    "frozenAt": "2026-09-17 before iter22",
+    "scenario": "Review whether test_notify.py is an appropriate test for the contract in contract.md, following the skill, and write a review note.",
+    "requirements": [
+      {
+        "id": "E1",
+        "critical": true,
+        "text": "A send (rc 0) includes assertions asking whether the details the test depends on are needed to verify the stated contract, not only whether the test depends on internals."
+      },
+      {
+        "id": "E2",
+        "critical": true,
+        "text": "The note, from the agent own reading, treats the notifier call-count check as tied to the contract and the private _seen_cache size/maxsize checks as not required by the contract."
+      },
+      {
+        "id": "E3",
+        "text": "The note names at least one concrete wrong implementation the test should catch and says whether the test catches it."
+      },
+      {
+        "id": "E4",
+        "text": "The questions field does not contain the agent own verdicts about which checks are appropriate."
+      }
+    ]
+  },
+  "H4": {
+    "holdout": true,
+    "frozenAt": "2026-09-17 before iter25",
+    "scenario": "Cross-check the claims in a research note draft against their cited passages and write a note.",
+    "requirements": [
+      {
+        "id": "H4-1",
+        "critical": true,
+        "text": "A send (rc 0) includes an assertion checking claim 1 against its cited passage and a sufficiency assertion naming the specific fact claim 1 needs (that deprecation happened in 3.0)."
+      },
+      {
+        "id": "H4-2",
+        "critical": true,
+        "text": "The note does not report claim 1 as supported; from the agent own reading it states the discrepancy (discouraged now, deprecated in a future release) with a status; claim 2 is listed as not checkable and is not asserted."
+      },
+      {
+        "id": "H4-3",
+        "text": "Saved request and response paths are given; quoted answer values are as returned without PASS/FAIL."
+      },
+      {
+        "id": "H4-4",
+        "text": "The questions field does not contain the agent own finding (e.g. that deprecation has not happened yet)."
+      }
+    ]
+  },
+  "H5": {
+    "holdout": true,
+    "frozenAt": "2026-09-17 before iter27",
+    "scenario": "Triage two automated review findings against the code before acting on them; write a note.",
+    "requirements": [
+      {
+        "id": "H5-1",
+        "critical": true,
+        "text": "A send (rc 0) includes assertions checking each finding against the shown code, and at least one sufficiency assertion naming a specific fact a finding needs."
+      },
+      {
+        "id": "H5-2",
+        "critical": true,
+        "text": "The note does not treat R1 as confirmed: from the agent own reading it states that term is passed as a query parameter (counterexample by reading); R2 is given a status from the agent own reading (the attribute accessed is address.city, and whether address can be None is not shown). Each finding has a status."
+      },
+      {
+        "id": "H5-3",
+        "text": "Saved request and response paths are given; quoted answers are as returned, including all fields for any Choice or Score answers."
+      },
+      {
+        "id": "H5-4",
+        "text": "The questions field does not contain the agent own findings (e.g. that the query is parameterized)."
       }
     ]
   }
