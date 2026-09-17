@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jev Crosscheck"
+  short_description: "Check semantic assertions in bulk with TypeSafe Jev"
+  default_prompt: "Use $jev-crosscheck to turn the reading-based claims here into semantic assertions, check them with Jev, and report the probabilities."

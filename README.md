@@ -24,6 +24,7 @@ Claude Code 用のスキルとプラグイン。
 | **spec-interview** | 仕様書インタビュー。AskUserQuestion で仕様を対話的に明確化・拡充 |
 | **speculative-research** | 構想を調査台帳へ蓄積。Devin／DeepSeekの相互レビュー、原本からの引用生成、同session訂正と親の受入を支援 |
 | **syntax-reference** | 文体DNA抽出・再現。12の構造層で文体をYAML符号化し、LLMによる高精度な文体模倣を実現 |
+| **jev-crosscheck** | 読んで判断している主張を意味論的assertionとしてTypeSafeのJevで大量に検査し、確率で照合。キーはmacOSキーチェーンから呼出し時だけ読む |
 | **ui-exploration** | 基準画像と制御された複数案を比較し、人間の視覚判断でUIを反復改善 |
 
 ## Plugins

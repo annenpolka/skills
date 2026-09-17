@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "target": "jev-crosscheck",
+  "executor": "Claude Code general-purpose subagent (claude-opus-5), fresh per scenario and round",
+  "reviewer": "parent: request/response/rc records captured by an evaluation wrapper around the real helper, note contents, fixture hashes",
+  "method": "Fixed scenarios A (delegate report vs diff), B (docs vs config with embedded secrets), C (deterministic CI log, no call expected); holdouts H (endpoint unreachable), H2 (delegation brief with a token), H3 (docs vs code with personal contact data). Checklists frozen in scenarios.json before dispatch. Self-reported unclear points adjudicated per adjudication.md.",
+  "rounds": [
+    {"iter":1,"skill":"v1 (typesafe-check)","A":"○100% 5/49s","B":"○100% 6/44s","C":"○100% 3/31s","newDefects":5},
+    {"iter":2,"skill":"v2","A":"○100% 6/54s","B":"○100% 6/57s","C":"○100% 4/25s","newDefects":3},
+    {"iter":3,"skill":"v3","A":"○100% 6/50s","B":"○100% 6/59s","C":"○100% 3/24s","newDefects":4},
+    {"iter":4,"skill":"v4 (user: use where no deterministic mechanism)","A":"○100% 6/51s","B":"○100% 6/51s","C":"○100% 4/23s","newDefects":2},
+    {"iter":5,"skill":"v5 (renamed jev-crosscheck)","A":"○100% 7/58s","B":"○100% 6/55s","C":"○100% 3/24s","newDefects":2},
+    {"iter":6,"skill":"v6 (first attempt aborted by rate limit, rerun)","A":"○100% 4/63s","B":"○100% 6/62s","C":"○100% 3/23s","newDefects":3},
+    {"iter":7,"skill":"v7","A":"○100% 6/68s","B":"○100% 7/56s","C":"○100% 4/41s","H":"○100% 5/56s","newDefects":4},
+    {"iter":8,"skill":"v8","A":"○100% 8/91s","B":"○100% 7/79s","C":"○100% 3/35s","newDefects":3},
+    {"iter":9,"skill":"v9 (user: when in doubt send to Jev)","A":"○100% 5/64s","B":"○100% 7/63s","C":"○100% 3/31s","newDefects":2},
+    {"iter":10,"skill":"v10","A":"○100% 6/63s","B":"○100% 7/74s","C":"○100% 4/40s","newDefects":1},
+    {"iter":11,"skill":"v11","A":"○100% 5/67s","B":"○100% 7/61s","C":"○100% 3/29s","newDefects":2},
+    {"iter":12,"skill":"v12 (user: semantic assertions, heavy use; rewrite)","A":"○100% 5/55s","B":"○100% 7/68s","C":"○100% 3/33s","newDefects":3},
+    {"iter":13,"skill":"v13","A":"○100% 6/68s","B":"○100% 7/75s","C":"○100% 3/29s","newDefects":2},
+    {"iter":14,"skill":"v14","A":"○100% 7/75s","B":"○100% 7/69s","C":"○100% 3/29s","newDefects":0},
+    {"iter":15,"skill":"v14","A":"○100% 6/81s","B":"○100% 7/73s","C":"○100% 4/34s","H2":"○100% 7/47s","newDefects":2},
+    {"iter":16,"skill":"v15","A":"○100% 7/89s","B":"○100% 7/77s","C":"○100% 3/28s","newDefects":1},
+    {"iter":17,"skill":"v16","A":"○100% 7/82s","B":"○100% 7/72s","C":"○100% 4/36s","newDefects":1},
+    {"iter":18,"skill":"v17","A":"○100% 7/71s","B":"○100% 7/67s","C":"○100% 3/23s","newDefects":1},
+    {"iter":19,"skill":"v18","A":"○100% 7/78s","B":"○100% 8/92s","C":"○100% 3/46s","newDefects":1},
+    {"iter":20,"skill":"v19 (helper enforces write → inspect → send)","A":"○100% 6/66s","B":"○100% 7/73s","C":"○100% 4/26s","newDefects":0},
+    {"iter":21,"skill":"v19","A":"○100% 8/98s","B":"○100% 7/87s","C":"○100% 3/29s","H3":"○100% 7/73s","newDefects":0}
+  ],
+  "convergence": {
+    "qualitativeClearRounds": 2,
+    "clearRounds": ["iter20","iter21"],
+    "holdout": "H3 passed (100%); H (iter7) and H2 (iter15) also 100% on earlier versions",
+    "numericCriteriaMet": false,
+    "numericNote": "iter20→iter21 step count changed A 6→8 (+33%), duration A 66→98s (+48%), B 73→87s (+19%); single runs per scenario, so the ±10%/±15% thresholds were not met and numerical convergence is not certified."
+  },
+  "limitations": [
+    "Requirement checklists are shown to executors, so some items can be satisfied from the checklist itself; qualitative self-reports carry most of the signal.",
+    "Adjudication of 'new defect' is by the parent; the counting rule was clarified before reading iter20 A/B (adjudication.md).",
+    "Fixtures are small and synthetic; answer quality of Jev on real project material is not measured.",
+    "Executors ran inside the Runeweave working tree; project CLAUDE.md context may have influenced data-boundary caution (seen in iter13 A).",
+    "iter16 A/B step and duration metrics arrived after the round summary and are taken from completion notifications."
+  ]
+}

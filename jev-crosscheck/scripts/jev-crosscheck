@@ -1,0 +1,78 @@
+#!/bin/bash
+# Send semantic assertions to TypeSafe System One (Jev).
+# The API key is read from the macOS Keychain at call time and never exported.
+#
+# Usage (two separate steps):
+#   jev-crosscheck --inspect request.json   # validate, summarize, scan for credentials, record inspection
+#   jev-crosscheck request.json             # send; refused unless this exact file was inspected
+#
+# request.json = {"state": ..., "questions": {...}}   (model defaults to jev-latest)
+#
+# Exit codes:
+#   0 ok  2 invalid request or usage  3 key missing or empty
+#   4 not inspected, or changed after inspection  5 credential pattern found (not recorded as inspected)
+#   other: curl (7 cannot connect, 22 HTTP error; body on stderr)
+#
+# Register the key in a normal terminal (a Claude Code `!` command cannot take hidden input):
+#   security add-generic-password -U -a "$USER" -s typesafe-api -w
+set -euo pipefail
+
+service="typesafe-api"
+base_url="${TYPESAFE_BASE_URL:-https://api.typesafe.ai}"
+
+usage() { echo "usage: jev-crosscheck --inspect request.json | jev-crosscheck request.json" >&2; exit 2; }
+
+mode=send
+if [ "${1:-}" = "--inspect" ]; then mode=inspect; shift; fi
+[ $# -eq 1 ] && [ -f "$1" ] || usage
+file=$1
+stamp="$file.inspected"
+
+body=$(jq -ce '
+  if (type == "object") and has("state") and (.questions | type == "object") and (.questions | length > 0)
+  then .model //= "jev-latest"
+  else error("request needs state and a non-empty questions map")
+  end' "$file") || { echo "jev-crosscheck: invalid request JSON" >&2; exit 2; }
+
+digest=$(shasum -a 256 "$file" | cut -d' ' -f1)
+
+if [ "$mode" = inspect ]; then
+  rm -f "$stamp"
+  jq -r '
+    "model: \(.model)",
+    "state keys:",
+    (.state | if type == "object"
+      then to_entries[] | "  \(.key): \(.value | type), \(.value | tostring | length) chars"
+      else "  (\(type)), \(tostring | length) chars" end),
+    "questions:",
+    (.questions | to_entries[] | "  \(.key): \(.value.type)")' <<<"$body"
+  patterns='ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|whsec_[A-Za-z0-9]{8,}|xox[abprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY|[a-z][a-z0-9+.-]*://[^/[:space:]:@"]+:[^/[:space:]@"]+@|(password|passwd|secret|token|api[_-]?key)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[^[:space:]"'"'"'\\]{6,}'
+  if hits=$(grep -Eoi "$patterns" <<<"$body" | sed -E 's/^(.{0,6}).*/\1…/' | sort -u) && [ -n "$hits" ]; then
+    echo "credential-like patterns found (prefixes only):" >&2
+    sed 's/^/  /' <<<"$hits" >&2
+    echo "jev-crosscheck: not recorded as inspected; remove them from state and inspect again" >&2
+    exit 5
+  fi
+  echo "no credential-like patterns found (this scan does not replace your own review)"
+  echo "$digest" > "$stamp"
+  echo "recorded inspection of $file; read the summary above before sending in a separate step"
+  exit 0
+fi
+
+if [ ! -f "$stamp" ] || [ "$(cat "$stamp")" != "$digest" ]; then
+  echo "jev-crosscheck: $file was not inspected, or changed after inspection; run --inspect first as a separate step" >&2
+  exit 4
+fi
+
+if ! key=$(security find-generic-password -a "$USER" -s "$service" -w 2>/dev/null) || [ -z "$key" ]; then
+  echo "jev-crosscheck: Keychain item $service is missing or empty" >&2
+  exit 3
+fi
+
+# The key goes through a process-substituted curl config, never argv; the body goes through stdin.
+curl -sS --fail-with-body --max-time 60 \
+  -K <(printf 'header = "Authorization: Bearer %s"\n' "$key") \
+  -H "Content-Type: application/json" \
+  --data-binary @- \
+  "$base_url/v1/systemone" <<<"$body"
+echo

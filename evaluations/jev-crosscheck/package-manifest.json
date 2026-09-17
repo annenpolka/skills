@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "target": "jev-crosscheck",
+  "shippedCandidate": "v19",
+  "shippedAt": "2026-09-17",
+  "skillDir": "jev-crosscheck",
+  "files": {
+    "SKILL.md": "86cff41a6d716520c8828e80d94f2874b849b4bd96b967470f240f4ab3da4cc0",
+    "scripts/jev-crosscheck": "8526dc90f0741bc48bd72d8f181418d37c89df6941937d04609476202a3f47a0",
+    "agents/openai.yaml": "47264e9c61213c701cad5ec4115f5c1f73c10d3a68c0badbf1dab9515c4498ae"
+  },
+  "verification": {
+    "clearRoundsRequired": 2,
+    "clearRoundsAchieved": 2,
+    "holdout": "H3 passed",
+    "numericalConvergence": false
+  },
+  "evaluationLimits": [
+    "Numeric step/duration thresholds not met between the two clear rounds (single runs).",
+    "Checklists visible to executors.",
+    "Synthetic fixtures; Jev answer quality on real material not measured."
+  ]
+}
