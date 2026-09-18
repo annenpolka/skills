@@ -5,10 +5,10 @@
   "shippedAt": "2026-09-17",
   "skillDir": "jev-crosscheck",
   "files": {
-    "SKILL.md": "e0fb1e30a038da1627f19c92a9f7f8064bbfbf28ec01d0b4633698df03d1db13",
-    "scripts/jev-crosscheck": "07e1b299bca83f8e60a3225f2b8c8939d3d543a26808f304d40048469f018b73",
+    "SKILL.md": "165ffb979d07d69599674202c0dbef057b58c529cb3d69f570cbc5b4f2c7f04b",
+    "scripts/jev-crosscheck": "0c26b01a3b448997347ca2d1d6ef706429c807ac9944dd44367db269daf8f609",
     "agents/openai.yaml": "47264e9c61213c701cad5ec4115f5c1f73c10d3a68c0badbf1dab9515c4498ae",
-    "tests/helper.test.mjs": "72609c7ad2c0b75d2bbef34845e74752630c614e19d815df73cd74a45d580d64"
+    "tests/helper.test.mjs": "c4dda1b01a6c725b226a45684fa1c058f3ac16337a67055d88005e7d99c00d20"
   },
   "verification": {
     "clearRoundsRequired": 2,
@@ -18,6 +18,7 @@
     "helperTests": "10/10"
   },
   "evaluationLimits": [
+    "The Windows key store was added after v23 without rerunning an evaluation round; verification counts above are the v23 macOS figures, and the 12 current helper tests were run on Windows Git Bash only.",
     "Checklists visible to executors.",
     "Synthetic fixtures; Jev accuracy on real material not measured.",
     "Design trials of question forms are single calls."

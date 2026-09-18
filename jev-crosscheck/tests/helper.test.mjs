@@ -1,7 +1,7 @@
 import test, { after, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, renameSync, rmSync, realpathSync, chmodSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, rmSync, realpathSync, chmodSync } from 'node:fs';
+import { delimiter, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -11,10 +11,13 @@ const helper = fileURLToPath(new URL('../scripts/jev-crosscheck', import.meta.ur
 const root = realpathSync(mkdtempSync(join(tmpdir(), 'jev-crosscheck-test-')));
 const bin = join(root, 'bin');
 mkdirSync(bin);
-const setKey = (value) => {
-  writeFileSync(join(bin, 'security'), `#!/bin/sh\necho '${value}'\n`);
-  chmodSync(join(bin, 'security'), 0o755);
+// The helper reads the key through `security` on macOS and `powershell.exe` on Windows.
+const keyStore = process.platform === 'win32' ? 'powershell.exe' : 'security';
+const setKeyScript = (script) => {
+  writeFileSync(join(bin, keyStore), `#!/bin/sh\n${script}\n`);
+  chmodSync(join(bin, keyStore), 0o755);
 };
+const setKey = (value) => setKeyScript(`echo '${value}'`);
 setKey('FAKEKEY123');
 
 const received = [];
@@ -36,10 +39,10 @@ before(async () => {
 });
 after(() => { server.close(); rmSync(root, { recursive: true, force: true }); });
 
-const run = (args, { endpoint } = {}) => new Promise((resolve) => {
+const run = (args, { endpoint, env } = {}) => new Promise((resolve) => {
   const child = spawn('bash', [helper, ...args], {
     cwd: root,
-    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, TYPESAFE_BASE_URL: endpoint ?? url },
+    env: { ...process.env, PATH: `${bin}${delimiter}${process.env.PATH}`, TYPESAFE_BASE_URL: endpoint ?? url, ...env },
   });
   let stdout = '', stderr = '';
   child.stdout.on('data', (c) => { stdout += c; });
@@ -144,6 +147,35 @@ test('HTTP error body goes to stderr with a curl exit code', async () => {
   }
 });
 
+test('temporary files are removed after inspection, a send, and an HTTP error', async () => {
+  const tmp = join(root, 'tmp');
+  mkdirSync(tmp);
+  const env = { TMPDIR: tmp };
+  const f = request({ report: 'x' });
+  assert.equal((await run(['--inspect', f], { env })).code, 0);
+  assert.equal((await run([f], { env })).code, 0);
+  status = 400;
+  try {
+    assert.equal((await run([f], { env })).code, 22);
+  } finally {
+    status = 200;
+  }
+  assert.deepEqual(readdirSync(tmp), []);
+});
+
+test('a Windows credential store read error is relayed with exit 3', { skip: process.platform !== 'win32' && 'Windows key store only' }, async () => {
+  const f = request({ report: 'x' });
+  assert.equal((await run(['--inspect', f])).code, 0);
+  setKeyScript("echo 'STORE-ERROR-MARKER' >&2; exit 1");
+  try {
+    const r = await run([f]);
+    assert.equal(r.code, 3);
+    assert.match(r.stderr, /STORE-ERROR-MARKER/);
+  } finally {
+    setKey('FAKEKEY123');
+  }
+});
+
 test('usage errors, invalid requests, and a missing key', async () => {
   assert.equal((await run([])).code, 2);
   const bad = join(root, 'bad.json');
@@ -168,7 +200,12 @@ test('only inspected bytes are ever sent while the file is being replaced', asyn
   const writer = setInterval(() => {
     flip = !flip;
     writeFileSync(`${f}.tmp`, body(flip ? 'OTHER' : 'INSPECTED'));
-    renameSync(`${f}.tmp`, f);
+    try {
+      renameSync(`${f}.tmp`, f);
+    } catch (e) {
+      // Windows refuses to replace a file the helper holds open; skip that replacement.
+      if (process.platform !== 'win32' || !['EPERM', 'EACCES', 'EBUSY'].includes(e.code)) throw e;
+    }
   }, 1);
   const before = received.length;
   try {

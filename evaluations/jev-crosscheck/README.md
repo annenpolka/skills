@@ -23,6 +23,14 @@ Shipped: v23, after an external review. Two consecutive rounds without new defec
 (iter26–27, scenarios A–D), the unused holdout H5 at 100%, and step and duration
 changes within the numeric thresholds.
 
+After shipping v23, the helper gained a Windows key store (Credential Manager under Git
+Bash, MSYS2 or Cygwin). No evaluation round was rerun for that change. The helper tests
+(12, including a temporary-file cleanup test and a Windows store-error test) passed on
+Windows Git Bash, and a real Jev send through the changed helper succeeded there with
+64-bit PowerShell. The
+macOS path was not rerun on macOS; it was only exercised on Windows with emulated
+`uname`, `security`, and `curl`.
+
 Before the external review, the skill had converged at v19 (iter20–21):
 Converged qualitatively at v19: two consecutive rounds without new defects and an
 unused holdout at 100%. Numeric step/duration thresholds were not met between those

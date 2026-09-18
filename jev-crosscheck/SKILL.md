@@ -1,6 +1,6 @@
 ---
 name: jev-crosscheck
-description: Check semantic assertions in bulk with TypeSafe's Jev model through a bundled helper that reads the API key from the macOS Keychain at call time. Use throughout work in any project to turn reading-based claims into typed assertions with probabilities, such as whether a diff implements what a report claims, whether a test asserts the claimed behavior, whether a cited passage supports a claim, whether docs match config or code, whether a brief states scope and completion conditions, and whether your own conclusions hold. Also use when the user says "jev-crosscheck", "Jevで確認", or "TypeSafeでチェック". Assertions narrow attention; they never replace tests, real execution, or the agent's own acceptance.
+description: Check semantic assertions in bulk with TypeSafe's Jev model through a bundled helper that reads the API key from the OS credential store (macOS Keychain or Windows Credential Manager) at call time. Use throughout work in any project to turn reading-based claims into typed assertions with probabilities, such as whether a diff implements what a report claims, whether a test asserts the claimed behavior, whether a cited passage supports a claim, whether docs match config or code, whether a brief states scope and completion conditions, and whether your own conclusions hold. Also use when the user says "jev-crosscheck", "Jevで確認", or "TypeSafeでチェック". Assertions narrow attention; they never replace tests, real execution, or the agent's own acceptance.
 ---
 
 # Jev Crosscheck
@@ -115,7 +115,9 @@ bash <skill-dir>/scripts/jev-crosscheck request.json
   holds under every reading. For example, "with pytz, `is_dst=None` raises on
   ambiguous times" is an allowed assumption; "the diff leaves `is_dst=None` unchanged"
   is your finding and stays out.
-- Requires `jq`, `curl`, and macOS `security`. `TYPESAFE_BASE_URL` overrides the endpoint.
+- Requires `jq`, `curl`, and a key store: macOS `security`, or on Windows (Git Bash,
+  MSYS2 or Cygwin) `powershell.exe` with Credential Manager. `TYPESAFE_BASE_URL`
+  overrides the endpoint.
 - Exit codes: `0` success; `2` invalid request JSON or usage (fix it, inspect again);
   `3` key missing or empty (see below); `4` not inspected, or file or endpoint changed
   since (inspect again as its own step); `5` credential-like content, reported by
@@ -123,11 +125,14 @@ bash <skill-dir>/scripts/jev-crosscheck request.json
   connect or `22` HTTP error; the response body goes to stderr. For those, call once more
   at most, then stop and report. Never work around a failure by calling the API
   yourself or changing the endpoint.
-- The key lives in the login Keychain as service `typesafe-api`. The helper never
+- The key lives in the macOS login Keychain as service `typesafe-api`, or on Windows
+  as the Credential Manager generic credential `typesafe-api`. The helper never
   exports it, so child processes and delegates do not inherit it. Never print, export,
-  or put the key into a brief. On exit `3`, tell the user to register it in a normal
-  terminal (a Claude Code `!` command cannot take hidden input):
-  `security add-generic-password -U -a "$USER" -s typesafe-api -w`
+  or put the key into a brief. On exit `3`, relay any store error printed on stderr,
+  then tell the user to register the key in a normal terminal (a Claude Code `!`
+  command cannot take hidden input):
+  macOS `security add-generic-password -U -a "$USER" -s typesafe-api -w`;
+  Windows `cmdkey /generic:typesafe-api /user:%USERNAME% /pass` (prompts for the key).
 
 ## Data boundary
 

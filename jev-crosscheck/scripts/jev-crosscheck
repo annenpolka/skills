@@ -1,6 +1,7 @@
 #!/bin/bash
 # Send semantic assertions to TypeSafe System One (Jev).
-# The API key is read from the macOS Keychain at call time and never exported.
+# The API key is read from the OS credential store at call time and never exported:
+# the macOS login Keychain, or Windows Credential Manager under Git Bash, MSYS2 or Cygwin.
 #
 # Usage (two separate steps):
 #   bash jev-crosscheck --inspect request.json   # validate, show endpoint and questions, scan for credentials, record inspection
@@ -17,14 +18,62 @@
 # This is a guard against accidents, not a sandbox against a hostile caller.
 #
 # Register the key in a normal terminal (a Claude Code `!` command cannot take hidden input):
-#   security add-generic-password -U -a "$USER" -s typesafe-api -w
+#   macOS:   security add-generic-password -U -a "$USER" -s typesafe-api -w
+#   Windows: cmdkey /generic:typesafe-api /user:%USERNAME% /pass
 set -euo pipefail
 
 service="typesafe-api"
 base_url="${TYPESAFE_BASE_URL:-https://api.typesafe.ai}"
 endpoint="$base_url/v1/systemone"
 
+case "$(uname -s)" in
+  MINGW* | MSYS* | CYGWIN*) key_store=windows ;;
+  *) key_store=keychain ;;
+esac
+
 usage() { echo "usage: jev-crosscheck --inspect request.json | jev-crosscheck request.json" >&2; exit 2; }
+
+# Prints the generic credential's UTF-16 blob to stdout. Exits 3 when the item does not
+# exist; other read failures keep their message on stderr and exit nonzero.
+read_windows_credential() {
+  local ps
+  ps=$(cat <<'PS'
+$ErrorActionPreference = 'Stop'
+# With redirected output, progress records would reach stderr as CLIXML.
+$ProgressPreference = 'SilentlyContinue'
+Add-Type -Namespace JevCrosscheck -Name Native -MemberDefinition @'
+[StructLayout(LayoutKind.Sequential)]
+public struct Credential {
+  public uint Flags; public uint Type; public IntPtr TargetName; public IntPtr Comment;
+  public uint LastWrittenLow; public uint LastWrittenHigh;
+  public uint CredentialBlobSize; public IntPtr CredentialBlob;
+  public uint Persist; public uint AttributeCount; public IntPtr Attributes;
+  public IntPtr TargetAlias; public IntPtr UserName;
+}
+[DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+public static extern bool CredReadW(string target, uint type, uint flags, out IntPtr credential);
+[DllImport("advapi32.dll")]
+public static extern void CredFree(IntPtr credential);
+'@
+$ptr = [IntPtr]::Zero
+if (-not [JevCrosscheck.Native]::CredReadW('__SERVICE__', 1, 0, [ref]$ptr)) {
+  $err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+  if ($err -eq 1168) { exit 3 }
+  [Console]::Error.WriteLine("CredReadW failed: Win32 error $err")
+  exit 1
+}
+try {
+  $cred = [Runtime.InteropServices.Marshal]::PtrToStructure($ptr, [type][JevCrosscheck.Native+Credential])
+  [Console]::Out.Write([Runtime.InteropServices.Marshal]::PtrToStringUni($cred.CredentialBlob, [int]($cred.CredentialBlobSize / 2)))
+} finally {
+  [JevCrosscheck.Native]::CredFree($ptr)
+}
+PS
+)
+  # -EncodedCommand avoids MSYS argument quoting; the script carries no secret.
+  MSYS2_ARG_CONV_EXCL='*' powershell.exe -NoProfile -NonInteractive -EncodedCommand \
+    "$(printf '%s' "${ps//__SERVICE__/$service}" | iconv -f UTF-8 -t UTF-16LE | base64 -w0)"
+}
 
 mode=send
 if [ "${1:-}" = "--inspect" ]; then mode=inspect; shift; fi
@@ -98,18 +147,37 @@ if [ ! -f "$stamp" ] || [ "$(cat "$stamp")" != "$digest" ]; then
   exit 4
 fi
 
-if ! key=$(security find-generic-password -a "$USER" -s "$service" -w 2>/dev/null) || [ -z "$key" ]; then
+if [ "$key_store" = windows ]; then
+  if ! key=$(read_windows_credential) || [ -z "$key" ]; then
+    echo "jev-crosscheck: Windows Credential Manager item $service is missing, empty, or unreadable" >&2
+    exit 3
+  fi
+elif ! key=$(security find-generic-password -a "$USER" -s "$service" -w 2>/dev/null) || [ -z "$key" ]; then
   echo "jev-crosscheck: Keychain item $service is missing or empty" >&2
   exit 3
 fi
 
-# The key goes through a process-substituted curl config, never argv; the body goes through stdin.
 rc=0
-response=$(curl -sS --fail-with-body --max-time 60 \
-  -K <(printf 'header = "Authorization: Bearer %s"\n' "$key") \
-  -H "Content-Type: application/json" \
-  --data-binary @- \
-  "$endpoint" <<<"$body") || rc=$?
+if [ "$key_store" = windows ]; then
+  # Native Windows curl cannot open a process-substitution path, so the key config goes
+  # through stdin and the body through a temporary file; the key never reaches argv.
+  bodyfile=$(mktemp)
+  trap 'rm -f "$snapshot" "$bodyfile"' EXIT
+  printf '%s\n' "$body" > "$bodyfile"
+  response=$(printf 'header = "Authorization: Bearer %s"\n' "$key" |
+    curl -sS --fail-with-body --max-time 60 \
+      -K - \
+      -H "Content-Type: application/json" \
+      --data-binary "@$(cygpath -w "$bodyfile")" \
+      "$endpoint") || rc=$?
+else
+  # The key goes through a process-substituted curl config, never argv; the body goes through stdin.
+  response=$(curl -sS --fail-with-body --max-time 60 \
+    -K <(printf 'header = "Authorization: Bearer %s"\n' "$key") \
+    -H "Content-Type: application/json" \
+    --data-binary @- \
+    "$endpoint" <<<"$body") || rc=$?
+fi
 if [ "$rc" -ne 0 ]; then
   [ -n "$response" ] && printf '%s\n' "$response" >&2
   exit "$rc"
