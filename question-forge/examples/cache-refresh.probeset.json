@@ -1,0 +1,608 @@
+{
+  "schema": "qforge-probeset/v0.1",
+  "goal": {
+    "id": "cache-refresh-fixture",
+    "revision": 1,
+    "objective": "更新成功応答後の別ノード読取りが古い値を返さない保証について、対象範囲と候補方式の関係を整理する（架空のfixture）",
+    "requestedArtifacts": [
+      "design_delta",
+      "verification_plan",
+      "unresolved_decisions"
+    ],
+    "successConditions": [
+      "保証のノード範囲と時点が記述される",
+      "候補方式ごとの反例候補と検証方法が示される",
+      "意図的な未決が未決のまま残る"
+    ],
+    "hardConstraints": [
+      "架空の資料だけを扱う"
+    ],
+    "preferences": [],
+    "sourceScope": [
+      "examples/cache-refresh.request.json"
+    ],
+    "authority": {
+      "proposeDesign": true,
+      "adoptDesign": false,
+      "sendSensitivity": [
+        "public"
+      ]
+    },
+    "execution": {
+      "mode": "fixture",
+      "domainProbeTarget": 255,
+      "maxWaves": 1,
+      "paidExecutionAuthorized": false
+    }
+  },
+  "wave": 1,
+  "provider": "typesafe-direct",
+  "model": "jev-1.13.0",
+  "policy": {
+    "gateAcceptAt": 0.8,
+    "gateRejectAt": 0.2,
+    "noulYesAt": 0.8,
+    "noulNoAt": 0.2
+  },
+  "worlds": {
+    "actual": {
+      "kind": "actual"
+    },
+    "synthetic": {
+      "kind": "hypothetical",
+      "assumptions": [
+        "仕様・候補・trace・テスト説明はすべて架空のfixtureで、実システムの記述ではない。traceは未実行。"
+      ]
+    }
+  },
+  "evidence": {
+    "requirements.R1": {
+      "kind": "authored_requirement",
+      "path": "requirements.R1",
+      "text": "更新APIが成功応答を返した後に開始した読取りは、その更新より前の値を返してはならない。",
+      "worldId": "synthetic",
+      "sensitivity": "public",
+      "sourceRef": "examples/cache-refresh.request.json#/state/requirements/R1",
+      "sourceVersion": "fixture-v0.1"
+    },
+    "requirements.R2": {
+      "kind": "authored_requirement",
+      "path": "requirements.R2",
+      "text": "R1は書込みを処理したノードに限らず、サービス内のすべてのAPIノードに適用する。",
+      "worldId": "synthetic",
+      "sensitivity": "public",
+      "sourceRef": "examples/cache-refresh.request.json#/state/requirements/R2",
+      "sourceVersion": "fixture-v0.1"
+    },
+    "requirements.R3": {
+      "kind": "authored_requirement",
+      "path": "requirements.R3",
+      "text": "成功応答より前に開始した読取りの扱いは、この文書では意図的に未決定とする。",
+      "worldId": "synthetic",
+      "sensitivity": "public",
+      "sourceRef": "examples/cache-refresh.request.json#/state/requirements/R3",
+      "sourceVersion": "fixture-v0.1"
+    },
+    "requirements.R4": {
+      "kind": "authored_requirement",
+      "path": "requirements.R4",
+      "text": "保証を満たせない状況で、読取りを拒否するか、待機するかはまだ決めていない。",
+      "worldId": "synthetic",
+      "sensitivity": "public",
+      "sourceRef": "examples/cache-refresh.request.json#/state/requirements/R4",
+      "sourceVersion": "fixture-v0.1"
+    },
+    "candidates.ttl_only": {
+      "kind": "source_statement",
+      "path": "candidates.ttl_only",
+      "text": "DBへ新しい値をcommitした後で更新成功を返す。既存cacheには通知しない。cacheはTTLで失効するまで同じ値を返す。",
+      "worldId": "synthetic",
+      "sensitivity": "public",
+      "sourceRef": "examples/cache-refresh.request.json#/state/candidates/ttl_only",
+      "sourceVersion": "fixture-v0.1"
+    },
+    "candidates.event_invalidation": {
+      "kind": "source_statement",
+      "path": "candidates.event_invalidation",
+      "text": "DBへcommitし、無効化イベントをqueueへ入れた時点で更新成功を返す。各ノードはイベントを受信するとcacheを無効化する。配送遅延や配送失敗の間、cacheの旧値を返すことがある。",
+      "worldId": "synthetic",
+      "sensitivity": "public",
+      "sourceRef": "examples/cache-refresh.request.json#/state/candidates/event_invalidation",
+      "sourceVersion": "fixture-v0.1"
+    },
+    "candidates.read_version_check": {
+      "kind": "source_statement",
+      "path": "candidates.read_version_check",
+      "text": "各読取りでDBの現行versionを取得し、cacheのversionと一致する場合だけcache値を使う。一致しなければDBから取得する。DBのversionを取得できないときの扱いは未定義。",
+      "worldId": "synthetic",
+      "sensitivity": "public",
+      "sourceRef": "examples/cache-refresh.request.json#/state/candidates/read_version_check",
+      "sourceVersion": "fixture-v0.1"
+    },
+    "hypothetical_trace.T1": {
+      "kind": "hypothesis",
+      "path": "hypothetical_trace.T1",
+      "text": "ノードBのcacheには旧値v1がある。ノードAがDBへv2をcommitする。",
+      "worldId": "synthetic",
+      "sensitivity": "public"
+    },
+    "hypothetical_trace.T2": {
+      "kind": "hypothesis",
+      "path": "hypothetical_trace.T2",
+      "text": "ノードAは無効化イベントをqueueへ入れ、更新成功を応答する。",
+      "worldId": "synthetic",
+      "sensitivity": "public"
+    },
+    "hypothetical_trace.T3": {
+      "kind": "hypothesis",
+      "path": "hypothetical_trace.T3",
+      "text": "イベントがBに到着する前に、新しい読取りがBで開始し、Bはv1を返す。",
+      "worldId": "synthetic",
+      "sensitivity": "public"
+    },
+    "hypothetical_trace.T4": {
+      "kind": "hypothesis",
+      "path": "hypothetical_trace.T4",
+      "text": "その後でBがイベントを受信し、cacheを無効化する。",
+      "worldId": "synthetic",
+      "sensitivity": "public"
+    },
+    "test_descriptions.existing": {
+      "kind": "source_statement",
+      "path": "test_descriptions.existing",
+      "text": "書込みを行い、同じノードから読取り、新しい値が返ることを確認する。別ノードとイベントの配送失敗は対象にしない。",
+      "worldId": "synthetic",
+      "sensitivity": "public",
+      "sourceRef": "examples/cache-refresh.request.json#/state/test_descriptions/existing",
+      "sourceVersion": "fixture-v0.1"
+    },
+    "test_descriptions.proposed_cross_node": {
+      "kind": "source_statement",
+      "path": "test_descriptions.proposed_cross_node",
+      "text": "書込みノードをA、読取りノードをBとし、イベント配送を遅延させる。更新成功応答後にBで読取りを開始し、返却値と開始時刻を記録する。",
+      "worldId": "synthetic",
+      "sensitivity": "public",
+      "sourceRef": "examples/cache-refresh.request.json#/state/test_descriptions/proposed_cross_node",
+      "sourceVersion": "fixture-v0.1"
+    },
+    "test_descriptions.proposed_version_unavailable": {
+      "kind": "source_statement",
+      "path": "test_descriptions.proposed_version_unavailable",
+      "text": "version照合方式でDBのversion取得を失敗させ、読取りの戻り値、エラー、待機状態を記録する。",
+      "worldId": "synthetic",
+      "sensitivity": "public",
+      "sourceRef": "examples/cache-refresh.request.json#/state/test_descriptions/proposed_version_unavailable",
+      "sourceVersion": "fixture-v0.1"
+    },
+    "decision_candidates.D1": {
+      "kind": "hypothesis",
+      "path": "decision_candidates.D1",
+      "text": "現在の成功応答と全ノード読取り保証の関係を明文化する。",
+      "worldId": "synthetic",
+      "sensitivity": "public"
+    },
+    "decision_candidates.D2": {
+      "kind": "hypothesis",
+      "path": "decision_candidates.D2",
+      "text": "提示候補で保証を満たさない経路を、実行テストで確認する。",
+      "worldId": "synthetic",
+      "sensitivity": "public"
+    },
+    "decision_candidates.D3": {
+      "kind": "hypothesis",
+      "path": "decision_candidates.D3",
+      "text": "DBのversionを確認できない場合の挙動を決める。",
+      "worldId": "synthetic",
+      "sensitivity": "public"
+    }
+  },
+  "stateViews": {
+    "all": {
+      "worldId": "synthetic",
+      "evidenceRefs": [
+        "requirements.R1",
+        "requirements.R2",
+        "requirements.R3",
+        "requirements.R4",
+        "candidates.ttl_only",
+        "candidates.event_invalidation",
+        "candidates.read_version_check",
+        "hypothetical_trace.T1",
+        "hypothetical_trace.T2",
+        "hypothetical_trace.T3",
+        "hypothetical_trace.T4",
+        "test_descriptions.existing",
+        "test_descriptions.proposed_cross_node",
+        "test_descriptions.proposed_version_unavailable",
+        "decision_candidates.D1",
+        "decision_candidates.D2",
+        "decision_candidates.D3"
+      ]
+    }
+  },
+  "shortfall": {
+    "count": 243,
+    "reason": "契約確認用の12問fixture。255問を埋めるための言い換えは追加しない。"
+  },
+  "probes": [
+    {
+      "id": "Q001",
+      "revision": 1,
+      "purpose": "domain",
+      "semanticRole": "meaning",
+      "decisionRefs": [
+        "D1"
+      ],
+      "clusterId": "D1-Q001",
+      "contrastGroup": null,
+      "stateView": "all",
+      "sourceRefs": [
+        "requirements.R1",
+        "requirements.R2"
+      ],
+      "assumptionRefs": [],
+      "outcomeUse": {
+        "all_api_nodes": "別ノードを含む検証計画を維持する。",
+        "writer_only": "保証の適用範囲を原文で再確認する。",
+        "not_stated": "対象ノードを未決として残す。"
+      },
+      "relevanceGates": [],
+      "executionDependencies": [],
+      "question": {
+        "type": "choice",
+        "instructions": "`requirements.R1`と`requirements.R2`が定める読取り保証のノード範囲を分類する。資料を実装済みの事実とは扱わない。",
+        "criteria": {
+          "writer_only": "書込みを処理したノードだけ",
+          "all_api_nodes": "サービス内のすべてのAPIノード",
+          "not_stated": "対象ノードの範囲が記述されていない"
+        }
+      }
+    },
+    {
+      "id": "Q002",
+      "revision": 1,
+      "purpose": "domain",
+      "semanticRole": "boundary",
+      "decisionRefs": [
+        "D1"
+      ],
+      "clusterId": "D1-Q002",
+      "contrastGroup": null,
+      "stateView": "all",
+      "sourceRefs": [
+        "requirements.R1",
+        "requirements.R3"
+      ],
+      "assumptionRefs": [],
+      "outcomeUse": {
+        "intentionally_open": "この範囲を欠陥として勝手に埋めず、未決として維持する。"
+      },
+      "relevanceGates": [],
+      "executionDependencies": [],
+      "question": {
+        "type": "choice",
+        "instructions": "更新成功応答より前に開始した読取りについて、`requirements.R3`の記述上の扱いを分類する。",
+        "criteria": {
+          "prohibited": "旧値を返すことを禁止している",
+          "permitted": "旧値を返すことを明示的に許している",
+          "intentionally_open": "意図的に未決定としている"
+        }
+      }
+    },
+    {
+      "id": "Q003",
+      "revision": 1,
+      "purpose": "domain",
+      "semanticRole": "relation",
+      "decisionRefs": [
+        "D1"
+      ],
+      "clusterId": "D1-Q003",
+      "contrastGroup": null,
+      "stateView": "all",
+      "sourceRefs": [
+        "requirements.R1",
+        "candidates.event_invalidation"
+      ],
+      "assumptionRefs": [],
+      "outcomeUse": {
+        "yes": "該当経路を反例候補にし、実行で確認する。",
+        "no": "対象と時点の読みを再確認する。"
+      },
+      "relevanceGates": [],
+      "executionDependencies": [],
+      "question": {
+        "type": "noul",
+        "instructions": "`candidates.event_invalidation`に明示された配送遅延中の旧値返却は、`requirements.R1`が禁止する結果と両立しない場合があるか。候補の説明と要求の意味関係のみを判定する。",
+        "criteria": {
+          "true": "説明された挙動の中に要求の禁止する結果が含まれる",
+          "false": "説明された挙動は要求の禁止する結果を含まない"
+        }
+      }
+    },
+    {
+      "id": "Q004",
+      "revision": 1,
+      "purpose": "domain",
+      "semanticRole": "counterexample",
+      "decisionRefs": [
+        "D2"
+      ],
+      "clusterId": "D2-Q004",
+      "contrastGroup": null,
+      "stateView": "all",
+      "sourceRefs": [
+        "requirements.R1",
+        "requirements.R2",
+        "hypothetical_trace.T1",
+        "hypothetical_trace.T2",
+        "hypothetical_trace.T3",
+        "hypothetical_trace.T4"
+      ],
+      "assumptionRefs": [],
+      "outcomeUse": {
+        "candidate_violation": "cross-nodeの実行テストへ渡す。",
+        "insufficient_to_classify": "traceの不足条件を確認する。"
+      },
+      "relevanceGates": [],
+      "executionDependencies": [],
+      "question": {
+        "type": "choice",
+        "instructions": "`hypothetical_trace`のT3を、`requirements.R1`と`requirements.R2`に照らして分類する。traceは架空で未実行であり、現実の再現を確認する質問ではない。",
+        "criteria": {
+          "candidate_violation": "記述したtraceが起きれば要求違反となる候補",
+          "consistent": "記述したtraceは要求の範囲内",
+          "insufficient_to_classify": "この局所的な対応を読むために必要な記述が不足している"
+        }
+      }
+    },
+    {
+      "id": "Q005",
+      "revision": 1,
+      "purpose": "domain",
+      "semanticRole": "evidence",
+      "decisionRefs": [
+        "D2"
+      ],
+      "clusterId": "D2-Q005",
+      "contrastGroup": null,
+      "stateView": "all",
+      "sourceRefs": [
+        "requirements.R2",
+        "test_descriptions.existing"
+      ],
+      "assumptionRefs": [],
+      "outcomeUse": {
+        "no": "別ノードの検証を追加候補にする。",
+        "yes": "記述と対象範囲を原文照合する。"
+      },
+      "relevanceGates": [],
+      "executionDependencies": [],
+      "question": {
+        "type": "noul",
+        "instructions": "`test_descriptions.existing`は、書込みノードと読取りノードが異なるケースを対象にすると記述しているか。テストの存在や実行成功を推測しない。",
+        "criteria": {
+          "true": "異なるノードのケースを対象にする",
+          "false": "同じノードだけで、異なるノードのケースは対象にしない"
+        }
+      }
+    },
+    {
+      "id": "Q006",
+      "revision": 1,
+      "purpose": "domain",
+      "semanticRole": "verification",
+      "decisionRefs": [
+        "D2"
+      ],
+      "clusterId": "D2-Q006",
+      "contrastGroup": null,
+      "stateView": "all",
+      "sourceRefs": [
+        "test_descriptions.proposed_cross_node",
+        "hypothetical_trace.T1",
+        "hypothetical_trace.T2",
+        "hypothetical_trace.T3",
+        "hypothetical_trace.T4"
+      ],
+      "assumptionRefs": [],
+      "outcomeUse": {
+        "yes": "検証計画へ採用する候補にする。",
+        "no": "観測点の追記を提案する。"
+      },
+      "relevanceGates": [],
+      "executionDependencies": [],
+      "question": {
+        "type": "noul",
+        "instructions": "`test_descriptions.proposed_cross_node`は、`hypothetical_trace`の更新成功応答と読取り開始の前後関係を観測するための記録を含むか。",
+        "criteria": {
+          "true": "開始時刻と成功応答後に開始する条件が含まれる",
+          "false": "前後関係を識別する記述がない"
+        }
+      }
+    },
+    {
+      "id": "Q007",
+      "revision": 1,
+      "purpose": "domain",
+      "semanticRole": "alternative",
+      "decisionRefs": [
+        "D1"
+      ],
+      "clusterId": "D1-Q007",
+      "contrastGroup": null,
+      "stateView": "all",
+      "sourceRefs": [
+        "candidates.ttl_only",
+        "requirements.R1"
+      ],
+      "assumptionRefs": [],
+      "outcomeUse": {
+        "no": "単純なTTLだけで要求を説明できるという仮説を再検討する。"
+      },
+      "relevanceGates": [],
+      "executionDependencies": [],
+      "question": {
+        "type": "noul",
+        "instructions": "`candidates.ttl_only`の記述には、TTL失効前のcache値が更新前の値かどうかを読取り時に識別する仕組みが含まれるか。",
+        "criteria": {
+          "true": "読取り時に新旧を識別する仕組みが明示されている",
+          "false": "TTLによる失効だけで、新旧を識別する仕組みは記述されていない"
+        }
+      }
+    },
+    {
+      "id": "Q008",
+      "revision": 1,
+      "purpose": "domain",
+      "semanticRole": "alternative",
+      "decisionRefs": [
+        "D1"
+      ],
+      "clusterId": "D1-Q008",
+      "contrastGroup": null,
+      "stateView": "all",
+      "sourceRefs": [
+        "candidates.read_version_check"
+      ],
+      "assumptionRefs": [],
+      "outcomeUse": {
+        "yes": "DBアクセスの測定と障害時の規則を検証計画へ加える。"
+      },
+      "relevanceGates": [],
+      "executionDependencies": [],
+      "question": {
+        "type": "noul",
+        "instructions": "`candidates.read_version_check`には、cache値を返す前にDBの現行versionを取得する処理が記述されているか。性能値や方式全体の正しさは判定しない。",
+        "criteria": {
+          "true": "cache利用前にDBのversionを取得する",
+          "false": "そのような処理は記述されていない"
+        }
+      }
+    },
+    {
+      "id": "Q009",
+      "revision": 1,
+      "purpose": "domain",
+      "semanticRole": "boundary",
+      "decisionRefs": [
+        "D3"
+      ],
+      "clusterId": "D3-Q009",
+      "contrastGroup": null,
+      "stateView": "all",
+      "sourceRefs": [
+        "candidates.read_version_check",
+        "requirements.R4"
+      ],
+      "assumptionRefs": [],
+      "outcomeUse": {
+        "not_defined": "拒否・待機等の選択を未決判断D3へ残す。"
+      },
+      "relevanceGates": [],
+      "executionDependencies": [],
+      "question": {
+        "type": "choice",
+        "instructions": "DBのversionを取得できないときの読取り挙動を、`candidates.read_version_check`の記述に基づいて分類する。",
+        "criteria": {
+          "returns_cached": "cache値を返すことが明示されている",
+          "rejects": "拒否することが明示されている",
+          "waits": "待機することが明示されている",
+          "not_defined": "挙動が未定義と記述されている"
+        }
+      }
+    },
+    {
+      "id": "Q010",
+      "revision": 1,
+      "purpose": "domain",
+      "semanticRole": "next_observation",
+      "decisionRefs": [
+        "D3"
+      ],
+      "clusterId": "D3-Q010",
+      "contrastGroup": null,
+      "stateView": "all",
+      "sourceRefs": [
+        "test_descriptions.proposed_version_unavailable",
+        "decision_candidates.D3"
+      ],
+      "assumptionRefs": [],
+      "outcomeUse": {
+        "reveals_current_behavior": "実装の観測と方針決定を分けて記録する。"
+      },
+      "relevanceGates": [],
+      "executionDependencies": [],
+      "question": {
+        "type": "choice",
+        "instructions": "`test_descriptions.proposed_version_unavailable`で得る観測と、`decision_candidates.D3`の関係を分類する。",
+        "criteria": {
+          "reveals_current_behavior": "候補実装の現在の挙動を観測する助けになるが、望ましい方針の選択自体は別に残る",
+          "decides_policy": "この観測だけで望ましい方針が自動的に一つへ定まる",
+          "unrelated": "未決判断に関係しない観測である"
+        }
+      }
+    },
+    {
+      "id": "Q011",
+      "revision": 1,
+      "purpose": "domain",
+      "semanticRole": "meaning",
+      "decisionRefs": [
+        "D1"
+      ],
+      "clusterId": "D1-Q011",
+      "contrastGroup": null,
+      "stateView": "all",
+      "sourceRefs": [
+        "requirements.R1"
+      ],
+      "assumptionRefs": [],
+      "outcomeUse": {
+        "yes": "テストで読取り開始の時点を明示的に記録する。"
+      },
+      "relevanceGates": [],
+      "executionDependencies": [],
+      "question": {
+        "type": "noul",
+        "instructions": "`requirements.R1`は、読取りが完了した時点ではなく、読取りを開始した時点を保証の適用条件として記述しているか。",
+        "criteria": {
+          "true": "読取りの開始時点で適用条件を定めている",
+          "false": "読取りの開始時点では定めていない"
+        }
+      }
+    },
+    {
+      "id": "Q012",
+      "revision": 1,
+      "purpose": "domain",
+      "semanticRole": "verification",
+      "decisionRefs": [
+        "D2"
+      ],
+      "clusterId": "D2-Q012",
+      "contrastGroup": null,
+      "stateView": "all",
+      "sourceRefs": [
+        "test_descriptions.proposed_cross_node",
+        "requirements.R1",
+        "requirements.R2"
+      ],
+      "assumptionRefs": [],
+      "outcomeUse": {
+        "use": "記述上の具体性の補助信号として使う。実際のテスト結果にはしない。"
+      },
+      "relevanceGates": [],
+      "executionDependencies": [],
+      "question": {
+        "type": "score",
+        "instructions": "`test_descriptions.proposed_cross_node`の記述が、成功応答後の別ノード読取りという対象条件をどの程度具体化しているかを評価する。実行済みか、実装が正しいかは判定しない。",
+        "criteria": [
+          "対象となるノードと読取り時点の両方が記述されていない。",
+          "対象ノードか読取り時点のどちらかだけが具体的に記述されている。",
+          "異なるノードと成功応答後の読取り開始がともに具体的に記述されている。"
+        ]
+      }
+    }
+  ]
+}

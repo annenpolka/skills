@@ -1,0 +1,142 @@
+{
+  "model": "jev-1.13.0",
+  "state": {
+    "fixture": {
+      "synthetic": true,
+      "executed": false,
+      "scope": "架空の説明文と仮想traceの意味関係を調べる入力。実システムの検証ではない。"
+    },
+    "requirements": {
+      "R1": "更新APIが成功応答を返した後に開始した読取りは、その更新より前の値を返してはならない。",
+      "R2": "R1は書込みを処理したノードに限らず、サービス内のすべてのAPIノードに適用する。",
+      "R3": "成功応答より前に開始した読取りの扱いは、この文書では意図的に未決定とする。",
+      "R4": "保証を満たせない状況で、読取りを拒否するか、待機するかはまだ決めていない。"
+    },
+    "candidates": {
+      "ttl_only": "DBへ新しい値をcommitした後で更新成功を返す。既存cacheには通知しない。cacheはTTLで失効するまで同じ値を返す。",
+      "event_invalidation": "DBへcommitし、無効化イベントをqueueへ入れた時点で更新成功を返す。各ノードはイベントを受信するとcacheを無効化する。配送遅延や配送失敗の間、cacheの旧値を返すことがある。",
+      "read_version_check": "各読取りでDBの現行versionを取得し、cacheのversionと一致する場合だけcache値を使う。一致しなければDBから取得する。DBのversionを取得できないときの扱いは未定義。"
+    },
+    "hypothetical_trace": {
+      "T1": "ノードBのcacheには旧値v1がある。ノードAがDBへv2をcommitする。",
+      "T2": "ノードAは無効化イベントをqueueへ入れ、更新成功を応答する。",
+      "T3": "イベントがBに到着する前に、新しい読取りがBで開始し、Bはv1を返す。",
+      "T4": "その後でBがイベントを受信し、cacheを無効化する。"
+    },
+    "test_descriptions": {
+      "existing": "書込みを行い、同じノードから読取り、新しい値が返ることを確認する。別ノードとイベントの配送失敗は対象にしない。",
+      "proposed_cross_node": "書込みノードをA、読取りノードをBとし、イベント配送を遅延させる。更新成功応答後にBで読取りを開始し、返却値と開始時刻を記録する。",
+      "proposed_version_unavailable": "version照合方式でDBのversion取得を失敗させ、読取りの戻り値、エラー、待機状態を記録する。"
+    },
+    "decision_candidates": {
+      "D1": "現在の成功応答と全ノード読取り保証の関係を明文化する。",
+      "D2": "提示候補で保証を満たさない経路を、実行テストで確認する。",
+      "D3": "DBのversionを確認できない場合の挙動を決める。"
+    }
+  },
+  "questions": {
+    "Q001": {
+      "type": "choice",
+      "instructions": "`requirements.R1`と`requirements.R2`が定める読取り保証のノード範囲を分類する。資料を実装済みの事実とは扱わない。",
+      "criteria": {
+        "writer_only": "書込みを処理したノードだけ",
+        "all_api_nodes": "サービス内のすべてのAPIノード",
+        "not_stated": "対象ノードの範囲が記述されていない"
+      }
+    },
+    "Q002": {
+      "type": "choice",
+      "instructions": "更新成功応答より前に開始した読取りについて、`requirements.R3`の記述上の扱いを分類する。",
+      "criteria": {
+        "prohibited": "旧値を返すことを禁止している",
+        "permitted": "旧値を返すことを明示的に許している",
+        "intentionally_open": "意図的に未決定としている"
+      }
+    },
+    "Q003": {
+      "type": "noul",
+      "instructions": "`candidates.event_invalidation`に明示された配送遅延中の旧値返却は、`requirements.R1`が禁止する結果と両立しない場合があるか。候補の説明と要求の意味関係のみを判定する。",
+      "criteria": {
+        "true": "説明された挙動の中に要求の禁止する結果が含まれる",
+        "false": "説明された挙動は要求の禁止する結果を含まない"
+      }
+    },
+    "Q004": {
+      "type": "choice",
+      "instructions": "`hypothetical_trace`のT3を、`requirements.R1`と`requirements.R2`に照らして分類する。traceは架空で未実行であり、現実の再現を確認する質問ではない。",
+      "criteria": {
+        "candidate_violation": "記述したtraceが起きれば要求違反となる候補",
+        "consistent": "記述したtraceは要求の範囲内",
+        "insufficient_to_classify": "この局所的な対応を読むために必要な記述が不足している"
+      }
+    },
+    "Q005": {
+      "type": "noul",
+      "instructions": "`test_descriptions.existing`は、書込みノードと読取りノードが異なるケースを対象にすると記述しているか。テストの存在や実行成功を推測しない。",
+      "criteria": {
+        "true": "異なるノードのケースを対象にする",
+        "false": "同じノードだけで、異なるノードのケースは対象にしない"
+      }
+    },
+    "Q006": {
+      "type": "noul",
+      "instructions": "`test_descriptions.proposed_cross_node`は、`hypothetical_trace`の更新成功応答と読取り開始の前後関係を観測するための記録を含むか。",
+      "criteria": {
+        "true": "開始時刻と成功応答後に開始する条件が含まれる",
+        "false": "前後関係を識別する記述がない"
+      }
+    },
+    "Q007": {
+      "type": "noul",
+      "instructions": "`candidates.ttl_only`の記述には、TTL失効前のcache値が更新前の値かどうかを読取り時に識別する仕組みが含まれるか。",
+      "criteria": {
+        "true": "読取り時に新旧を識別する仕組みが明示されている",
+        "false": "TTLによる失効だけで、新旧を識別する仕組みは記述されていない"
+      }
+    },
+    "Q008": {
+      "type": "noul",
+      "instructions": "`candidates.read_version_check`には、cache値を返す前にDBの現行versionを取得する処理が記述されているか。性能値や方式全体の正しさは判定しない。",
+      "criteria": {
+        "true": "cache利用前にDBのversionを取得する",
+        "false": "そのような処理は記述されていない"
+      }
+    },
+    "Q009": {
+      "type": "choice",
+      "instructions": "DBのversionを取得できないときの読取り挙動を、`candidates.read_version_check`の記述に基づいて分類する。",
+      "criteria": {
+        "returns_cached": "cache値を返すことが明示されている",
+        "rejects": "拒否することが明示されている",
+        "waits": "待機することが明示されている",
+        "not_defined": "挙動が未定義と記述されている"
+      }
+    },
+    "Q010": {
+      "type": "choice",
+      "instructions": "`test_descriptions.proposed_version_unavailable`で得る観測と、`decision_candidates.D3`の関係を分類する。",
+      "criteria": {
+        "reveals_current_behavior": "候補実装の現在の挙動を観測する助けになるが、望ましい方針の選択自体は別に残る",
+        "decides_policy": "この観測だけで望ましい方針が自動的に一つへ定まる",
+        "unrelated": "未決判断に関係しない観測である"
+      }
+    },
+    "Q011": {
+      "type": "noul",
+      "instructions": "`requirements.R1`は、読取りが完了した時点ではなく、読取りを開始した時点を保証の適用条件として記述しているか。",
+      "criteria": {
+        "true": "読取りの開始時点で適用条件を定めている",
+        "false": "読取りの開始時点では定めていない"
+      }
+    },
+    "Q012": {
+      "type": "score",
+      "instructions": "`test_descriptions.proposed_cross_node`の記述が、成功応答後の別ノード読取りという対象条件をどの程度具体化しているかを評価する。実行済みか、実装が正しいかは判定しない。",
+      "criteria": [
+        "対象となるノードと読取り時点の両方が記述されていない。",
+        "対象ノードか読取り時点のどちらかだけが具体的に記述されている。",
+        "異なるノードと成功応答後の読取り開始がともに具体的に記述されている。"
+      ]
+    }
+  }
+}

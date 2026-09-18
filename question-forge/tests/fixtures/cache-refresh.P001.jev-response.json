@@ -1,0 +1,99 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "Q001": {
+      "type": "choice",
+      "choice": "all_api_nodes",
+      "confidence": 1.0,
+      "probabilities": {
+        "all_api_nodes": 1.0,
+        "writer_only": 0.0,
+        "not_stated": 0.0
+      }
+    },
+    "Q002": {
+      "type": "choice",
+      "choice": "intentionally_open",
+      "confidence": 1.0,
+      "probabilities": {
+        "intentionally_open": 1.0,
+        "prohibited": 0.0,
+        "permitted": 0.0
+      }
+    },
+    "Q003": {
+      "type": "noul",
+      "noul": 0.95
+    },
+    "Q004": {
+      "type": "choice",
+      "choice": "candidate_violation",
+      "confidence": 0.99,
+      "probabilities": {
+        "consistent": 0.0,
+        "insufficient_to_classify": 0.0,
+        "candidate_violation": 1.0
+      }
+    },
+    "Q005": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "Q006": {
+      "type": "noul",
+      "noul": 0.91
+    },
+    "Q007": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "Q008": {
+      "type": "noul",
+      "noul": 0.97
+    },
+    "Q009": {
+      "type": "choice",
+      "choice": "not_defined",
+      "confidence": 1.0,
+      "probabilities": {
+        "not_defined": 1.0,
+        "waits": 0.0,
+        "rejects": 0.0,
+        "returns_cached": 0.0
+      }
+    },
+    "Q010": {
+      "type": "choice",
+      "choice": "reveals_current_behavior",
+      "confidence": 0.99,
+      "probabilities": {
+        "reveals_current_behavior": 1.0,
+        "unrelated": 0.0,
+        "decides_policy": 0.0
+      }
+    },
+    "Q011": {
+      "type": "noul",
+      "noul": 0.9
+    },
+    "Q012": {
+      "type": "score",
+      "score": 1.99,
+      "confidence": 0.98,
+      "legend": {
+        "0": "対象となるノードと読取り時点の両方が記述されていない。",
+        "1": "対象ノードか読取り時点のどちらかだけが具体的に記述されている。",
+        "2": "異なるノードと成功応答後の読取り開始がともに具体的に記述されている。"
+      },
+      "probabilities": {
+        "0": 0.0,
+        "1": 0.01,
+        "2": 0.99
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 3282,
+    "output_tokens": 376
+  }
+}

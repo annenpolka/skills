@@ -1,0 +1,232 @@
+{
+  "schema": "qforge-example-probe-metadata/v0.1",
+  "synthetic": true,
+  "executed": false,
+  "domain_probe_count": 12,
+  "full_mode_target": 255,
+  "note": "12問の局所的な契約fixture。255問の完成パックではない。outcomeUseは制御側metadataで、API入力には含まれない。記述上の不明を選択肢とする例と、runtimeのabstainは別である。",
+  "probes": [
+    {
+      "id": "Q001",
+      "revision": 1,
+      "semanticRole": "meaning",
+      "decisionRefs": [
+        "D1"
+      ],
+      "sourcePointers": [
+        "/requirements/R1",
+        "/requirements/R2"
+      ],
+      "worldId": "synthetic-candidate-comparison-v1",
+      "clusterId": "D1-Q001",
+      "outcomeUse": {
+        "all_api_nodes": "別ノードを含む検証計画を維持する。",
+        "writer_only": "保証の適用範囲を原文で再確認する。",
+        "not_stated": "対象ノードを未決として残す。"
+      },
+      "apiQuestionId": "Q001"
+    },
+    {
+      "id": "Q002",
+      "revision": 1,
+      "semanticRole": "boundary",
+      "decisionRefs": [
+        "D1"
+      ],
+      "sourcePointers": [
+        "/requirements/R1",
+        "/requirements/R3"
+      ],
+      "worldId": "synthetic-candidate-comparison-v1",
+      "clusterId": "D1-Q002",
+      "outcomeUse": {
+        "intentionally_open": "この範囲を欠陥として勝手に埋めず、未決として維持する。"
+      },
+      "apiQuestionId": "Q002"
+    },
+    {
+      "id": "Q003",
+      "revision": 1,
+      "semanticRole": "relation",
+      "decisionRefs": [
+        "D1"
+      ],
+      "sourcePointers": [
+        "/requirements/R1",
+        "/candidates/event_invalidation"
+      ],
+      "worldId": "synthetic-candidate-comparison-v1",
+      "clusterId": "D1-Q003",
+      "outcomeUse": {
+        "yes": "該当経路を反例候補にし、実行で確認する。",
+        "no": "対象と時点の読みを再確認する。"
+      },
+      "apiQuestionId": "Q003"
+    },
+    {
+      "id": "Q004",
+      "revision": 1,
+      "semanticRole": "counterexample",
+      "decisionRefs": [
+        "D2"
+      ],
+      "sourcePointers": [
+        "/requirements/R1",
+        "/requirements/R2",
+        "/hypothetical_trace"
+      ],
+      "worldId": "synthetic-candidate-comparison-v1",
+      "clusterId": "D2-Q004",
+      "outcomeUse": {
+        "candidate_violation": "cross-nodeの実行テストへ渡す。",
+        "insufficient_to_classify": "traceの不足条件を確認する。"
+      },
+      "apiQuestionId": "Q004"
+    },
+    {
+      "id": "Q005",
+      "revision": 1,
+      "semanticRole": "evidence",
+      "decisionRefs": [
+        "D2"
+      ],
+      "sourcePointers": [
+        "/requirements/R2",
+        "/test_descriptions/existing"
+      ],
+      "worldId": "synthetic-candidate-comparison-v1",
+      "clusterId": "D2-Q005",
+      "outcomeUse": {
+        "no": "別ノードの検証を追加候補にする。",
+        "yes": "記述と対象範囲を原文照合する。"
+      },
+      "apiQuestionId": "Q005"
+    },
+    {
+      "id": "Q006",
+      "revision": 1,
+      "semanticRole": "verification",
+      "decisionRefs": [
+        "D2"
+      ],
+      "sourcePointers": [
+        "/test_descriptions/proposed_cross_node",
+        "/hypothetical_trace"
+      ],
+      "worldId": "synthetic-candidate-comparison-v1",
+      "clusterId": "D2-Q006",
+      "outcomeUse": {
+        "yes": "検証計画へ採用する候補にする。",
+        "no": "観測点の追記を提案する。"
+      },
+      "apiQuestionId": "Q006"
+    },
+    {
+      "id": "Q007",
+      "revision": 1,
+      "semanticRole": "alternative",
+      "decisionRefs": [
+        "D1"
+      ],
+      "sourcePointers": [
+        "/candidates/ttl_only",
+        "/requirements/R1"
+      ],
+      "worldId": "synthetic-candidate-comparison-v1",
+      "clusterId": "D1-Q007",
+      "outcomeUse": {
+        "no": "単純なTTLだけで要求を説明できるという仮説を再検討する。"
+      },
+      "apiQuestionId": "Q007"
+    },
+    {
+      "id": "Q008",
+      "revision": 1,
+      "semanticRole": "alternative",
+      "decisionRefs": [
+        "D1"
+      ],
+      "sourcePointers": [
+        "/candidates/read_version_check"
+      ],
+      "worldId": "synthetic-candidate-comparison-v1",
+      "clusterId": "D1-Q008",
+      "outcomeUse": {
+        "yes": "DBアクセスの測定と障害時の規則を検証計画へ加える。"
+      },
+      "apiQuestionId": "Q008"
+    },
+    {
+      "id": "Q009",
+      "revision": 1,
+      "semanticRole": "boundary",
+      "decisionRefs": [
+        "D3"
+      ],
+      "sourcePointers": [
+        "/candidates/read_version_check",
+        "/requirements/R4"
+      ],
+      "worldId": "synthetic-candidate-comparison-v1",
+      "clusterId": "D3-Q009",
+      "outcomeUse": {
+        "not_defined": "拒否・待機等の選択を未決判断D3へ残す。"
+      },
+      "apiQuestionId": "Q009"
+    },
+    {
+      "id": "Q010",
+      "revision": 1,
+      "semanticRole": "next_observation",
+      "decisionRefs": [
+        "D3"
+      ],
+      "sourcePointers": [
+        "/test_descriptions/proposed_version_unavailable",
+        "/decision_candidates/D3"
+      ],
+      "worldId": "synthetic-candidate-comparison-v1",
+      "clusterId": "D3-Q010",
+      "outcomeUse": {
+        "reveals_current_behavior": "実装の観測と方針決定を分けて記録する。"
+      },
+      "apiQuestionId": "Q010"
+    },
+    {
+      "id": "Q011",
+      "revision": 1,
+      "semanticRole": "meaning",
+      "decisionRefs": [
+        "D1"
+      ],
+      "sourcePointers": [
+        "/requirements/R1"
+      ],
+      "worldId": "synthetic-candidate-comparison-v1",
+      "clusterId": "D1-Q011",
+      "outcomeUse": {
+        "yes": "テストで読取り開始の時点を明示的に記録する。"
+      },
+      "apiQuestionId": "Q011"
+    },
+    {
+      "id": "Q012",
+      "revision": 1,
+      "semanticRole": "verification",
+      "decisionRefs": [
+        "D2"
+      ],
+      "sourcePointers": [
+        "/test_descriptions/proposed_cross_node",
+        "/requirements/R1",
+        "/requirements/R2"
+      ],
+      "worldId": "synthetic-candidate-comparison-v1",
+      "clusterId": "D2-Q012",
+      "outcomeUse": {
+        "use": "記述上の具体性の補助信号として使う。実際のテスト結果にはしない。"
+      },
+      "apiQuestionId": "Q012"
+    }
+  ]
+}
