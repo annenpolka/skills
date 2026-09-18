@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "target": "specprobe",
+  "method": "empirical-prompt-tuning loop. Per round: fresh executors on frozen scenarios A/B/C with the same visible checklist; hidden grader checks judged by the parent; self-reported unclear points classified (Issue/Cause/General Fix Rule); fixes applied between rounds; holdout scenario added at convergence judgment.",
+  "metricNote": "Host does not expose tool_uses/duration_ms for subagents. Visible accuracy was 100% in every round from iter1; the discriminating signals are (a) hidden grader checks, (b) new unclear points, (c) self-reported retries and phase weaknesses. Step/duration thresholds could not be measured and are excluded.",
+  "rounds": [
+    {
+      "iter": 1,
+      "skill": "v0.1.0 (baseline)",
+      "results": {
+        "A": { "selfReport": "○ 7/7", "grader": "A-H1..H3 pass", "newUnclear": 1 },
+        "B": { "selfReport": "○ 9/9", "grader": "B-H1..B-H4 pass", "newUnclear": 3, "retries": 2 },
+        "C": { "selfReport": "○ 7/7", "grader": "C-H1..C-H4 pass", "newUnclear": 1 }
+      },
+      "notes": "Quint 0.32.0 + Apalache 0.56.1 executed on real models (verify + run + ITF); all false-positive guards passed; retention/ordering/delegation handled correctly."
+    },
+    {
+      "iter": 2,
+      "skill": "after formal-evidence fixes (polarity, --out-itf, restricted-environment checks)",
+      "results": {
+        "A": { "selfReport": "○ 7/7", "grader": "pass", "newUnclear": 1 },
+        "B": { "selfReport": "○ 9/9", "grader": "pass", "newUnclear": 2, "retries": 1 },
+        "C": { "selfReport": "○ 7/7", "grader": "pass", "newUnclear": 3 }
+      },
+      "notes": "Iter-1 formal fixes verifiably used by B: witnesses saved as ITF and cited, negation polarity applied, no download, local checks recorded."
+    },
+    {
+      "iter": 3,
+      "skill": "after reference-contract fixes (default output form, Jev condition split, delegated settings)",
+      "results": {
+        "A": { "selfReport": "○ 7/7", "grader": "pass", "newUnclear": 2 },
+        "B": { "selfReport": "○ 9/9", "grader": "pass", "newUnclear": 3, "retries": 3 },
+        "C": { "selfReport": "○ 7/7", "grader": "pass", "newUnclear": 2, "retries": 2 }
+      },
+      "notes": "B went beyond the recipe: quint test with a deliberately failing control, inductive invariant check, negative control, ITF witnesses. Friction moved to tool-language syntax and test-selection conventions."
+    },
+    {
+      "iter": 4,
+      "skill": "after Quint minimal complete example + scenario minimality definition",
+      "results": {
+        "A": { "selfReport": "○ 7/7", "grader": "pass", "newUnclear": 2 },
+        "B": { "selfReport": "○ 9/9", "grader": "pass", "newUnclear": 2, "retries": 0 },
+        "C": { "selfReport": "○ 7/7", "grader": "pass", "newUnclear": 2 },
+        "H": { "selfReport": "○ 7/7", "grader": "H-H1..H-H4 pass", "newUnclear": 0, "note": "holdout; accuracy 100% vs recent 100% → no overfitting signal" }
+      },
+      "notes": "Quint fixture tasks completed without syntax retries; minimal example landed. Holdout (subscription cancellation) passed with 100% and found the intended concurrency/billing gaps."
+    },
+    {
+      "iter": 5,
+      "skill": "after final polish (budget unit, permission-denied path, verification surfaces, witness citation)",
+      "results": {
+        "A": { "selfReport": "○ 7/7", "grader": "pass", "newUnclear": 2, "retries": 2 },
+        "B": { "selfReport": "○ 9/9", "grader": "pass", "newUnclear": 4, "retries": 5 },
+        "C": { "selfReport": "○ 7/7", "grader": "pass", "newUnclear": 2 }
+      },
+      "notes": "Permission-denied path followed without probing availability (A/C); budget unit clarified in A. Remaining items are tool-operational minutiae (fixed port, sample reporting) and taxonomy edge cases; two closed post-loop, rest adjudicated."
+    }
+  ],
+  "convergence": {
+    "literalCriterionMet": false,
+    "reason": "The literal stop rule (2 consecutive rounds with zero new unclear points) was not reached: fresh executors surfaced 5–8 micro-items per round, though hidden grader checks and visible accuracy stayed at 100% and the items shifted from contract defects to tool-operational or taxonomy edge cases. Resource cutoff applied per the skill's stopping criteria.",
+    "resourceCutoff": true,
+    "postLoopFixes": ["formal-methods.md: serialize fixed-port model-checker invocations", "reporting.md: state the counting unit in coverage ledgers"],
+    "holdout": "100% (H-H1..H-H4), no overfitting signal (drop 0 < 15pt)",
+    "residualAdjudications": [
+      "proposal boundary (options vs rewrite-ready text): existing boundaries suffice; no change",
+      "config key vs retrievable document: delegated rule added in iter3; closed",
+      "single observation contract / persistence effects: existing 'output/effect' wording and prioritization suffice; no change",
+      "principal obligation vs service guarantee reading: both readings kept, downstream server behavior treated as unresolved — existing screening covers this",
+      "hypothetical-finding applicability: existing 'mark hypotheses' discipline used; no change",
+      "derived vs unresolved with lopsided evidence: taxonomy edge; not fix-worthy in this pass",
+      "scratch directory collision and Deliverable-field duplication: harness artifacts, not skill defects"
+    ]
+  }
+}

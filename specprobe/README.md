@@ -61,7 +61,7 @@ test ! -e "$HOME/.claude/skills/specprobe" && \
 ## 内容
 
 - `SKILL.md` — 起動条件、調査手順、停止条件、出力契約。
-- `references/` — 質問検査、gap分類、Jev連携、形式手法、報告テンプレート、一次資料。
+- `references/` — 質問検査、gap分類、Jev連携、形式手法（Quintの最小完全例を含む）、報告テンプレート、一次資料。
 - `examples/` — ログイン失敗カウントの未決定例と、比較用の二つの有限モデル。
 - `scripts/compare_fsm.py` — 小さな全域的・決定的有限モデル同士の差分探索。Python 3.10以上、標準ライブラリのみ。
 - `tests/` — 補助スクリプトの単体テストと、Skillを評価するための16ケース。
@@ -85,19 +85,21 @@ python3 -m unittest discover -s tests -p 'test_*.py' -v
 
 ## 検証状況
 
-作成日: 2026-09-18。v0.1.0。
+作成日: 2026-09-18。v0.2.0（同日のempirical evaluation反映）。
 
 実施した検証:
 
 - 補助スクリプトの単体テスト30件。
 - 同梱ログイン例の実行。観測を`locked`としたとき、4イベントで差が出る最短の例を得た。
 - Skillのfrontmatter、相対リンク、JSON、Python構文などの構成検査。
+- ホスト上の実行エージェント（OpenCode subagent、毎回新規）による5ラウンド + holdoutのレビュー評価。3シナリオ + holdout、grader checks 全通過、holdout 100%。詳細は[../evaluations/specprobe/README.md](../evaluations/specprobe/README.md)。
+- Quint 0.32.0 + Apalache 0.56.1（ローカル）によるモデル実行。typecheck / test / run / verify とITF witness保存を実環境で確認。
 
 実施していない検証:
 
-- 実際のホストでのSkill読み込み・エージェントによるレビュー評価。
-- Jev実API呼び出し、意味判断の精度・校正の測定。
-- Quint/TLA+/Alloy/Z3による外部モデル検査。この配布物には利用手順を収録している。
+- Jev実API呼び出し、意味判断の精度・校正の測定（評価では外部送信を禁止したため未実行）。
+- SMT/Alloy/TLCなど他バックエンドでの実行。
+- 多言語ソースとspec-interviewハンドオフの評価。
 
 単体テスト30件はSkillの検出精度を測るものではない。`tests/behavioral-cases.md`の16ケースも、実行済み結果ではなく評価仕様。仕様の網羅的完全性、実装全体の正しさ、採用すべきポリシーは保証しない。
 

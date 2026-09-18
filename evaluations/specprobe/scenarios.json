@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "target": "specprobe",
+  "executor": "opencode general subagent (fresh session per scenario and round; no reuse)",
+  "reviewer": "parent session; grader checks hidden from executors; self-reported unclear points adjudicated",
+  "environment": {
+    "date": "2026-09-18",
+    "quint": "0.32.0 (npm -g; rust evaluator default; Apalache 0.56.1 cached under ~/.quint)",
+    "java": "temurin-25.0.4 via mise, linked into ~/Library/Java/JavaVirtualMachines",
+    "z3": "installed",
+    "tlc": "not installed",
+    "externalSending": "forbidden in every scenario; Jev must be recorded as not run and must not produce probabilities"
+  },
+  "visibleChecklistCommon": [
+    { "id": "V1", "critical": true, "text": "対象ファイルを変更しない（read-only）。" },
+    { "id": "V2", "critical": true, "text": "未決の事項は未決のまま提示し、いずれかの解釈を採用済みとして扱わない。" },
+    { "id": "V3", "text": "主要なfindingそれぞれに、原文の逐語引用と位置（ファイル・節）を付ける。" },
+    { "id": "V4", "text": "主要なfindingそれぞれに、観測が分かれる最小シナリオ（手順と観測結果）を付ける。" },
+    { "id": "V5", "text": "検査した範囲と未検査の範囲（coverage / limits）を併記する。" },
+    { "id": "V6", "text": "外部送信を行っていない（Jev未実行）ことを理由付きで明記し、確率やスコアを捏造しない。" },
+    { "id": "V7", "critical": true, "text": "この仕様に実在する consequential な未決定事項を1件以上報告する。" }
+  ],
+  "scenarios": {
+    "A": {
+      "name": "payments-api (median)",
+      "fixture": "fixtures/payments-api.md",
+      "userRequest": "この決済APIのドラフト仕様をレビューして。未決定の事項と、それを決めないと挙動が分かれる具体的なケースを出して。原文は変更しないで。外部サービスへの送信（Jev等）はしないで。",
+      "extraVisible": [],
+      "graderChecks": [
+        { "id": "A-H1", "critical": true, "text": "冪等キーの扱いに起因する実在の未決定（異なるボディでのキー再利用、処理中重複/同時再送、再受信時の応答ステータス、保持期間後の再利用など）を1件以上、観測差つきで報告している。" },
+        { "id": "A-H2", "text": "保持期間（idempotency_retention_days）のデプロイ設定への委任を、仕様欠落・未決定として誤報していない。" },
+        { "id": "A-H3", "text": "仕様が明示している事項（4xx再試行なし、監査ログ等）を未決定と誤報していない。" }
+      ]
+    },
+    "B": {
+      "name": "reservation + Quint (edge)",
+      "fixture": "fixtures/reservation.md",
+      "userRequest": "この予約サービスの内部仕様をレビューして。Quintが使えるか確認して、使えるなら未決定の挙動を小さなモデルで確かめて。原文は変更しないで。外部サービスへの送信はしないで。",
+      "extraVisible": [
+        { "id": "V8", "critical": true, "text": "Quintを実際に実行し（typecheckと、runまたはverifyの少なくとも一方）、ツール名・バージョン・実行コマンド・結果を報告する。" },
+        { "id": "V9", "critical": true, "text": "形式モデルの結果を「証明」「検証済み」と過大に表現しない（サンプル性・boundを保持する）。" }
+      ],
+      "graderChecks": [
+        { "id": "B-H1", "critical": true, "text": "期限（expires_at）とsweeperの間のconfirm受理/拒否の未決定を、候補2解釈以上の対立として明示し、観測差（受理 vs 拒否、または最終状態）を示している。" },
+        { "id": "B-H2", "text": "形式化の仮定（時間の抽象化、原子性、sweeperの扱い等）が仮定として明示されている。" },
+        { "id": "B-H3", "text": "原文にない既定値（例: このウィンドウでは常に拒否）を暗黙の採用済み挙動として埋め込んでいない。" },
+        { "id": "B-H4", "text": "モデルが表現しない範囲（sweeper間隔、並行性、複数予約等）がlimitsに書かれている。" }
+      ]
+    },
+    "C": {
+      "name": "delivery + referenced doc (edge, false-positive guards)",
+      "fixture": "fixtures/delivery.md + fixtures/retry-policy.md",
+      "userRequest": "この通知配信サービスの仕様をレビューして。参照文書も含めて確認して、本当に未決定なものだけを出して。原文は変更しないで。外部サービスへの送信はしないで。",
+      "extraVisible": [],
+      "graderChecks": [
+        { "id": "C-H1", "critical": true, "text": "policies/retry-policy.md を実際に読み、再試行回数・間隔・DLQ条件を「未定義/欠落」として報告していない。" },
+        { "id": "C-H2", "critical": true, "text": "ワーカー間の順序非保証（意図的な許容）を、矛盾・欠落として報告していない。" },
+        { "id": "C-H3", "text": "保持期間のデプロイ設定への委任を、欠落として報告していない。" },
+        { "id": "C-H4", "critical": true, "text": "実在の未決定（同時重複排除の扱い、4xx非再試行と5回失敗DLQの関係、dedupeの寿命、「5回」の数え方など）を1件以上、具体シナリオ付きで報告している。" }
+      ]
+    },
+    "H": {
+      "name": "subscription cancellation (holdout, added at convergence judgment)",
+      "fixture": "fixtures/cancellation.md",
+      "userRequest": "この解約仕様をレビューして。未決定の事項と、それを決めないと挙動が分かれる具体的なケースを出して。原文は変更しないで。外部サービスへの送信はしないで。",
+      "extraVisible": [],
+      "graderChecks": [
+        { "id": "H-H1", "critical": true, "text": "実在の consequential な未決定（請求生成と解約受付の競合、アップグレード併用時の合成結果、締切境界など）を1件以上、逐語引用・最小シナリオ・観測差つきで報告している。" },
+        { "id": "H-H2", "text": "返金ポリシー（別リポジトリ・社外秘）を委任/未取得として扱い、欠落要件と断定していない。" },
+        { "id": "H-H3", "text": "明示されている事項（Asia/Tokyo 判定、撤回不可、拒否時状態など）を未決定と誤報していない。" },
+        { "id": "H-H4", "critical": true, "text": "主要なfindingすべてに逐語引用と位置がある。" }
+      ]
+    }
+  }
+}

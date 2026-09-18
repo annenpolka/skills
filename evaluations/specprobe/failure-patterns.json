@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "target": "specprobe",
+  "scope": "per-target-prompt ledger accumulated across the 2026-09-18 empirical evaluation (iters 1–5 + holdout)",
+  "entries": [
+    {
+      "pattern": "Undocumented witness-search polarity (Quint)",
+      "example": "Passing a bad-state predicate as --invariant produced a spurious State-0 violation; the executor initially read it as a finding.",
+      "generalFixRule": "To look for a state where `bad` holds, check `not(bad)`; a violation is the witness. Record the polarity used.",
+      "seenIn": ["iter1 B"],
+      "status": "fixed in iter2 (formal-methods.md §C); used correctly in iters 2–5"
+    },
+    {
+      "pattern": "Unpersisted executable witness",
+      "example": "Captured console output was truncated; the witness position became uncertain until traces were exported.",
+      "generalFixRule": "Save every retained witness with --out-itf (or equivalent) and cite the file; console output is not evidence.",
+      "seenIn": ["iter1 B"],
+      "status": "fixed in iter2; executors cite .itf.json files in iters 2–5"
+    },
+    {
+      "pattern": "Ad-hoc offline eligibility check",
+      "example": "Under a no-external-send constraint, whether a cached Apalache distribution could be used had to be decided ad hoc (PATH vs tool cache, localhost endpoint, usage stats).",
+      "generalFixRule": "Confirm from CLI output, startup log or configuration that the backend is already local (no download), endpoints are localhost, and usage statistics are off; record the surface checked.",
+      "seenIn": ["iter1 B", "iter2 B"],
+      "status": "fixed in iter2, refined in iter3/iter5; executors record surfaces and skip availability probing when permission is denied"
+    },
+    {
+      "pattern": "Two output contracts, no declared default",
+      "example": "reporting.md has a full finding card and a compact format; executors produced three different output shapes.",
+      "generalFixRule": "Declare which format is the deliverable and which is the internal record.",
+      "seenIn": ["iter1 C", "iter2 A"],
+      "status": "fixed in iter3; compact output cited in iters 4–5"
+    },
+    {
+      "pattern": "Absence findings lack a quote form",
+      "example": "A missing-source/in-scope-absent finding cannot carry a verbatim `quote` in source_refs.",
+      "generalFixRule": "Separate absence evidence (searched_scope, nearest clause, documents checked) from quotation fields; never fabricate a quote.",
+      "seenIn": ["iter1 A"],
+      "status": "fixed in iter3 (searched_scope/missing_sources guidance); no recurrence"
+    },
+    {
+      "pattern": "Backend encoding-rejection triage",
+      "example": "Apalache failed with assignment/encoding errors (e.g. `Missing assignments to`, `used before it is assigned`), which look like model errors but are backend constraints.",
+      "generalFixRule": "Reproduce in a minimal module, classify as backend encoding constraint or model error, record the workaround and scope in limits, report only from the repaired model; inductive checks commonly need a labeled type invariant.",
+      "seenIn": ["iter2 B", "iter3 B"],
+      "status": "fixed in iter4; handled without misclassification in iters 4–5"
+    },
+    {
+      "pattern": "Zero selected checks read as a pass",
+      "example": "`quint test` exit 0 with no selected test; a deliberately failing control named without the `*Test` suffix was not run.",
+      "generalFixRule": "Confirm the check actually ran (non-empty selection, non-vacuous invariant, satisfiable model); keep one deliberately failing control; an exit code of 0 with no selected test is not a pass.",
+      "seenIn": ["iter3 B", "iter5 B (authoring-time, caught and renamed)"],
+      "status": "fixed in iter4 bullet; recognized in iter5"
+    },
+    {
+      "pattern": "Tool-language syntax friction",
+      "example": "Quint run bodies and .then/.expect chains had to be discovered by trial and error; runs must start from init and default actions are init/step.",
+      "generalFixRule": "Provide a minimal complete example for the target tool language, with init/step defaults and test selection conventions, before writing the slice.",
+      "seenIn": ["iter3 B"],
+      "status": "fixed in iter4 (verified minimal slice in formal-methods.md); no syntax retries in iters 4–5"
+    },
+    {
+      "pattern": "'Smallest scenario' undefined",
+      "example": "Whether minimal meant fewest steps or formal minimality was undecidable.",
+      "generalFixRule": "Define smallest as the fewest events that still produce the differing observation; not a claim of formal minimality.",
+      "seenIn": ["iter3 C"],
+      "status": "fixed in iter4 (reporting.md); no recurrence"
+    },
+    {
+      "pattern": "Budget/ledger counting unit unspecified",
+      "example": "Whether 'up to 12 candidate probes' counts candidates, findings, or ledger rows.",
+      "generalFixRule": "State what is being counted (candidates generated vs findings reported) wherever numbers appear.",
+      "seenIn": ["iter3 A", "iter4 A", "iter5 C"],
+      "status": "SKILL.md fixed in iter4; reporting.md coverage-ledger clause added post-loop"
+    },
+    {
+      "pattern": "Permission-denied path for external tools",
+      "example": "When sending was forbidden, whether tool availability should still be probed was unclear.",
+      "generalFixRule": "Tool availability and permission are separate conditions; when permission is denied, record not run without probing availability.",
+      "seenIn": ["iter2 C", "iter3 C", "iter4 A"],
+      "status": "fixed in iter5; followed in iter5 A/C"
+    },
+    {
+      "pattern": "Fixed-port local backend collision",
+      "example": "Two parallel `quint verify` runs collided on localhost:8822 ('Address already in use').",
+      "generalFixRule": "Some local backends bind a fixed port; serialize model-checker invocations instead of running them in parallel.",
+      "seenIn": ["iter5 B"],
+      "status": "fixed post-loop (formal-methods.md)"
+    },
+    {
+      "pattern": "Standard unflushed output during parallel verify",
+      "example": "Concurrent checkers also interleaved standard output, complicating log attribution.",
+      "generalFixRule": "Redirect each checker's output to its own log file when serialization still allows overlapping processes.",
+      "seenIn": ["iter5 B"],
+      "status": "covered by the same post-loop serialization clause; no separate change"
+    },
+    {
+      "pattern": "Proposal boundary (no rewrite-ready text)",
+      "example": "The skill allows proposals; whether a proposal may look like replacement text was unclear.",
+      "generalFixRule": "Keep proposals as labeled resolution options; boundaries already forbid rewriting the source.",
+      "seenIn": ["iter2 C"],
+      "status": "adjudicated no-change (existing boundaries and 'label as proposal' suffice)"
+    },
+    {
+      "pattern": "Single observation contract vs persistence effects",
+      "example": "When the source declares one observable (e.g. notification count), whether a DLQ/log effect can serve as the differing observation was unclear.",
+      "generalFixRule": "reporting.md already allows an 'output/effect'; gap-catalog prioritization already names persistence. Use justified effects, not internal state.",
+      "seenIn": ["iter1 C"],
+      "status": "adjudicated no-change"
+    },
+    {
+      "pattern": "Harness-level ambiguities (scratch path, Deliverable duplication)",
+      "example": "Shared scratch directories and the meta-report's 'Deliverable' field duplicated the reply body.",
+      "generalFixRule": "Not skill defects; these belong to the evaluation harness prompt.",
+      "seenIn": ["iter4 C", "iter5 B"],
+      "status": "adjudicated no-change (harness artifact)"
+    }
+  ]
+}
