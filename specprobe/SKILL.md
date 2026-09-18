@@ -2,7 +2,7 @@
 name: specprobe
 description: Find consequential ambiguity, missing decisions, conflicting rules, and unverifiable acceptance conditions in specifications, PRDs, API contracts, and design notes. Generate focused decision probes, check their quality, and substantiate findings with source passages, divergent scenarios, or small formal models. Use when asked to review specification gaps, 仕様の曖昧さ・空白・抜け漏れ, or combine specification review with formal methods. Complements jev-crosscheck and spec-interview; does not silently complete or rewrite the specification.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Spec Probe
@@ -13,8 +13,9 @@ behavior changes, and who can resolve it**. Do not produce a generic checklist o
 pretend that model checking proves the prose complete.
 
 Use the directory containing this file as `<skill-dir>`. Read only the reference
-needed for the current phase; no service, qlint installation, or formal tool is
-required for the basic workflow.
+needed for the current phase; a phase skipped by an external constraint is recorded
+from these instructions without reading that phase's reference. No service, qlint
+installation, or formal tool is required for the basic workflow.
 
 ## Boundaries
 
@@ -49,8 +50,10 @@ Resolve precedence from actual project instructions, not document recency alone.
 
 Start with the smallest useful slice. Review high-consequence decisions before
 expanding the state space. Set a finite work budget; unless directed otherwise,
-start with up to 12 candidate probes and at most one small formal slice. This is a
-review budget, not a completeness claim. Report what was left unexplored.
+start with up to 12 candidate probes and at most one small formal slice. The budget
+counts candidate probes generated, not findings reported; screen and group them as
+the phases require. This is a review budget, not a completeness claim. Report what
+was left unexplored.
 
 ## 2. Recover decisions without filling them
 
@@ -62,7 +65,9 @@ passages. Put every nontrivial interpretation into a small decision ledger:
 
 For `derived`, show premises and the derivation; a customary default is `assumed`.
 For `absent_in_scope`, name the searched documents and referenced material still
-missing. Mark expressly delegated choices as delegated, not defective.
+missing. Mark expressly delegated choices as delegated, not defective; a referenced
+value that lives outside the reviewed documents (a deployment setting, for example)
+is delegated, and its value is simply not retrieved.
 
 Separate a missing *decision* from an omitted implementation detail. Different
 algorithms, private variable names, or allowed scheduling choices need not be
@@ -93,15 +98,18 @@ Record direct evidence for an answer; do not substitute plausibility for a claus
 For a suspected contradiction, establish overlapping subjects, conditions, versions,
 and time scopes before calling the rules incompatible.
 
-When Jev and permission to send the relevant material are available, use the
-installed `jev-crosscheck` skill. Read its current instructions and follow its
-helper and inspect/send process; see [jev-crosscheck.md](references/jev-crosscheck.md)
-for probe patterns. Do not implement an alternate API client or weaken its boundary.
+When the Jev tool and permission to send the relevant material are both available, use
+the installed `jev-crosscheck` skill. Availability and sending permission are separate
+conditions; use the skill only when both hold, and when permission is denied record
+the cross-check as not run without probing tool availability. Read its current
+instructions and follow its helper and inspect/send process; see
+[jev-crosscheck.md](references/jev-crosscheck.md) for probe patterns. Do not implement
+an alternate API client or weaken its boundary.
 
 Use Jev for local semantic relations and concrete evidence sufficiency, not formal
-validity or certification that the entire specification contains no answer. If it
-is unavailable, continue with source-based review, explicitly mark the semantic
-cross-check not run, and produce no probabilities.
+validity or certification that the entire specification contains no answer. If
+either condition is absent, continue with source-based review, explicitly mark the
+semantic cross-check not run, and produce no probabilities.
 
 ## 5. Obtain the cheapest useful witness
 
@@ -128,8 +136,8 @@ encode missing decisions silently as `false`, `UNCHANGED`, a permissive transiti
 or an invented default.
 
 Check model satisfiability and meaningful reachability before celebrating an
-invariant. Record tool version, command, hashes, bounds, seed where relevant, and
-whether exploration finished. A disabled action, terminal state, deadlock,
+invariant. Record tool version, command, hashes, bounds, seed where relevant, the
+saved witness or trace artifact, and whether exploration finished. A disabled action, terminal state, deadlock,
 nondeterminism, and an unresolved prose decision are different things.
 
 A counterexample is initially a fact about the model. Triage it as a possible model

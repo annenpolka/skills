@@ -1,7 +1,9 @@
 # Decision packet and evidence ledger
 
 The default output is a short review, not a new specification. Write in the user's
-language. Preserve exact original-language quotations and source locations.
+language. Preserve exact original-language quotations and source locations. The
+compact format below is the default reply; the finding and mechanism cards are the
+internal record, unfolded in full only for consequential findings or on request.
 
 ## Review header
 
@@ -50,7 +52,9 @@ revisit_when: Changed source, accepted policy, model revision, or new evidence.
 ```
 
 Do not require every field for every one-line observation. Missing evidence, scope,
-or authority must never be concealed by inventing data to fill the template.
+or authority must never be concealed by inventing data to fill the template. Here
+"smallest" means the fewest events that still produce the differing observation; it is
+not a claim of formal minimality.
 
 ## Mechanism result card
 
@@ -78,6 +82,10 @@ unreachable scenario cannot by itself establish an operational gap.
 
 ## Compact user-facing format
 
+A finding in this format always states: the open decision, the source location and
+quotation, the distinguishing scenario, the observation that differs, and the evidence
+basis. The other template fields are optional at this level.
+
 1. **Findings and decisions:** A few consequential items, each with source and case.
 2. **Resolved or deliberately open:** Prevent repeated questioning and false alarms.
 3. **Verification and limits:** Actual checks, missing sources, unmodeled families.
@@ -96,9 +104,10 @@ External semantic checks: executed + material result, or not run
 Not explored: ...
 ```
 
-Counts are useful only when generated from an actual ledger. Do not invent a coverage
-percentage without a defined denominator. Generated scenarios do not define the
-entire domain merely by existing.
+Counts are useful only when generated from an actual ledger. State the counting unit
+(candidate probes generated vs findings reported) whenever numbers appear. Do not
+invent a coverage percentage without a defined denominator. Generated scenarios do
+not define the entire domain merely by existing.
 
 ## Handoff to spec-interview
 

@@ -99,14 +99,15 @@ limits: bounds, seeds, resources, fairness assumptions, omitted behavior
 ```
 
 Read installed help first. The current official CLI documents `typecheck`, simulation
-via `run`, and model checking via `verify`. For an existing `slice.qnt` defining
-`inv`, a bounded recipe is:
+via `run`, and model checking via `verify`. For a `slice.qnt` defining the bad-state
+predicate `bad` whose reachable states you want to find, a bounded recipe is:
 
 ```bash
 quint --version
 quint typecheck slice.qnt
 quint verify --help
-quint verify slice.qnt --backend apalache --invariant inv --max-steps 12
+quint verify slice.qnt --backend apalache --invariant 'not(bad)' --max-steps 12 \
+  --out-itf witness.itf.json
 ```
 
 The bound 12 is illustrative, not a completeness threshold. `verify` can obtain a
@@ -114,6 +115,57 @@ backend automatically; confirm approved local configuration before allowing it t
 run. Typecheck success, random simulation, bounded checking, completed finite TLC
 exploration, and inductive obligations support different conclusions. Do not hide
 those differences behind a single green "verified" label. [S4, S5, S6]
+
+Keep a witness search reproducible and inspectable:
+
+- **Polarity:** check the negation `not(bad)` when looking for a state where `bad`
+  holds; the violation of that invariant is the witness. Passing `bad` itself demands
+  that it hold in every reachable state and yields a spurious initial-state violation.
+  State the polarity actually used.
+- **Witness artifact:** save every retained witness with `--out-itf <file>` (or the
+  tool's trace-output equivalent) and cite that file. Console output is display-
+  oriented and can be truncated in captured logs. Keep the seed for simulation runs.
+- **Restricted environments:** when downloads or external sending are not approved,
+  confirm from its CLI output, startup log, or configuration that the backend
+  executable or jar is already available from local paths or the tool's own cache
+  (running it must not start a download), that any helper endpoint is on localhost,
+  and that usage statistics are off; record the surface checked and the result in
+  `limits`.
+- **Backend rejections:** when a backend rejects a construct with an encoding or
+  compilation error (not a property violation), reproduce it in a minimal module,
+  classify it as a backend encoding constraint or a model error, record the workaround
+  and its scope in `limits`, and report results only from the repaired model.
+  Inductive checks commonly need a current-state type invariant over the domains as
+  an encoding aid. Some local backends bind a fixed port: serialize model-checker
+  invocations instead of running them in parallel.
+
+A minimal complete slice to adapt (verified with the recipe above; policy parameters
+stay fixed):
+
+```quint
+module slice {
+  var phase: int
+  var now: int
+  var deadline: int
+
+  action init = all { phase' = 0, now' = 0, deadline' = 0 }
+  action hold = all { phase == 0, phase' = 1, now' = now, deadline' = now + 10 }
+  action tick = all { phase' = phase, now' = now + 1, deadline' = deadline }
+  action confirm = all { phase == 1, phase' = 2, now' = now, deadline' = deadline }
+  action step = any { hold, tick, confirm }
+
+  val bad = phase == 2 and now > deadline
+
+  run confirmOnTimeTest = init.then(hold).then(tick).then(confirm).expect(phase == 2)
+}
+```
+
+- `run ...Test` definitions start from `init`; `quint test` selects definitions whose
+  names end in `Test`. Keep one deliberately failing control while developing: an
+  exit code of 0 with no selected test is not a pass. Cite whether each reported
+  witness came from a deterministic chain or a sampled run, with samples and seed.
+- `init` and `step` are the default action names for `run` and `verify`; pass
+  `--init` / `--step` when the model uses other names.
 
 For a comparison, couple the *same* environment inputs in a product model and
 compare declared observations. If one candidate disallows an input, decide whether
