@@ -10,7 +10,7 @@ description: >-
   Bundles a stdlib Python runtime for checking, packing, sending, and
   recording probes. Also use when the user says question-forge or qforge.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Question Forge
