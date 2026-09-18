@@ -1,0 +1,80 @@
+{
+  "state": {
+    "delivery_spec": "# 通知配信サービス v1.2\n\n更新: 2026-09-08 / オーナー: 配信基盤\n\n## 1. 配信\n\n- メッセージは2つのワーカーで処理される。ワーカー間で処理順序は保証しない。どちらが先に処理しても仕様上正しい。\n- 各メッセージは `dedupe_key` によって重複排除される。同じ `dedupe_key` のメッセージは一度だけ処理される。\n\n## 2. 再試行\n\n- 配信失敗時の再試行は `policies/retry-policy.md` に従う。\n\n## 3. 保持\n\n- 配信ログの保持期間はデプロイ設定 `log_retention_days` に従う。\n\n## 4. 観測\n\n- 受信者が受け取る通知の回数が外部から観測できる結果である。\n",
+    "retry_policy": "# 再試行ポリシー（2026-08-01 改訂）\n\n- 失敗したメッセージは最大5回まで再試行する。\n- 再試行間隔は指数バックオフとし、1秒、2秒、4秒、8秒、16秒とする。\n- 5回失敗したメッセージは DLQ に移す。\n- 受信側の恒久的なエラー（HTTP 4xx）では再試行しない。\n"
+  },
+  "questions": {
+    "dedupe_commit_point_stated": {
+      "type": "noul",
+      "instructions": "Do `delivery_spec` and `retry_policy`, taken together, explicitly state at what point a message's `dedupe_key` is recorded (for example when the message is accepted for processing, only after a delivery attempt succeeds, or at another named point)?",
+      "criteria": {
+        "true": "At least one of the two documents states the point at which the dedupe_key is recorded.",
+        "false": "Neither document states the point at which the dedupe_key is recorded."
+      }
+    },
+    "dedupe_retry_rule_stated": {
+      "type": "noul",
+      "instructions": "Do `delivery_spec` and `retry_policy`, taken together, explicitly state whether the deduplication rule applies to retry attempts of a message whose earlier delivery attempt failed?",
+      "criteria": {
+        "true": "The documents state whether a retry attempt for a message is subject to deduplication.",
+        "false": "The documents do not state whether a retry attempt for a message is subject to deduplication."
+      }
+    },
+    "receipt_count_requirement_stated": {
+      "type": "noul",
+      "instructions": "Do `delivery_spec` and `retry_policy`, taken together, state the required number of received notifications at the recipient (the acceptance condition), for example exactly one or at least one?",
+      "criteria": {
+        "true": "The documents state a required number of received notifications at the recipient.",
+        "false": "The documents do not state a required number of received notifications at the recipient."
+      }
+    },
+    "dedupe_lifetime_stated": {
+      "type": "noul",
+      "instructions": "Do `delivery_spec` and `retry_policy`, taken together, explicitly state the lifetime, retention period, or persistence scope of recorded dedupe_key entries (for example whether a record survives a worker restart, or how long the same key stays suppressed)?",
+      "criteria": {
+        "true": "The documents state a lifetime, retention period, or persistence scope for recorded dedupe_key entries.",
+        "false": "The documents state no lifetime, retention period, or persistence scope for recorded dedupe_key entries."
+      }
+    },
+    "four_xx_disposition_stated": {
+      "type": "noul",
+      "instructions": "Do `delivery_spec` and `retry_policy`, taken together, explicitly state what happens to a message after a delivery attempt fails with a permanent HTTP 4xx error (for example whether it is moved to the DLQ, dropped, or retained for manual handling)?",
+      "criteria": {
+        "true": "The documents state the outcome for a message after a permanent HTTP 4xx failure.",
+        "false": "The documents do not state the outcome for a message after a permanent HTTP 4xx failure."
+      }
+    },
+    "retry_attempt_total_stated": {
+      "type": "noul",
+      "instructions": "Do `delivery_spec` and `retry_policy`, taken together, explicitly state the total number of delivery attempts, including the first attempt, that occur for a message before it is moved to the DLQ?",
+      "criteria": {
+        "true": "The documents state the total number of delivery attempts before DLQ placement.",
+        "false": "The documents do not state the total number of delivery attempts before DLQ placement."
+      }
+    },
+    "dlq_failure_count_basis_stated": {
+      "type": "noul",
+      "instructions": "Do `delivery_spec` and `retry_policy`, taken together, explicitly state whether the condition `5回失敗した` counts the failure of the first delivery attempt together with failures of later attempts, or counts only failures of the retry attempts?",
+      "criteria": {
+        "true": "The documents state which failures the condition counts.",
+        "false": "The documents do not state which failures the condition counts."
+      }
+    },
+    "candidate_six_attempts_contradicts": {
+      "type": "noul",
+      "instructions": "Candidate A: when a message's first delivery attempt fails, it receives up to five retry attempts with intervals of 1, 2, 4, 8, and 16 seconds; when the fifth retry also fails (the sixth failure in total), the message is moved to the DLQ. Read `retry_policy` literally as a whole: does Candidate A contradict an explicit rule in `retry_policy`?",
+      "criteria": {
+        "true": "Candidate A contradicts an explicit rule in retry_policy.",
+        "false": "Candidate A does not contradict an explicit rule in retry_policy."
+      }
+    },
+    "candidate_five_attempts_contradicts": {
+      "type": "noul",
+      "instructions": "Candidate B: when a message's first delivery attempt fails, it receives up to four retry attempts with intervals of 1, 2, 4, and 8 seconds; when the fifth attempt also fails (the fifth failure in total), the message is moved to the DLQ. Read `retry_policy` literally as a whole: does Candidate B contradict an explicit rule in `retry_policy`?",
+      "criteria": {
+        "true": "Candidate B contradicts an explicit rule in retry_policy.",
+        "false": "Candidate B does not contradict an explicit rule in retry_policy."
+      }
+    }
+  }
+}

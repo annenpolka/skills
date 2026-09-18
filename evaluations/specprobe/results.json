@@ -56,6 +56,24 @@
       "notes": "Permission-denied path followed without probing availability (A/C); budget unit clarified in A. Remaining items are tool-operational minutiae (fixed port, sample reporting) and taxonomy edge cases; two closed post-loop, rest adjudicated."
     }
   ],
+  "jevRound": {
+    "note": "Rounds A-j and C-j reran the payments and delivery fixtures with Jev sending permitted (V6 replaced by V6J, V8J added). Both used the installed jev-crosscheck helper through its two-step inspect/send flow; raw requests and responses are under jev/.",
+    "results": {
+      "A-j": {
+        "selfReport": "○ 8/8",
+        "grader": "J-H1..J-H5 pass",
+        "call": "helper exit 0; model jev-1.13.0; 13 assertions; state keys spec + candidate_replay_without_comparison + candidate_reject_on_mismatch; saved request/response verified by the parent",
+        "notes": "Findings stayed unresolved; near-0.5 (candidate_reject_contradicts_clause = 0.50) reported as undetermined and counted for neither side; no key material printed; read-only preserved."
+      },
+      "C-j": {
+        "selfReport": "○ 8/8",
+        "grader": "J-H1..J-H5 pass",
+        "call": "helper exit 0; model jev-1.13.0; 9 assertions; state keys delivery_spec + retry_policy; saved request/response verified by the parent",
+        "notes": "Counter-directional signals (retry_attempt_total_stated = 0.67, candidate_six_attempts_contradicts = 0.85) did not move the findings: F2 stayed unresolved. Zero new unclear points."
+      }
+    },
+    "parentVerification": "Response files carry model jev-1.13.0 with timestamps during the round; .inspected stamps exist; answers match the executors' reports exactly."
+  },
   "convergence": {
     "literalCriterionMet": false,
     "reason": "The literal stop rule (2 consecutive rounds with zero new unclear points) was not reached: fresh executors surfaced 5–8 micro-items per round, though hidden grader checks and visible accuracy stayed at 100% and the items shifted from contract defects to tool-operational or taxonomy edge cases. Resource cutoff applied per the skill's stopping criteria.",

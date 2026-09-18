@@ -109,6 +109,20 @@
       "status": "adjudicated no-change"
     },
     {
+      "pattern": "Indeterminate (near-0.5) Jev answers have no designated bucket",
+      "example": "A contradiction assertion returned 0.50; the executor correctly treated it as undecided but had to decide where an indeterminate answer belongs.",
+      "generalFixRule": "Treat an answer near 0.5 as undetermined: count it for neither side, and report the indeterminacy itself rather than a lean.",
+      "seenIn": ["Jev A-j"],
+      "status": "fixed post-loop (specprobe/references/jev-crosscheck.md)"
+    },
+    {
+      "pattern": "Probe budget overflow has no stopping rule",
+      "example": "On a 43-line source the executor generated 15 candidates against the 12-candidate budget and chose to truncate and report the overage itself.",
+      "generalFixRule": "When a listing budget binds on a small source, prioritize by consequence and report the overage; the existing 'report what was left unexplored' covers the outcome.",
+      "seenIn": ["Jev A-j"],
+      "status": "adjudicated minor; behavior was compliant"
+    },
+    {
       "pattern": "Harness-level ambiguities (scratch path, Deliverable duplication)",
       "example": "Shared scratch directories and the meta-report's 'Deliverable' field duplicated the reply body.",
       "generalFixRule": "Not skill defects; these belong to the evaluation harness prompt.",

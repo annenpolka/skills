@@ -78,7 +78,9 @@ answer is needed to fetch new material, construct a second request after retriev
 
 Noul gives a yes-probability, not a separate confidence. Score/Choice distribution
 concentration is not a guarantee of correctness in this project. Do not invent a
-single universal threshold for specification truth or policy adoption. [S2, S3]
+single universal threshold for specification truth or policy adoption. Treat an answer
+near 0.5 as undetermined: count it for neither side, and report the indeterminacy
+itself rather than a lean. [S2, S3]
 
 ## Report integration
 

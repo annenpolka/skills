@@ -9,7 +9,7 @@
     "java": "temurin-25.0.4 via mise, linked into ~/Library/Java/JavaVirtualMachines",
     "z3": "installed",
     "tlc": "not installed",
-    "externalSending": "forbidden in every scenario; Jev must be recorded as not run and must not produce probabilities"
+    "externalSending": "forbidden during the main loop (iters 1-5 + holdout); permitted only for the Jev cross-check in the A-j / C-j variants, where Jev must be reported with real helper evidence and no probabilities may be fabricated"
   },
   "visibleChecklistCommon": [
     { "id": "V1", "critical": true, "text": "対象ファイルを変更しない（read-only）。" },
@@ -70,6 +70,37 @@
         { "id": "H-H3", "text": "明示されている事項（Asia/Tokyo 判定、撤回不可、拒否時状態など）を未決定と誤報していない。" },
         { "id": "H-H4", "critical": true, "text": "主要なfindingすべてに逐語引用と位置がある。" }
       ]
+    }
+  },
+  "jevEnabledVariants": {
+    "note": "Rounds A-j / C-j: the same fixtures with Jev sending permitted. V6 is replaced by V6J; V8J is added. Real TypeSafe calls ran through the installed jev-crosscheck helper (inspect then send), model jev-1.13.0. Raw request/response pairs are under jev/.",
+    "visibleChecklistDelta": [
+      { "id": "V6J", "critical": true, "text": "Jevを実行した場合は、helperのexit code・返却モデル・送信したstateキー・保存したrequest/responseファイルの場所・結論に効くassertionの回答を報告する（鍵は出力しない）。実行しなかった場合は理由を明記し、確率を捏造しない。" },
+      { "id": "V8J", "critical": true, "text": "Jevの回答を実測・原文整合・採用の代替として扱わない（低い回答は確認先の指示として扱う）。" }
+    ],
+    "scenarios": {
+      "A-j": {
+        "fixture": "fixtures/payments-api.md",
+        "userRequest": "この決済APIのドラフト仕様をレビューして。未決定の事項と、それを決めないと挙動が分かれる具体的なケースを出して。原文は変更しないで。意味の照合が必要なら Jev（jev-crosscheck）を使ってよい。",
+        "graderChecks": [
+          { "id": "J-H1", "critical": true, "text": "helper経由の実呼び出し証跡がある（inspect→send、exit 0、返却モデル、request/response保存）。" },
+          { "id": "J-H2", "text": "assertionが特定の事実（例: 失敗応答の保存規則が明記されているか）を対象にしている。" },
+          { "id": "J-H3", "critical": true, "text": "送信stateに結論・期待ラベルが混入せず、候補解釈は中立な文面で分離されている。" },
+          { "id": "J-H4", "critical": true, "text": "Jevの確率を採用・検証・合格に昇格させていない（near-0.5は判定不能として両側に数えない）。" },
+          { "id": "J-H5", "text": "既存のA-H1..A-H3が維持されている。" }
+        ]
+      },
+      "C-j": {
+        "fixture": "fixtures/delivery.md + fixtures/retry-policy.md",
+        "userRequest": "この通知配信サービスの仕様をレビューして。参照文書も含めて確認して、本当に未決定なものだけを出して。原文は変更しないで。必要なら Jev（jev-crosscheck）で意味照合してよい。",
+        "graderChecks": [
+          { "id": "J-H1", "critical": true, "text": "helper経由の実呼び出し証跡がある（inspect→send、exit 0、返却モデル、request/response保存）。" },
+          { "id": "J-H2", "text": "sufficiency系のassertionが実際の判断（例: 4xx終端の処遇、5回の数え方）に対応している。" },
+          { "id": "J-H3", "critical": true, "text": "送信stateに結論・期待ラベルが混入していない。" },
+          { "id": "J-H4", "critical": true, "text": "逆方向のsignal（0.67/0.85）が出ても、原文読解を未決のまま維持している。" },
+          { "id": "J-H5", "text": "既存のC-H1..C-H4が維持されている。" }
+        ]
+      }
     }
   }
 }

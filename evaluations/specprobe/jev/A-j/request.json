@@ -1,0 +1,113 @@
+{
+  "state": {
+    "spec": "# Payments API v2.3（社内仕様・ドラフト）\n\n最終更新: 2026-09-10 / オーナー: 決済基盤チーム\n\n## 1. 目的\n\n加盟店システムからの決済作成を、ネットワーク再送に対して安全にする。\n\n## 2. POST /v1/payments\n\nリクエストヘッダ:\n\n- `Idempotency-Key`: 加盟店が生成する文字列。1つのキーは1回の決済作成意図に対応する。\n- `Content-Type: application/json`\n\nリクエストボディ:\n\n- `amount`: 整数（最小通貨単位）\n- `currency`: ISO 4217\n- `merchant_order_id`: 加盟店側の注文ID\n\n### 2.1 応答\n\n| ステータス | 意味 |\n|---|---|\n| 201 | 決済を作成した。ボディに `payment_id` を含む |\n| 400 | リクエスト不正（`amount` が 0 以下など） |\n| 409 | 同じ `Idempotency-Key` のリクエストを処理中に再受信した |\n| 422 | 与信不足 |\n\n## 3. 再試行\n\n- 加盟店は、5xx 応答またはタイムアウト時に、同じ `Idempotency-Key` で再試行してよい。\n- 4xx 応答は再試行しない。\n\n## 4. 冪等性\n\n- 同じ `Idempotency-Key` のリクエストを再受信した場合、最初に処理した結果を返す。決済は一度だけ作成される。\n- `Idempotency-Key` の保持期間はデプロイメント設定 `idempotency_retention_days` に従う。\n\n## 5. 監査\n\n- 決済作成の試行はすべて監査ログに記録する。\n",
+    "candidate_replay_without_comparison": "サーバは、同じ Idempotency-Key のリクエストを再受信したとき、リクエストボディの内容を比較せず、最初に処理した結果（元の payment_id を含む 201 応答）をそのまま返す。",
+    "candidate_reject_on_mismatch": "サーバは、同じ Idempotency-Key のリクエストを再受信したとき、リクエストボディの内容が最初のリクエストと異なれば、エラー応答を返し、決済は作成しない。"
+  },
+  "questions": {
+    "payload_mismatch_policy_stated": {
+      "type": "noul",
+      "instructions": "`spec` は、完了済みの `Idempotency-Key` と同じキーで、`amount`・`currency`・`merchant_order_id` のいずれかが最初のリクエストと異なるリクエストを受信した場合のサーバの挙動を明示しているか。",
+      "criteria": {
+        "true": "その場合のサーバの挙動が原文に明示的に規定されている。",
+        "false": "その場合のサーバの挙動を決める明示的な規定が原文にない。"
+      }
+    },
+    "expired_key_policy_stated": {
+      "type": "noul",
+      "instructions": "`spec` は、保持期間（`idempotency_retention_days`）を過ぎた後に同じ `Idempotency-Key` を受信した場合のサーバの挙動を明示しているか。",
+      "criteria": {
+        "true": "保持期間経過後の挙動が原文に明示的に規定されている。",
+        "false": "保持期間経過後の挙動を決める明示的な規定が原文にない。"
+      }
+    },
+    "retention_clock_stated": {
+      "type": "noul",
+      "instructions": "`spec` は、保持期間 `idempotency_retention_days` の計測起点（例: 最初の受信時、処理完了時）を明示しているか。",
+      "criteria": {
+        "true": "計測起点が原文に明示的に規定されている。",
+        "false": "計測起点を決める明示的な規定が原文にない。"
+      }
+    },
+    "key_scope_stated": {
+      "type": "noul",
+      "instructions": "`spec` は、`Idempotency-Key` の値が加盟店ごとに独立か、全加盟店で共有される同一の名前空間かを明示しているか。",
+      "criteria": {
+        "true": "キーのスコープ（加盟店単位か共有か）が原文に明示的に規定されている。",
+        "false": "キーのスコープを決める明示的な規定が原文にない。"
+      }
+    },
+    "merchant_order_id_uniqueness_stated": {
+      "type": "noul",
+      "instructions": "`spec` は、サーバが `merchant_order_id` の一意性を強制することを明示しているか。",
+      "criteria": {
+        "true": "`merchant_order_id` の一意性をサーバが強制することが原文に明示的に規定されている。",
+        "false": "`merchant_order_id` の一意性の扱いを決める明示的な規定が原文にない。"
+      }
+    },
+    "merchant_order_id_conflict_stated": {
+      "type": "noul",
+      "instructions": "`spec` は、同じ `merchant_order_id` が異なる `Idempotency-Key` で送信された場合の挙動を明示しているか。",
+      "criteria": {
+        "true": "その場合の挙動が原文に明示的に規定されている。",
+        "false": "その場合の挙動を決める明示的な規定が原文にない。"
+      }
+    },
+    "failed_request_recorded_stated": {
+      "type": "noul",
+      "instructions": "`spec` は、422 などのエラーで終わったリクエストが同じ `Idempotency-Key` の結果として保存され、後続の同じキーのリクエストでそのエラー結果が返されるかどうかを明示しているか。",
+      "criteria": {
+        "true": "エラー結果をキーに保存して再現するかどうかが原文に明示的に規定されている。",
+        "false": "エラー結果をキーに保存して再現するかどうかを決める明示的な規定が原文にない。"
+      }
+    },
+    "post_409_retry_stated": {
+      "type": "noul",
+      "instructions": "`spec` は、409 応答を受け取った後に同じ `Idempotency-Key` で再試行してよいかどうかを、原文の 4xx 再試行規則との関係も含めて明示しているか。",
+      "criteria": {
+        "true": "409 後の再試行の可否が原文に明示的に規定されている（4xx 規則の例外など）。",
+        "false": "409 後の再試行の可否を決める明示的な規定が原文にない。"
+      }
+    },
+    "in_progress_outcome_retrieval_stated": {
+      "type": "noul",
+      "instructions": "`spec` は、加盟店が処理中（409 の対象）の決済の最終結果を取得する手段（問い合わせ用エンドポイント、webhook など）を明示しているか。",
+      "criteria": {
+        "true": "処理中の決済の最終結果を取得する手段が原文に明示的に規定されている。",
+        "false": "最終結果を取得する手段を決める明示的な規定が原文にない。"
+      }
+    },
+    "in_progress_lifetime_stated": {
+      "type": "noul",
+      "instructions": "`spec` は、409 の対象となる「処理中」状態がどのように・いつ終了するか（処理失敗時の扱い、タイムアウトなど）を明示しているか。",
+      "criteria": {
+        "true": "「処理中」状態の終了条件・終了時の扱いが原文に明示的に規定されている。",
+        "false": "「処理中」状態の終了条件・終了時の扱いを決める明示的な規定が原文にない。"
+      }
+    },
+    "idempotency_records_audit_scope_stated": {
+      "type": "noul",
+      "instructions": "`spec` は、同じ `Idempotency-Key` の再送・重複リクエストも監査ログの「試行」として記録されるかどうかを明示しているか。",
+      "criteria": {
+        "true": "再送・重複リクエストの監査ログ記録の扱いが原文に明示的に規定されている。",
+        "false": "再送・重複リクエストの監査ログ記録の扱いを決める明示的な規定が原文にない。"
+      }
+    },
+    "candidate_replay_contradicts_clause": {
+      "type": "noul",
+      "instructions": "`candidate_replay_without_comparison` は `spec` の明示的な規則と矛盾するか（原文に書かれていない前提を追加せずに読んだ場合）。",
+      "criteria": {
+        "true": "`candidate_replay_without_comparison` が矛盾する明示的な規則が `spec` にある。",
+        "false": "`candidate_replay_without_comparison` が矛盾するような明示的な規則は `spec` にない。"
+      }
+    },
+    "candidate_reject_contradicts_clause": {
+      "type": "noul",
+      "instructions": "`candidate_reject_on_mismatch` は `spec` の明示的な規則と矛盾するか（原文に書かれていない前提を追加せずに読んだ場合）。",
+      "criteria": {
+        "true": "`candidate_reject_on_mismatch` が矛盾する明示的な規則が `spec` にある。",
+        "false": "`candidate_reject_on_mismatch` が矛盾するような明示的な規則は `spec` にない。"
+      }
+    }
+  }
+}
