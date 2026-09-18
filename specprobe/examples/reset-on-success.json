@@ -1,0 +1,63 @@
+{
+  "format": "specprobe.fsm.v1",
+  "name": "reset-on-success",
+  "events": [
+    "failure",
+    "success"
+  ],
+  "observation_fields": [
+    "locked"
+  ],
+  "initial": "f0",
+  "states": {
+    "f0": {
+      "observation": {
+        "locked": false
+      },
+      "on": {
+        "failure": "f1",
+        "success": "f0"
+      }
+    },
+    "f1": {
+      "observation": {
+        "locked": false
+      },
+      "on": {
+        "failure": "f2",
+        "success": "f0"
+      }
+    },
+    "f2": {
+      "observation": {
+        "locked": false
+      },
+      "on": {
+        "failure": "locked",
+        "success": "f0"
+      }
+    },
+    "locked": {
+      "observation": {
+        "locked": true
+      },
+      "on": {
+        "failure": "locked",
+        "success": "locked"
+      }
+    }
+  },
+  "metadata": {
+    "source": "login-lockout.md#source-under-review",
+    "policy_status": "candidate_not_adopted",
+    "fixed_policy": "success_resets_count",
+    "assumptions": [
+      "One account; sequential atomic input processing.",
+      "No expiry, administrator unlock, or other reset event in this slice.",
+      "At the third counted failure the account locks immediately.",
+      "The locked state is absorbing for these two input symbols.",
+      "The success symbol denotes an attempted successful authentication; while locked, both input symbols are rejected with no state change.",
+      "Only locked status is an agreed observation; the counter is private."
+    ]
+  }
+}

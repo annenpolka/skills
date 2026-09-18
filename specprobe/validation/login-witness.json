@@ -1,0 +1,102 @@
+{
+  "status": "distinguishing_trace",
+  "method": "explicit_product_breadth_first_search",
+  "models": [
+    {
+      "name": "reset-on-success",
+      "path": "examples/reset-on-success.json",
+      "sha256": "edce9f2875f91a13133ce41c1665bc7dc89ff9c0fc241cf4932f5f74cbf111c0",
+      "declared_states": 4
+    },
+    {
+      "name": "preserve-on-success",
+      "path": "examples/preserve-on-success.json",
+      "sha256": "564968cc8392d2571183b1e1ae5d14b16710f0542e4bf1e9670090355d7c7763",
+      "declared_states": 4
+    }
+  ],
+  "scope": {
+    "kind": "two_declared_total_deterministic_finite_moore_machines",
+    "events": [
+      "failure",
+      "success"
+    ],
+    "observation_fields": [
+      "locked"
+    ],
+    "includes_initial_observation": true,
+    "max_pairs": 100000,
+    "pairs_discovered": 9,
+    "pairs_examined": 8,
+    "truncated": false
+  },
+  "source_alignment": "not_evaluated_by_this_script",
+  "policy_selection": "not_performed",
+  "witness": {
+    "events": [
+      "failure",
+      "failure",
+      "success",
+      "failure"
+    ],
+    "event_count": 4,
+    "shortest_for_declared_models": true,
+    "trace": [
+      {
+        "event": null,
+        "left_state": "f0",
+        "right_state": "f0",
+        "left_observation": {
+          "locked": false
+        },
+        "right_observation": {
+          "locked": false
+        }
+      },
+      {
+        "event": "failure",
+        "left_state": "f1",
+        "right_state": "f1",
+        "left_observation": {
+          "locked": false
+        },
+        "right_observation": {
+          "locked": false
+        }
+      },
+      {
+        "event": "failure",
+        "left_state": "f2",
+        "right_state": "f2",
+        "left_observation": {
+          "locked": false
+        },
+        "right_observation": {
+          "locked": false
+        }
+      },
+      {
+        "event": "success",
+        "left_state": "f0",
+        "right_state": "f2",
+        "left_observation": {
+          "locked": false
+        },
+        "right_observation": {
+          "locked": false
+        }
+      },
+      {
+        "event": "failure",
+        "left_state": "f1",
+        "right_state": "locked",
+        "left_observation": {
+          "locked": false
+        },
+        "right_observation": {
+          "locked": true
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "format": "specprobe.bundle-manifest.v1",
+  "version": "0.1.0",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 6002,
+      "sha256": "15f295315ba1019764b5768b9728b7650902d13369415e4d38ee1ed77b9e55f1"
+    },
+    {
+      "path": "SKILL.md",
+      "bytes": 10641,
+      "sha256": "9e1ed6f8782cc5cb13c34dc97648476c397493a199ef10bc201ea97863dc6c4c"
+    },
+    {
+      "path": "examples/login-lockout.md",
+      "bytes": 3941,
+      "sha256": "9d3988fc8127ed3bdd9258095cabd0830b67d1cb04ced2c436b95f78071ce16d"
+    },
+    {
+      "path": "examples/preserve-on-success.json",
+      "bytes": 1485,
+      "sha256": "564968cc8392d2571183b1e1ae5d14b16710f0542e4bf1e9670090355d7c7763"
+    },
+    {
+      "path": "examples/reset-on-success.json",
+      "bytes": 1479,
+      "sha256": "edce9f2875f91a13133ce41c1665bc7dc89ff9c0fc241cf4932f5f74cbf111c0"
+    },
+    {
+      "path": "references/formal-methods.md",
+      "bytes": 9435,
+      "sha256": "2e71f064694f1ce97ccd72291a84a63391efb8ee3d4b5e3db9be7f7d467920fb"
+    },
+    {
+      "path": "references/gap-catalog.md",
+      "bytes": 4117,
+      "sha256": "477edce6caeb6077b1529dabd70977a1e2a59ca26d4c931bfb4a48f236cda78d"
+    },
+    {
+      "path": "references/jev-crosscheck.md",
+      "bytes": 4907,
+      "sha256": "f1f7075ad9f4d6b43dd32733cf37ab3edd36ad4f362d097f22bc2599253ef7f7"
+    },
+    {
+      "path": "references/question-screening.md",
+      "bytes": 4792,
+      "sha256": "ef90d835cff27e5db37ad44c02047a4f1877855cfafc5349ffaf02e702439b6a"
+    },
+    {
+      "path": "references/reporting.md",
+      "bytes": 4737,
+      "sha256": "97301c666818765847cf3ce2089c154350ca294b4e8a7a7d4ea4f6f74497bdb9"
+    },
+    {
+      "path": "references/sources.md",
+      "bytes": 4046,
+      "sha256": "71b4cd93ed9fe228408592d50d20095f6121a59cef8f9ec51e9c4a5a2fa2f96e"
+    },
+    {
+      "path": "scripts/compare_fsm.py",
+      "bytes": 9376,
+      "sha256": "2a8863374471f27360fc6862f99734470d382fa19681d5080200820e55b4c61a"
+    },
+    {
+      "path": "tests/behavioral-cases.md",
+      "bytes": 3562,
+      "sha256": "af239096ac50f11337a3cc7e50bb95ff78d0add8325e56a4670bf446cc37001a"
+    },
+    {
+      "path": "tests/test_compare_fsm.py",
+      "bytes": 9062,
+      "sha256": "3cbfa13c0330c1a0491617907cc5f78e2ea27a3d5d864322b941f70328cf7486"
+    },
+    {
+      "path": "validation/bundle-checks.json",
+      "bytes": 817,
+      "sha256": "2850aabf775e8570e461272d6f2b03fdf7053680913a4a1370ce33f44b2ba5de"
+    },
+    {
+      "path": "validation/login-witness.json",
+      "bytes": 2329,
+      "sha256": "82767d4492608cda8bc6cf05c918b5cbe037b3cdeb6a55263600516282bb08a5"
+    },
+    {
+      "path": "validation/unit-tests.txt",
+      "bytes": 3763,
+      "sha256": "16aff236cefd6327ba7e56113827d3157dae4b5250a4086511b557466ea936c4"
+    }
+  ]
+}

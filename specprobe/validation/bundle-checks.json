@@ -1,0 +1,36 @@
+{
+  "date": "2026-09-18",
+  "status": "passed",
+  "checks": [
+    "frontmatter_required_fields",
+    "name_format_and_directory",
+    "description_length",
+    "metadata_string_values",
+    "skill_under_500_lines",
+    "local_markdown_links",
+    "closed_code_fences",
+    "python_ast_parse",
+    "json_parse"
+  ],
+  "skill_lines": 180,
+  "skill_words": 1403,
+  "description_characters": 530,
+  "verified_relative_links": 15,
+  "official_skills_ref_validator": "not_run",
+  "host_skill_loading": "not_run",
+  "unit_tests": {
+    "run": 30,
+    "passed": 30,
+    "log": "unit-tests.txt"
+  },
+  "jev_api": "not_run",
+  "quint_tla_alloy_z3_execution": "not_run",
+  "behavioral_eval_cases": {
+    "defined": 16,
+    "executed": 0
+  },
+  "finite_witness": "login-witness.json",
+  "runtime": {
+    "python": "3.13.5"
+  }
+}

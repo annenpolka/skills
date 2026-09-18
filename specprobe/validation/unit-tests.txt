@@ -1,0 +1,35 @@
+test_boolean_and_number_are_not_coerced (test_compare_fsm.FiniteModelTests.test_boolean_and_number_are_not_coerced) ... ok
+test_budget_exhaustion_is_not_equivalence (test_compare_fsm.FiniteModelTests.test_budget_exhaustion_is_not_equivalence) ... ok
+test_cli_inconclusive_code (test_compare_fsm.FiniteModelTests.test_cli_inconclusive_code) ... ok
+test_cli_input_error_does_not_look_like_search (test_compare_fsm.FiniteModelTests.test_cli_input_error_does_not_look_like_search) ... ok
+test_cli_returns_witness_as_successful_search (test_compare_fsm.FiniteModelTests.test_cli_returns_witness_as_successful_search) ... ok
+test_different_input_alphabets_are_rejected (test_compare_fsm.FiniteModelTests.test_different_input_alphabets_are_rejected) ... ok
+test_different_observation_interfaces_are_rejected (test_compare_fsm.FiniteModelTests.test_different_observation_interfaces_are_rejected) ... ok
+test_duplicate_events_are_rejected (test_compare_fsm.FiniteModelTests.test_duplicate_events_are_rejected) ... ok
+test_duplicate_json_keys_are_rejected (test_compare_fsm.FiniteModelTests.test_duplicate_json_keys_are_rejected) ... ok
+test_empty_states_are_rejected (test_compare_fsm.FiniteModelTests.test_empty_states_are_rejected) ... ok
+test_event_order_does_not_change_interface (test_compare_fsm.FiniteModelTests.test_event_order_does_not_change_interface) ... ok
+test_exact_sufficient_budget_does_not_fake_truncation (test_compare_fsm.FiniteModelTests.test_exact_sufficient_budget_does_not_fake_truncation) ... ok
+test_extra_transition_is_rejected (test_compare_fsm.FiniteModelTests.test_extra_transition_is_rejected) ... ok
+test_file_digest_is_real (test_compare_fsm.FiniteModelTests.test_file_digest_is_real) ... ok
+test_identical_models_exhaust_reachable_product (test_compare_fsm.FiniteModelTests.test_identical_models_exhaust_reachable_product) ... ok
+test_initial_must_exist (test_compare_fsm.FiniteModelTests.test_initial_must_exist) ... ok
+test_initial_observation_difference_has_empty_trace (test_compare_fsm.FiniteModelTests.test_initial_observation_difference_has_empty_trace) ... ok
+test_invalid_budget_is_rejected (test_compare_fsm.FiniteModelTests.test_invalid_budget_is_rejected) ... ok
+test_irrelevant_internal_names_do_not_differ (test_compare_fsm.FiniteModelTests.test_irrelevant_internal_names_do_not_differ) ... ok
+test_missing_transition_is_rejected (test_compare_fsm.FiniteModelTests.test_missing_transition_is_rejected) ... ok
+test_non_json_constants_are_rejected (test_compare_fsm.FiniteModelTests.test_non_json_constants_are_rejected) ... ok
+test_nondeterministic_transition_is_rejected (test_compare_fsm.FiniteModelTests.test_nondeterministic_transition_is_rejected) ... ok
+test_private_transition_difference_can_be_unobservable (test_compare_fsm.FiniteModelTests.test_private_transition_difference_can_be_unobservable) ... ok
+test_shortest_lock_witness (test_compare_fsm.FiniteModelTests.test_shortest_lock_witness) ... ok
+test_swapping_sides_retains_length (test_compare_fsm.FiniteModelTests.test_swapping_sides_retains_length) ... ok
+test_unknown_format_is_rejected (test_compare_fsm.FiniteModelTests.test_unknown_format_is_rejected) ... ok
+test_unknown_root_fields_are_rejected (test_compare_fsm.FiniteModelTests.test_unknown_root_fields_are_rejected) ... ok
+test_unknown_target_is_rejected (test_compare_fsm.FiniteModelTests.test_unknown_target_is_rejected) ... ok
+test_unreachable_states_do_not_change_observations (test_compare_fsm.FiniteModelTests.test_unreachable_states_do_not_change_observations) ... ok
+test_wrong_observation_shape_is_rejected (test_compare_fsm.FiniteModelTests.test_wrong_observation_shape_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 2.545s
+
+OK
