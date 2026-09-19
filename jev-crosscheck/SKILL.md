@@ -54,6 +54,20 @@ Do not assert only these:
 A general instruction to use TypeSafe checks does not override these exclusions.
 When nothing was asserted, say so in the deliverable with the reason.
 
+## Question directions
+
+When preparing a batch, skim [question-lenses.md](references/question-lenses.md)
+for useful angles: scope, timing, ordering, failure, evidence, tests, and simpler
+alternatives. Treat it as a sample palette, not a checklist or another workflow.
+Adapt relevant seeds into concrete assertions about the supplied state; expand
+freely where useful without requiring every lens, a fixed count, or a preliminary
+Jev call to choose directions. These questions supplement the claims above.
+
+Keep one proposition per question and the specific sufficiency checks below. Batch
+questions that can share the same permitted state within the provider's input limits;
+use separate requests when their evidence must differ. Do not dilute the data boundary
+or turn many similar answers into votes. Use the same helper and reporting procedure.
+
 ## Write assertions
 
 Three separate tool calls, in order. Run the helper with `bash` (installers may drop
