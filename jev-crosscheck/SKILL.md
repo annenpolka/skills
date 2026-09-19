@@ -68,6 +68,15 @@ questions that can share the same permitted state within the provider's input li
 use separate requests when their evidence must differ. Do not dilute the data boundary
 or turn many similar answers into votes. Use the same helper and reporting procedure.
 
+For choices encountered while building, use the
+[decision samples](references/question-lenses.md#decisions-while-building).
+Describe concrete proposals, compare their local properties against the goal, and
+check the evidence before choosing the next build step within delegated authority.
+That step may be a shared implementation slice, a reversible choice, or an experiment,
+not just selecting a complete design. Record the reason and what would change it;
+keep proposed choices distinct from source requirements and human approvals. There
+is no required decision template, extra round, or per-choice user interview.
+
 ## Write assertions
 
 Three separate tool calls, in order. Run the helper with `bash` (installers may drop

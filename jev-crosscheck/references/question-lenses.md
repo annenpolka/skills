@@ -99,6 +99,107 @@ that missing detail instead of silently completing it.
 | Weaken one guarantee explicitly | Does `requirement` permit the delay introduced by `candidate`? Does `candidate` change a mandatory guarantee rather than only a stated preference? Do not adopt that change on Jev's authority. |
 | Reframe the problem | Does `goal` require reducing latency, rather than this particular caching mechanism? Does `alternative` address the same named outcome by a different mechanism? Evaluate each outcome separately. |
 
+## Decisions while building
+
+Use these directions when making something, not only reviewing a finished proposal.
+Reading an existing promise and choosing a new promise are different jobs. Start
+from the current goal, constraints, and artifact; write concrete candidates yourself.
+An unspecified behavior can become an explicit design choice within your authority,
+not a fact to recover from the source or an invitation to guess hidden user intent.
+A supplied proposal is material to inspect, not evidence of implemented behavior.
+The conditional-pair rule still applies when assuming facts about unseen material.
+
+| Lens | Separate question seeds |
+|---|---|
+| Purpose vs. mechanism | Does `goal` require component X itself, rather than outcome G? Does the rule for G remain in `candidate_without_X`? |
+| Capability gained | Does `candidate_B` provide a path to retry only the failed operation? Does `candidate_A` provide that same path? |
+| Work avoided | Does `candidate` remove the reconciliation step described in `current_design`? Does the proposal still define who owns the reconciled decision? |
+| External promise | Does `candidate` expose its storage format in the public API? Does `requirement` require that format to be public? |
+| Decision ordering | Do `candidate_A` and `candidate_B` require the same public operation signature? Does `first_slice` commit to a behavior on which the candidates differ? |
+| Reversible choice | Would the explicit change from `candidate_A` to `candidate_B` require converting existing records? Does the supplied `migration_plan` cover that conversion? |
+| Joint effects | Under the combined rules in `retry_and_notification_candidate`, can one operation trigger more than one notification? Does that proposal include a rule suppressing the duplicate effect? |
+| Discriminating experiment | Does `experiment` exercise a condition where the candidates prescribe different behavior? Does its observation distinguish those behaviors rather than merely report completion? |
+| Revisit condition | Does `candidate` depend on there being only one writer? Does the requested scope in `goal` preserve that condition? |
+
+These are optional samples, not a new review gate. Batch several decisions when
+their questions can share permitted material. Ask about the intended combination
+as well as individual choices when interactions matter; separately favored options
+are not automatically compatible. Keep candidate descriptions separate from your
+preferred conclusion, and retain the specific sufficiency checks in `SKILL.md`.
+
+A Choice recommendation can supplement these questions when the alternatives and
+priorities are explicit. It is advice, not authority or a substitute for checking
+mandatory properties. A concrete experiment can be a next-action option, not a
+catch-all label for unknown. If a property is unsupported, obtain evidence or leave
+it unresolved. If several choices meet the constraints, choose within delegation
+and state the actual preference or reversible assumption used; do not wait for a
+unanimous Jev answer or invent a preference on the user's behalf.
+
+The useful result is the next piece of work: choose a promise, build a common slice,
+try a reversible implementation, remove unnecessary scope, or run a distinguishing
+check. Preserve mandatory requirements. Record what was chosen, why, what to do
+next, and what would cause a revisit in an ordinary work note; use an ADR when the
+project or the significance of the decision warrants it. Keep source evidence,
+Jev's signals, and your own reasoning distinguishable. Do not put a human's name
+on an unapproved decision. Existing permission, disclosure, and budget rules apply.
+
+Return to the same helper when new code, a test result, or new evidence raises a
+useful decision. Do not add rounds just to grow the question set, or rephrase until
+Jev endorses the preferred answer. Resolve delegated implementation details rather
+than sending every small choice back to the user; flag choices outside delegation.
+
+### Example: decide reuse semantics before storage
+
+This fictional, unexecuted example supplies four state fields. The candidates are
+proposals and the experiment is a plan, not existing code or observed results.
+No Jev answers are included. Keep actual-source questions distinct from questions
+about proposals, as with the other examples in this palette.
+
+```json
+{
+  "goal": "Build a CLI that processes multiple files. After interruption, the user can edit inputs or processing settings and continue. Reuse successful work when its input and settings are unchanged. The first release has one user and one process on one machine. No persistence format is required.",
+  "candidate_A": "Proposal: record a pathname after successfully producing its output. On a later run, skip any pathname marked complete, without comparing input contents or processing settings. Recovery between output publication and completion-record update is not specified.",
+  "candidate_B": "Proposal: record a pathname with fingerprints of input contents and processing settings after successfully producing its output. Reuse a completed result only when both fingerprints match the current input and settings. Recovery between output publication and completion-record update is not specified.",
+  "experiment": "Proposed check, not executed: complete one input; then keep its pathname and settings but edit its contents so its input fingerprint differs; rerun and observe whether that input is processed again."
+}
+```
+
+Each row below can become a separate Noul question in the ordinary request. The
+rule-visibility questions are specific sufficiency checks, not safety verdicts.
+
+| Direction | Concrete question |
+|---|---|
+| A rule visibility | Does `candidate_A` state its reuse condition directly, without referring to an unseen rule? |
+| B rule visibility | Does `candidate_B` state its reuse condition directly, without referring to an unseen rule? |
+| Distinction missing from A | Does the reuse rule in `candidate_A` compare input contents before skipping a completed pathname? |
+| Input condition in B | Does the reuse rule in `candidate_B` require the input fingerprint to match? |
+| Settings condition in B | Does the reuse rule in `candidate_B` require the processing-settings fingerprint to match? |
+| Defer a mechanism | Does `goal` require a particular persistence format? |
+| Unfinished recovery decision | Does `candidate_B` define recovery after output publication but before completion-record update? |
+| Experiment visibility | Does `experiment` explicitly state what changes between the two runs? |
+| Observable distinction | Does `experiment` observe whether the input is processed again rather than only whether the CLI exits successfully? |
+
+After an actual run, inspect the proposals and goal against the returned signals.
+A possible author-written decision note could have this shape; it is not a Jev
+result or an approved decision:
+
+```text
+Status: proposed.
+Choose: reuse completed results only when input and processing settings match.
+Reason: preserve unchanged work without treating edited work as already complete.
+Evidence: link the goal and candidate passages; add real answer IDs after a run.
+Next: write cases for unchanged input, edited input, and changed settings;
+      prototype interruption between output publication and completion recording.
+Defer: storage format. No crash-safe implementation is claimed yet.
+Revisit: the scope gains concurrent writers, or measurements challenge the cost
+         of fingerprinting.
+```
+
+Choose storage after understanding the record and recovery needs, rather than
+asking a product-name Choice to settle unspecified semantics. A code or test change
+from this step can supply the material for the next useful batch. There is no
+mandatory second call or separate decision runner.
+
 ## Mutations of one question
 
 Use a mutation when it creates a useful distinction, not a Cartesian product or a
