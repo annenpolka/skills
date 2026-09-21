@@ -18,7 +18,7 @@ const mode = process.env.RELAY_TEST_MODE;
 if (process.argv.includes('--version')) {
   if (mode === 'version-failed') process.exit(9);
   if (mode === 'version-timeout') setInterval(() => {}, 1000);
-  else { console.log('1.18.test'); process.exit(0); }
+  else { console.log(process.env.RELAY_TEST_VERSION); process.exit(0); }
 } else {
   const brief = readFileSync(0, 'utf8');
   writeFileSync(process.env.RELAY_TEST_CAPTURE, JSON.stringify({ argv: process.argv.slice(2), brief, cwd: process.cwd(), pwd: process.env.PWD }));
@@ -53,19 +53,19 @@ if (process.argv.includes('--version')) {
 }
 `;
 
-function fixture(mode = 'success') {
+function fixture(mode = 'success', cli = 'opencode') {
   const dir = join(root, String(++sequence)); mkdirSync(dir);
   const bin = join(dir, 'bin'); mkdirSync(bin);
   // OpenCode is an executable script without a .mjs suffix; use a CommonJS
   // launcher so Node's package-type detection cannot affect the fixture.
   writeFileSync(join(bin, 'fake.mjs'), fakeSource);
-  writeFileSync(join(bin, 'opencode'), `#!${process.execPath}\nimport(${JSON.stringify('file://' + join(bin, 'fake.mjs'))});\n`, { mode: 0o700 });
+  writeFileSync(join(bin, cli), `#!${process.execPath}\nimport(${JSON.stringify('file://' + join(bin, 'fake.mjs'))});\n`, { mode: 0o700 });
   const work = join(dir, 'work space'); mkdirSync(work);
   const out = join(dir, 'result');
   const capture = join(dir, 'capture.json');
   return { dir, work, out, capture,
-    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, RELAY_TEST_MODE: mode, RELAY_TEST_CAPTURE: capture, PWD: '/wrong/inherited/pwd' },
-    args: [relay, '--cd', work, '--model', 'deepseek/test-model', '--out-dir', out, '--timeout', '10s'],
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, RELAY_TEST_VERSION: cli === 'opencode2' ? 'opencode2 v0.0.0-beta-18743' : '1.18.30', RELAY_TEST_MODE: mode, RELAY_TEST_CAPTURE: capture, PWD: '/wrong/inherited/pwd' },
+    args: [relay, '--cli', cli, '--cd', work, '--model', 'deepseek/test-model', '--out-dir', out, '--timeout', '10s'],
   };
 }
 
@@ -182,4 +182,86 @@ test('parent cancellation terminates the run and records an aborted result', asy
   assert.equal(await closed, 143);
   const result = JSON.parse(readFileSync(join(f.out, 'result.json')));
   assert.equal(result.status, 'aborted'); assert.equal(result.signal, 'SIGTERM');
+});
+
+
+test('v2 default uses an owned standalone server and encodes variant in the model', () => {
+  const f = fixture('success', 'opencode2');
+  f.args[f.args.indexOf('opencode2')] = 'opencode';
+  writeFileSync(join(f.dir, 'bin', 'opencode'), readFileSync(join(f.dir, 'bin', 'opencode2')), { mode: 0o700 });
+  f.env.RELAY_TEST_VERSION = 'opencode v2.0.7';
+  f.args.splice(1, 2); // exercise the default without an explicit CLI selection
+  const { child, result } = run(f, ['--variant', 'high', '--session', 'ses_existing', '--agent', 'plan']);
+  assert.equal(child.status, 0, child.stderr);
+  assert.equal(result.cli, 'opencode');
+  assert.equal(result.runtimeVersion, '2.0.7');
+  assert.equal(result.cliGeneration, 2);
+  assert.equal(result.model, 'deepseek/test-model');
+  assert.equal(result.variant, 'high');
+  assert.equal(result.sessionId, 'ses_existing');
+  assert.deepEqual(JSON.parse(readFileSync(f.capture)).argv,
+    ['run', '--format', 'json', '--agent', 'plan', '--model', 'deepseek/test-model#high', '--standalone', '--session', 'ses_existing']);
+});
+
+test('opencode2 pure is rejected before dispatch instead of silently loading plugins', () => {
+  const f = fixture('success', 'opencode2');
+  const { child, result } = run(f, ['--pure']);
+  assert.equal(child.status, 1);
+  assert.match(result.error, /--pure is unsupported by OpenCode v2/);
+  assert.equal(result.status, 'failed');
+  assert.equal(existsSync(f.capture), false);
+});
+
+test('missing opencode2 does not fall back to an available legacy CLI', () => {
+  const f = fixture();
+  f.env.PATH = join(f.dir, 'bin');
+  f.args[f.args.indexOf('opencode')] = 'opencode2';
+  const { child, result } = run(f);
+  assert.equal(child.status, 127);
+  assert.equal(result.cli, 'opencode2');
+  assert.equal(existsSync(f.capture), false);
+});
+
+test('opencode2 receives the exact brief and auto flag, and preserves error detection', () => {
+  for (const mode of ['success', 'error', 'incomplete']) {
+    const f = fixture(mode, 'opencode2');
+    const { child, result } = run(f, ['--auto']);
+    assert.equal(child.status, mode === 'success' ? 0 : 1);
+    const captured = JSON.parse(readFileSync(f.capture));
+    assert.equal(captured.brief, prompt);
+    assert.ok(captured.argv.includes('--auto'));
+    assert.ok(captured.argv.includes('--standalone'));
+    assert.equal(result.status, mode === 'success' ? 'completed' : 'failed');
+  }
+});
+
+
+test('runtime version selects the protocol independently of executable name', () => {
+  for (const cli of ['opencode', 'opencode2']) {
+    for (const [version, generation] of [['1.18.30', 1], ['opencode v2.0.7', 2], ['v2.1.0-beta.1', 2], ['opencode2 v0.0.0-beta-18743', 2]]) {
+      const f = fixture('success', cli);
+      f.env.RELAY_TEST_VERSION = version;
+      const { child, result } = run(f, ['--variant', 'high', ...(generation === 1 ? ['--pure'] : [])]);
+      assert.equal(child.status, 0, version);
+      assert.equal(result.cliGeneration, generation);
+      assert.equal(result.opencodeVersion, version);
+      const { argv } = JSON.parse(readFileSync(f.capture));
+      assert.equal(argv.includes('--standalone'), generation === 2);
+      assert.equal(argv.includes('--variant'), generation === 1);
+      assert.equal(argv.includes('--pure'), generation === 1);
+      assert.ok(argv.includes(generation === 2 ? 'deepseek/test-model#high' : 'deepseek/test-model'));
+    }
+  }
+});
+
+test('unrecognized versions and unsupported pure mode stop before task dispatch', () => {
+  for (const version of ['nonsense', 'opencode v3.0.0', 'opencode2 v0.0.0-beta-99999', 'opencode v2.0.7']) {
+    const f = fixture();
+    f.env.RELAY_TEST_VERSION = version;
+    const { child, result } = run(f, ['--pure']);
+    assert.equal(child.status, 1);
+    assert.equal(result.status, 'failed');
+    assert.ok(result.error);
+    assert.equal(existsSync(f.capture), false);
+  }
 });

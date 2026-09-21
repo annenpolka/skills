@@ -7,18 +7,19 @@ import { constants, tmpdir } from 'node:os';
 import { StringDecoder } from 'node:string_decoder';
 
 const HELP = `Usage: node relay.mjs --model provider/model [options] < brief.txt
+  --cli NAME        opencode (default) or opencode2; no automatic fallback
   --brief FILE      Read prompt from a file instead of stdin
   --cd DIR          Target working directory (default: current directory)
   --model ID        Required on every call; never silently falls back
   --agent NAME      build (default) or plan
   --session ID      Resume this exact OpenCode session
   --variant NAME    Optional provider-specific reasoning variant
-  --pure            Disable external OpenCode plugins
+  --pure            Disable external plugins (v1 only)
   --auto            Auto-approve non-denied permissions (build only)
   --timeout DUR     Positive h/m/s duration (default: 30m)
   --out-dir DIR     Create a NEW run directory (default: private temporary dir)
   --help            Show help
-Requires Node.js 18+ and OpenCode on PATH; macOS/Linux/WSL.
+Requires Node.js 18+ and the selected CLI on PATH; macOS/Linux/WSL.
 Exit: 0 completed, 1 failed, 2 usage, 124 timeout, 127 unavailable,
       128 + signal number for interruption. See result.json for details.
 `;
@@ -32,8 +33,8 @@ function duration(value) {
 }
 
 function options(argv) {
-  const opts = { cd: process.cwd(), agent: 'build', timeout: '30m', auto: false, pure: false };
-  const values = { '--brief': 'brief', '--cd': 'cd', '--model': 'model', '--agent': 'agent', '--session': 'session', '--variant': 'variant', '--timeout': 'timeout', '--out-dir': 'outDir' };
+  const opts = { cd: process.cwd(), agent: 'build', cli: 'opencode', timeout: '30m', auto: false, pure: false };
+  const values = { '--cli': 'cli', '--brief': 'brief', '--cd': 'cd', '--model': 'model', '--agent': 'agent', '--session': 'session', '--variant': 'variant', '--timeout': 'timeout', '--out-dir': 'outDir' };
   const seen = new Set();
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
@@ -49,6 +50,7 @@ function options(argv) {
   }
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(opts.model || '')) throw new Error('--model provider/model is required on every call');
   if (!['build', 'plan'].includes(opts.agent)) throw new Error('--agent must be build or plan');
+  if (!['opencode', 'opencode2'].includes(opts.cli)) throw new Error('--cli must be opencode2 or opencode');
   if (opts.auto && opts.agent === 'plan') throw new Error('--auto cannot be combined with --agent plan');
   if (opts.session && !/^ses_[A-Za-z0-9_-]+$/.test(opts.session)) throw new Error('invalid --session ID');
   if (opts.variant && !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(opts.variant)) throw new Error('invalid --variant');
@@ -56,6 +58,18 @@ function options(argv) {
   opts.cd = realpathSync(opts.cd);
   if (!statSync(opts.cd).isDirectory()) throw new Error('--cd must be a directory');
   return opts;
+}
+
+// The executable name is only a dispatch choice, never a compatibility signal.
+function runtimeVersion(output) {
+  const match = /^(?:(?:opencode2?|OpenCode)\s+)?v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/.exec(output);
+  if (!match) throw new Error(`unrecognized OpenCode version: ${output}`);
+  const version = match[1];
+  const major = Number(version.split('.')[0]);
+  // This pre-release predates v2 numbering; only the inspected build is mapped.
+  const generation = major === 1 ? 1 : major === 2 || version === '0.0.0-beta-18743' ? 2 : null;
+  if (!generation) throw new Error(`unsupported OpenCode version: ${version}; inspect run --help before adding support`);
+  return { version, generation };
 }
 
 // JSON events may be fragmented or surrounded by plugin output. Bound retained
@@ -125,7 +139,7 @@ async function main() {
   save('brief.txt', brief); save('events.jsonl', ''); save('stderr.log', '');
   process.stdout.write(`run directory: ${outDir}\n`);
   const base = {
-    schema: 'opencode-delegate.result.v1', tool: 'opencode', workdir: opts.cd,
+    schema: 'opencode-delegate.result.v1', tool: 'opencode', cli: opts.cli, workdir: opts.cd,
     model: opts.model, agent: opts.agent, variant: opts.variant || null,
     auto: opts.auto, pure: opts.pure, resumed: Boolean(opts.session),
     startedAt: new Date().toISOString(), opencodeVersion: null,
@@ -141,7 +155,7 @@ async function main() {
     process.stdout.write(`relay: ${result.status} (exit ${result.exitCode})\nresult: ${paths['result.json']}\n`);
     process.exitCode = result.exitCode;
   }
-  const probe = spawnSync('opencode', ['--version'], {
+  const probe = spawnSync(opts.cli, ['--version'], {
     cwd: opts.cd, encoding: 'utf8', timeout: Math.min(10000, opts.timeoutMs), killSignal: 'SIGKILL',
     maxBuffer: 1024 * 1024, env: { ...process.env, PWD: opts.cd },
   });
@@ -150,16 +164,29 @@ async function main() {
     save('stderr.log', probe.stderr || '');
     finish({ status: missing ? 'opencode_unavailable' : timedOut ? 'timeout' : 'failed',
       exitCode: missing ? 127 : timedOut ? 124 : 1, signal: probe.signal || null,
-      error: `OpenCode version preflight failed: ${probe.error?.message || `exit ${probe.status}`}` });
+      error: `${opts.cli} version preflight failed: ${probe.error?.message || `exit ${probe.status}`}` });
     return;
   }
   base.opencodeVersion = probe.stdout.trim();
-  const argv = ['run', '--format', 'json', '--agent', opts.agent, '--model', opts.model];
+  let runtime;
+  try {
+    runtime = runtimeVersion(base.opencodeVersion);
+    base.runtimeVersion = runtime.version;
+    base.cliGeneration = runtime.generation;
+    if (opts.pure && runtime.generation === 2) throw new Error('--pure is unsupported by OpenCode v2; omit it only if configured plugins are acceptable');
+  } catch (error) {
+    finish({ status: 'failed', exitCode: 1, error: error.message });
+    return;
+  }
+  const model = runtime.generation === 2 && opts.variant ? `${opts.model}#${opts.variant}` : opts.model;
+  const argv = ['run', '--format', 'json', '--agent', opts.agent, '--model', model];
+  // Own the server lifetime so timeout/cancellation never leaves a service task running.
+  if (runtime.generation === 2) argv.push('--standalone');
   if (opts.session) argv.push('--session', opts.session);
-  if (opts.variant) argv.push('--variant', opts.variant);
+  if (opts.variant && runtime.generation === 1) argv.push('--variant', opts.variant);
   if (opts.pure) argv.push('--pure');
   if (opts.auto) argv.push('--auto');
-  const child = spawn('opencode', argv, {
+  const child = spawn(opts.cli, argv, {
     cwd: opts.cd, env: { ...process.env, PWD: opts.cd },
     stdio: ['pipe', 'pipe', 'pipe'], detached: true, shell: false,
   });

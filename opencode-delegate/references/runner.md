@@ -25,7 +25,9 @@ are not a durable archive; retain a run explicitly if later work needs its evide
 
 The output directory does not isolate OpenCode: the process uses the target working
 directory, installed configuration, credentials, runtime storage, and host permissions.
-`--pure` only suppresses external OpenCode plugins. It is not a sandbox.
+OpenCode v2 uses `--standalone` so its server belongs to the owned process group.
+`--pure` is supported only with v1 and suppresses external plugins;
+it is rejected for v2 after the version preflight, regardless of executable name. Neither mode is a sandbox.
 
 ## Result fields
 
@@ -38,7 +40,9 @@ The schema is `opencode-delegate.result.v1`.
 | `childExitCode` | OpenCode's exit code, present after dispatch; can be zero on failure |
 | `signal` | Terminating signal if known; null for an ordinary exit |
 | `model`, `agent`, `variant`, `auto`, `pure` | Requested dispatch settings |
-| `opencodeVersion` | Result of the bounded `opencode --version` preflight |
+| `cli` | Selected executable: `opencode` (default) or `opencode2` |
+| `opencodeVersion` | Result of the bounded selected-CLI `--version` preflight |
+| `runtimeVersion`, `cliGeneration` | Parsed actual version and selected v1/v2 protocol, when recognized |
 | `sessionId`, `resumed` | Exact session for follow-up and whether this call resumed one |
 | `finalMessage` | Last emitted assistant text message; may be empty |
 | `lastStepReason`, `eventCount`, `errors` | Stream evidence used for completion detection |
@@ -63,11 +67,16 @@ is provider/CLI metadata and does not establish that the call was free.
 - **Exit 2, no result:** argument, brief, working-directory, or output-directory error.
   Fix it before dispatching again.
 - **`opencode_unavailable` / exit 127:** the executable is missing from PATH.
-  Verify the active installation with `command -v opencode` and `opencode --version`.
+  Verify the selected executable with `command -v opencode` and `opencode --version`
+  (substitute `opencode2` if selected). Missing executables never trigger fallback.
 - **Version preflight failure:** no task was dispatched. The probe is capped at
   10 seconds (or the requested timeout if shorter).
+- **Unsupported version or `--pure` on v2:** exit 1 with a failed result; no task
+  was dispatched. Inspect the reported version and `run --help`. Never infer the
+  protocol from the executable name. Supported generations are v1 and v2, plus
+  the inspected pre-numbering build `0.0.0-beta-18743` mapped to v2.
 - **Auth/model/permission failure:** inspect `error`, `errors`, `stderr.log`, and the
-  ending events. Confirm the exact model with `opencode models <provider>`; do not
+  ending events. Confirm the exact model using the selected CLI's model listing; do not
   switch models or enable `--auto` merely to conceal the failure.
 - **Runtime filesystem denial:** OpenCode also writes its normal logs and database
   outside the target directory. Use the host's permission workflow for those writes;
@@ -86,7 +95,7 @@ is provider/CLI metadata and does not establish that the call was free.
   crash, or an artifact-write failure can prevent final publication. Inspect the
   process tree, raw logs, and working tree before rerunning.
 
-Resume using `--session` plus a delta brief and the explicit model. There is no
+Resume using the same `--cli`, `--session`, a delta brief, and the explicit model. There is no
 implicit retry, provider fallback, `--continue`, session sharing, Git commit, or
 installation action in the helper. OpenCode configuration still governs its own behavior.
 
@@ -101,7 +110,9 @@ node --test opencode-delegate/tests/relay.test.mjs
 These exercise a fake executable through the real process boundary: stdin and cwd,
 Unicode event reconstruction, session resumption arguments, permissions flags,
 private artifacts, Git status, exit-zero errors, failed/missing executables,
-timeouts, descendant cleanup, and parent cancellation.
+timeouts, descendant cleanup, and parent cancellation. They also check executable
+selection independent of actual version, v2 standalone dispatch and variant encoding, unsupported pure
+mode rejection, and absence of legacy fallback.
 
 Live integration was checked on 2026-09-08 with OpenCode `1.18.29` and the explicitly
 requested `deepseek/deepseek-v4.1-flash-expires-on-0910`. This dated identifier is a
@@ -128,6 +139,14 @@ result and verified the real system integration. These observations motivate the
 [implementation guidance](implementation.md); they do not establish general model
 quality or a delegation speedup. The CLI/result contract and earlier smoke records
 remain applicable to their stated scope.
+
+On 2026-09-20, installed `opencode v2.0.7` and
+`opencode2 v0.0.0-beta-18743` were checked with `--version` and `run --help`.
+Both use the v2 argument contract. That contract accepts `--standalone`, JSON output, agent, model,
+session and auto flags; variants are part of `provider/model#variant`, and `--pure`
+is absent. The installed CLI implementation emits the legacy `text`, `step_finish`
+and `error` JSON envelopes consumed by this runner. These checks and fixture tests
+do not establish live model execution or cross-CLI session compatibility.
 
 ## Upstream references
 

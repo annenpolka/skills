@@ -1,6 +1,6 @@
 ---
 name: opencode-delegate
-description: Call the OpenCode CLI with an explicitly selected model for implementation, investigation, review, or consultation. Use when the user asks to use OpenCode, delegate a task to OpenCode, or resume an OpenCode session. Captures the response and session ID for verification and follow-up.
+description: Call the OpenCode CLI (v1 or v2) with an explicitly selected model for implementation, investigation, review, or consultation. Use when the user asks to use OpenCode or opencode2, delegate a task to OpenCode, or resume an OpenCode session. Captures the response and session ID for verification and follow-up.
 ---
 
 # OpenCode Delegate
@@ -12,11 +12,15 @@ relative to the target repository.
 
 ## Prepare
 
-Check `command -v opencode`, `opencode --version`, and `opencode run --help` once per
-environment. The helper requires Node.js 18+ and macOS/Linux (WSL is also suitable).
+The helper defaults to `opencode`; use `--cli opencode2` to select that executable.
+Check the selected executable with `command -v`, `--version`, and `run --help`.
+Command names do not identify the generation: `opencode` can be v2. The helper
+checks the actual version on every call and selects v1/v2 arguments accordingly.
+It also recognizes the inspected `0.0.0-beta-18743` build as v2; unknown versions
+stop before dispatch. It never falls back to a different executable. The helper requires Node.js 18+ and macOS/Linux (WSL is also suitable).
 Git is optional for questions, and useful for inspecting coding changes.
 
-Use the user's selected `provider/model` exactly. Check `opencode models <provider>`
+Use the user's selected `provider/model` exactly. Check the selected CLI's `models --help` and model listing
 if availability is uncertain. Do not silently substitute a model after an error.
 If no model is given, use an already authorized choice from the conversation or
 project instructions; ask only if none exists. Pass `--model` on resumed runs too.
@@ -47,7 +51,7 @@ node "<skill-dir>/scripts/relay.mjs" \
   --model provider/model \
   --agent build \
   --brief /absolute/path/to/brief.txt \
-  --pure --timeout 30m
+  --timeout 30m
 ```
 
 - Use `--agent build` for implementation and `--agent plan` for analysis or consultation.
@@ -56,10 +60,14 @@ node "<skill-dir>/scripts/relay.mjs" \
   permits unattended tool use. It auto-approves permissions not explicitly denied;
   the helper rejects it with `plan`. A denied permission needs a scope/configuration
   decision, not repeated retries or automatic permission widening.
-- `--pure` disables external OpenCode plugins for this call; use it unless the task
-  depends on them. It does not remove project instructions or all configuration.
+- OpenCode v2 runs with `--standalone`, giving this call its own server lifetime
+  for timeout and cancellation. It still uses installed configuration and plugins.
+  The v2 CLI has no `--pure`; the helper rejects that combination. If plugin
+  suppression is required, resolve that requirement before dispatch. For v1, use `--pure` unless the task depends on external plugins.
+- Pass reasoning variants as `--variant high`; the helper encodes this as
+  `provider/model#high` for v2 and `--variant high` for v1.
 - Omit `--brief` to supply stdin. The helper never interpolates the prompt into shell code.
-- For follow-up, send a delta brief with `--session ses_...`, the same workdir, and
+- For follow-up, send a delta brief with `--session ses_...`, the same CLI and workdir, and
   the selected model. Use the exact returned ID; avoid an ambient "latest session".
 - The default time limit is 30 minutes; `--timeout 2h` can extend a known long task.
 
