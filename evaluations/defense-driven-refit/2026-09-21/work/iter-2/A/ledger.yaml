@@ -1,0 +1,56 @@
+- id: "D1"
+  scope: {"ref": "preview.py:1-4", "version": "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  layer: "構造"
+  origin: "deviation"
+  question: "無いと何が壊れる"
+  current_answer: "Provider and facade forward one greeting operation."
+  grounding: [{"convention": "README.md: direct functions; no interchangeable providers"}]
+  evidence: [{"execution_result": "probe.json: wrapper body lines 7,10,3,13 executed; deleting wrappers preserved Ada output; branch 2 limited to Ada"}, {"test": "test_preview.py; final 3 tests passed"}]
+  gap: "No independent provider responsibility."
+  resolution: {"action": "remove_or_align", "reason": "Align with explicit local convention."}
+  verification: {"status": "done", "plan": "python3 -m unittest discover -v", "result": "3 tests passed; previous boundary run failed on 8 non-string subtests", "artifact_version": "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  final_answer: "One direct function implements the greeting."
+  admitted_limit: {"limit": "Deletion equivalence observed for Ada only; no external consumers examined.", "revisit_condition": "A second real provider or external class consumer is introduced."}
+  depends_on: []
+- id: "D2"
+  scope: {"ref": "preview.py:1-4", "version": "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  layer: "境界"
+  origin: "impact"
+  question: "どの前提"
+  current_answer: "str(name) silently accepts non-string inputs."
+  grounding: [{"requirement": "README.md: Input must be a string; otherwise raise TypeError."}]
+  evidence: [{"test": "test_non_strings_raise_type_error: 8 cases failed before correction, passed after; test_string_boundary: 5 valid cases; test_name"}]
+  gap: "Failure behavior violated input contract."
+  resolution: {"action": "change", "reason": "Reject non-strings before rendering."}
+  verification: {"status": "done", "plan": "python3 -m unittest discover -v", "result": "3 tests passed; previous boundary run failed on 8 non-string subtests", "artifact_version": "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  final_answer: "render rejects non-string input with TypeError and concatenates valid strings."
+  admitted_limit: {"limit": "Finite input examples; custom string subclass operator overrides not characterized.", "revisit_condition": "Contract adds behavior for customized string subclasses."}
+  depends_on: ["D1"]
+- id: "D3"
+  scope: {"ref": "preview.py:1-4", "version": "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  layer: "境界"
+  origin: "counterexample"
+  question: "どう反証"
+  current_answer: "A successful greeting test alone seems sufficient."
+  grounding: [{"requirement": "README.md: render(name) returns Hello, + name; reject non-string."}]
+  evidence: [{"test": "test_non_strings_raise_type_error: None fails prior coercing implementation and passes final implementation"}]
+  gap: "render(None) returned Hello, None despite passing original test."
+  resolution: {"action": "change", "reason": "Encode required rejection, not prior coercion."}
+  verification: {"status": "done", "plan": "python3 -m unittest discover -v", "result": "3 tests passed; previous boundary run failed on 8 non-string subtests", "artifact_version": "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  final_answer: "None is rejected; successful greetings cannot alone establish boundary correctness."
+  admitted_limit: null
+  depends_on: ["D2"]
+- id: "D4"
+  scope: {"ref": "preview.py:1-4", "version": "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  layer: "細部"
+  origin: "asked"
+  question: "なぜこの形"
+  current_answer: "Reviewer simulation: why this error message and acceptance of str subclasses?"
+  grounding: [{"freedom": "README specifies exception class, not message; name must be a string interpreted with isinstance(str), including subclasses."}]
+  evidence: [{"test": "test_string_boundary includes ordinary str subclass; non-string tests assert TypeError only"}]
+  gap: "Message and subclass handling need bounded explanation."
+  resolution: {"action": "narrow", "reason": "No uniqueness or optimality claim needed."}
+  verification: {"status": "done", "plan": "python3 -m unittest discover -v", "result": "3 tests passed; previous boundary run failed on 8 non-string subtests", "artifact_version": "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  final_answer: "Error wording is discretionary; ordinary str subclasses are accepted as strings."
+  admitted_limit: {"limit": "Exception text is not a promised API.", "revisit_condition": "A caller requires stable text or an exact-type-only contract."}
+  depends_on: ["D2"]

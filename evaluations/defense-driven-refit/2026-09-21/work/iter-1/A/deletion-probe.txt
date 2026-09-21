@@ -1,0 +1,6 @@
+test_name (test_preview.PreviewTests.test_name) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK

@@ -1,0 +1,185 @@
+[
+  {
+    "id": "P",
+    "scope": {
+      "ref": "design.md",
+      "version": "0b8b599eda8561ba05da1f8551e627a6bbd452a9d31c8fdd9724ff65a5e182d4"
+    },
+    "layer": "\u69cb\u9020",
+    "origin": "asked",
+    "question": "\u306a\u305c\u3053\u306e\u5f62",
+    "current_answer": "UTF-8 is required",
+    "grounding": [
+      {
+        "requirement": "old-contract.md"
+      }
+    ],
+    "evidence": [
+      {
+        "type": "document inspection from previous review"
+      }
+    ],
+    "gap": null,
+    "resolution": {
+      "action": "narrow",
+      "reason": "UTF-8 is required"
+    },
+    "verification": {
+      "status": "done",
+      "plan": "Inspect design",
+      "result": "Previous design inspected",
+      "artifact_version": "0b8b599eda8561ba05da1f8551e627a6bbd452a9d31c8fdd9724ff65a5e182d4"
+    },
+    "final_answer": "UTF-8 is required",
+    "admitted_limit": null,
+    "depends_on": []
+  },
+  {
+    "id": "A",
+    "scope": {
+      "ref": "design.md",
+      "version": "0b8b599eda8561ba05da1f8551e627a6bbd452a9d31c8fdd9724ff65a5e182d4"
+    },
+    "layer": "\u69cb\u9020",
+    "origin": "asked",
+    "question": "\u306a\u305c\u3053\u306e\u5f62",
+    "current_answer": "Use a queue",
+    "grounding": [
+      {
+        "requirement": "old-contract.md"
+      }
+    ],
+    "evidence": [
+      {
+        "type": "document inspection from previous review"
+      }
+    ],
+    "gap": null,
+    "resolution": {
+      "action": "narrow",
+      "reason": "Use a queue"
+    },
+    "verification": {
+      "status": "done",
+      "plan": "Inspect design",
+      "result": "Previous design inspected",
+      "artifact_version": "0b8b599eda8561ba05da1f8551e627a6bbd452a9d31c8fdd9724ff65a5e182d4"
+    },
+    "final_answer": "Use a queue",
+    "admitted_limit": null,
+    "depends_on": [
+      "P"
+    ]
+  },
+  {
+    "id": "B",
+    "scope": {
+      "ref": "design.md",
+      "version": "0b8b599eda8561ba05da1f8551e627a6bbd452a9d31c8fdd9724ff65a5e182d4"
+    },
+    "layer": "\u5883\u754c",
+    "origin": "asked",
+    "question": "\u306a\u305c\u3053\u306e\u5f62",
+    "current_answer": "Deduplicate using queue keys",
+    "grounding": [
+      {
+        "requirement": "old-contract.md"
+      }
+    ],
+    "evidence": [
+      {
+        "type": "document inspection from previous review"
+      }
+    ],
+    "gap": null,
+    "resolution": {
+      "action": "narrow",
+      "reason": "Deduplicate using queue keys"
+    },
+    "verification": {
+      "status": "done",
+      "plan": "Inspect design",
+      "result": "Previous design inspected",
+      "artifact_version": "0b8b599eda8561ba05da1f8551e627a6bbd452a9d31c8fdd9724ff65a5e182d4"
+    },
+    "final_answer": "Deduplicate using queue keys",
+    "admitted_limit": null,
+    "depends_on": [
+      "A"
+    ]
+  },
+  {
+    "id": "C",
+    "scope": {
+      "ref": "design.md",
+      "version": "0b8b599eda8561ba05da1f8551e627a6bbd452a9d31c8fdd9724ff65a5e182d4"
+    },
+    "layer": "\u5883\u754c",
+    "origin": "asked",
+    "question": "\u306a\u305c\u3053\u306e\u5f62",
+    "current_answer": "Monitor queue metrics",
+    "grounding": [
+      {
+        "requirement": "old-contract.md"
+      }
+    ],
+    "evidence": [
+      {
+        "type": "document inspection from previous review"
+      }
+    ],
+    "gap": null,
+    "resolution": {
+      "action": "narrow",
+      "reason": "Monitor queue metrics"
+    },
+    "verification": {
+      "status": "done",
+      "plan": "Inspect design",
+      "result": "Previous design inspected",
+      "artifact_version": "0b8b599eda8561ba05da1f8551e627a6bbd452a9d31c8fdd9724ff65a5e182d4"
+    },
+    "final_answer": "Monitor queue metrics",
+    "admitted_limit": null,
+    "depends_on": [
+      "B"
+    ]
+  },
+  {
+    "id": "U",
+    "scope": {
+      "ref": "design.md",
+      "version": "0b8b599eda8561ba05da1f8551e627a6bbd452a9d31c8fdd9724ff65a5e182d4"
+    },
+    "layer": "\u69cb\u9020",
+    "origin": "asked",
+    "question": "\u306a\u305c\u3053\u306e\u5f62",
+    "current_answer": "Keep UTF-8 payloads",
+    "grounding": [
+      {
+        "requirement": "old-contract.md"
+      }
+    ],
+    "evidence": [
+      {
+        "type": "document inspection from previous review"
+      }
+    ],
+    "gap": null,
+    "resolution": {
+      "action": "narrow",
+      "reason": "Keep UTF-8 payloads"
+    },
+    "verification": {
+      "status": "done",
+      "plan": "Inspect design",
+      "result": "Previous design inspected",
+      "artifact_version": "0b8b599eda8561ba05da1f8551e627a6bbd452a9d31c8fdd9724ff65a5e182d4"
+    },
+    "final_answer": "Keep UTF-8 payloads",
+    "admitted_limit": null,
+    "depends_on": [
+      "P"
+    ]
+  }
+]

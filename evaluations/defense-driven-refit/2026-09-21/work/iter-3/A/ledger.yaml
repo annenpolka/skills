@@ -1,0 +1,44 @@
+# One ledger; final content identity is the SHA-256 of preview.py.
+# Resolutions settled D-1 then D-2 then D-3; final tests reverified every item.
+- id: D-1
+  scope: {ref: "preview.py:1-4", version: "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  layer: 構造
+  origin: deviation
+  question: 無いと何が壊れる
+  current_answer: "Provider and facade might isolate interchangeable implementations."
+  grounding: [{convention: "README.md: local convention direct functions, no interchangeable providers"}]
+  evidence: [{test: "baseline-trace.txt; deletion-test.txt; final-test.txt"}]
+  gap: "No alternative providers exist in the fixture."
+  resolution: {action: remove_or_align, reason: "Removed provider and facade; one direct function implements the contract."}
+  verification: {status: done, plan: "python3 -m unittest discover -v", result: "4 tests pass; final-test.txt", artifact_version: "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  final_answer: "Removed provider and facade; one direct function implements the contract."
+  admitted_limit: {limit: "Only Ada was observed before/after deletion; no universal equivalence claim.", revisit_condition: "Another provider or external class consumer appears"}
+  depends_on: []
+- id: D-2
+  scope: {ref: "preview.py:1-4", version: "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  layer: 構造
+  origin: impact
+  question: どの前提
+  current_answer: "A greeting helper can handle failure locally."
+  grounding: [{requirement: "README.md: non-string input must raise TypeError"}]
+  evidence: [{test: "boundary-before.txt (eight failing invalid-type cases); final-test.txt (four tests pass)"}]
+  gap: "Partial-failure behavior must follow the supplied input contract even with direct functions."
+  resolution: {action: change, reason: "A local type guard rejects invalid input before concatenation."}
+  verification: {status: done, plan: "python3 -m unittest discover -v", result: "4 tests pass; final-test.txt", artifact_version: "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  final_answer: "A local type guard rejects invalid input before concatenation."
+  admitted_limit: {limit: "Fixture-only validation; no external integration or concurrency assertions.", revisit_condition: "The helper gains external side effects or its input contract changes"}
+  depends_on: ["D-1"]
+- id: D-3
+  scope: {ref: "preview.py:1-4", version: "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  layer: 境界
+  origin: counterexample
+  question: どう反証
+  current_answer: "Coercing a name can produce a greeting for every input."
+  grounding: [{requirement: "README.md: render(name) returns Hello, + name; input must be a string"}]
+  evidence: [{test: "test_preview.py; boundary-before.txt; final-test.txt"}]
+  gap: "Counterexample render(0) returned Hello, 0, violating the string-only contract; reviewer name-boundary request applies."
+  resolution: {action: change, reason: "Valid strings, including empty and Unicode names, retain their contents; sampled non-string types raise TypeError."}
+  verification: {status: done, plan: "python3 -m unittest discover -v", result: "4 tests pass; final-test.txt", artifact_version: "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb"}
+  final_answer: "Valid strings, including empty and Unicode names, retain their contents; sampled non-string types raise TypeError."
+  admitted_limit: {limit: "String subclasses accepted; malicious subclass operator overrides and all possible objects are not exhaustively tested.", revisit_condition: "A stricter exact-str contract or subclass security concern is introduced"}
+  depends_on: ["D-2"]

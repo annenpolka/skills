@@ -1,0 +1,27 @@
+{
+  "before": {
+    "tests": 1,
+    "success": true,
+    "line_hits": {
+      "1": 2,
+      "2": 1,
+      "5": 2,
+      "6": 1,
+      "9": 1,
+      "12": 1,
+      "13": 1,
+      "7": 1,
+      "10": 1,
+      "3": 1
+    },
+    "observed_case": "Ada -> Hello, Ada"
+  },
+  "tool_retry": "python trace CLI invocation failed before execution; used sys.settrace",
+  "after_deletion": {
+    "tests": 1,
+    "success": true,
+    "observed_case": "Ada -> Hello, Ada",
+    "branch": 2,
+    "limit": "Wrapper paths ran before deletion. No behavior difference for Ada only; no general equivalence claim."
+  }
+}

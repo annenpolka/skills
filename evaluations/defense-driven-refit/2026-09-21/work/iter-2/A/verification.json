@@ -1,0 +1,10 @@
+{
+  "command": "python3 -m unittest discover -v",
+  "result": "3 tests passed",
+  "preview_version": "sha256:94fac9d954df4bbc56ca89d24689c8c8d55a010b7e2e26bb5807281fc41836eb",
+  "test_sha256": "3096c46f836112778f159b490298173252d67bcea4aa62bbd7107d2c37b9d91e",
+  "baseline": "1 test passed",
+  "boundary_before_fix": "3 tests run, 8 failing subtests",
+  "decision_retries": 0,
+  "tool_retries": 1
+}

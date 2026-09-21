@@ -1,0 +1,89 @@
+test_name (test_preview.PreviewTests.test_name) ... ok
+test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) ...
+  test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='NoneType') ... FAIL
+  test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='int') ... FAIL
+  test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='float') ... FAIL
+  test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='bool') ... FAIL
+  test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='bytes') ... FAIL
+  test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='list') ... FAIL
+  test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='dict') ... FAIL
+  test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='object') ... FAIL
+test_string_boundaries (test_preview.PreviewTests.test_string_boundaries) ... ok
+test_string_subclass (test_preview.PreviewTests.test_string_subclass) ... ok
+
+======================================================================
+FAIL: test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='NoneType')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/annenpolka/ghq/github.com/annenpolka/skills/evaluations/defense-driven-refit/2026-09-21/work/iter-3/A/test_preview.py", line 22, in test_non_strings_rejected
+    with self.assertRaises(TypeError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+AssertionError: TypeError not raised
+
+======================================================================
+FAIL: test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='int')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/annenpolka/ghq/github.com/annenpolka/skills/evaluations/defense-driven-refit/2026-09-21/work/iter-3/A/test_preview.py", line 22, in test_non_strings_rejected
+    with self.assertRaises(TypeError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+AssertionError: TypeError not raised
+
+======================================================================
+FAIL: test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='float')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/annenpolka/ghq/github.com/annenpolka/skills/evaluations/defense-driven-refit/2026-09-21/work/iter-3/A/test_preview.py", line 22, in test_non_strings_rejected
+    with self.assertRaises(TypeError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+AssertionError: TypeError not raised
+
+======================================================================
+FAIL: test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='bool')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/annenpolka/ghq/github.com/annenpolka/skills/evaluations/defense-driven-refit/2026-09-21/work/iter-3/A/test_preview.py", line 22, in test_non_strings_rejected
+    with self.assertRaises(TypeError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+AssertionError: TypeError not raised
+
+======================================================================
+FAIL: test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='bytes')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/annenpolka/ghq/github.com/annenpolka/skills/evaluations/defense-driven-refit/2026-09-21/work/iter-3/A/test_preview.py", line 22, in test_non_strings_rejected
+    with self.assertRaises(TypeError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+AssertionError: TypeError not raised
+
+======================================================================
+FAIL: test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='list')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/annenpolka/ghq/github.com/annenpolka/skills/evaluations/defense-driven-refit/2026-09-21/work/iter-3/A/test_preview.py", line 22, in test_non_strings_rejected
+    with self.assertRaises(TypeError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+AssertionError: TypeError not raised
+
+======================================================================
+FAIL: test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='dict')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/annenpolka/ghq/github.com/annenpolka/skills/evaluations/defense-driven-refit/2026-09-21/work/iter-3/A/test_preview.py", line 22, in test_non_strings_rejected
+    with self.assertRaises(TypeError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+AssertionError: TypeError not raised
+
+======================================================================
+FAIL: test_non_strings_rejected (test_preview.PreviewTests.test_non_strings_rejected) (type='object')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/annenpolka/ghq/github.com/annenpolka/skills/evaluations/defense-driven-refit/2026-09-21/work/iter-3/A/test_preview.py", line 22, in test_non_strings_rejected
+    with self.assertRaises(TypeError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+AssertionError: TypeError not raised
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+FAILED (failures=8)

@@ -1,0 +1,3 @@
+PASS: source and revised-claim document assertions; matching design SHA-256; pending items have null final_answer and revisit conditions.
+No runtime/provider test, measurement, or simulation executed.
+sha256:38b948b6e15ab0b8baf0bff0d80e66f83929ad4dafc13092239bca86b0aee0fc

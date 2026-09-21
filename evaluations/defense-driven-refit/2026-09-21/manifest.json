@@ -1,0 +1,18 @@
+{
+  "checklists.json": "7621d916ba68b4fc24516dd96aef49749305cb503866f392038e472c6f4fbdc8",
+  "protocol.md": "a01d1a058f0fe85a5598eed89346f338b8f7b0c8c1486210381d7ac61ae2ec21",
+  "fixtures/A/README.md": "b12450e1bc6e9d2dfc2d046ce3d363b57ead8264abc6aa0a36344b8e50e8427e",
+  "fixtures/A/preview.py": "9624e3fda8c257dfab1f3ab61cba19a7417d691ba66418494f65474d63d20048",
+  "fixtures/A/test_preview.py": "59ef58405d73a5095bbc9803af35590d8d4dcb54cc4b551126ffb5e94c152657",
+  "fixtures/B/README.md": "34f5845dfb046ab60e88c8f864bbc634ee1e0db702e060718f9643bd5ac39a3e",
+  "fixtures/B/design.md": "59655433bf487f0a4ef27b26474d71086cde36603721a07c10fb428047dda027",
+  "fixtures/H/README.md": "6bdf80a5fad6d403385533ebbfbdf771192d54021f8adfd7a9ca5aee562f0288",
+  "fixtures/H/design.md": "0b8b599eda8561ba05da1f8551e627a6bbd452a9d31c8fdd9724ff65a5e182d4",
+  "fixtures/H/ledger.json": "82696e1eccd502aac6d442e555e17f841d7ee3c1e23e8904f1d94b5acdf7f4ec",
+  "fixtures/H/old-contract.md": "ea6edd21dc78b78e03dad055afb4040d6ea71fc7888c893f955226721837e8ff",
+  "snapshots/iter-1.md": "4d4bdec8095e91c12ae14f8f52e7ec7d753d31c9041446c5b41591420f40dc94",
+  "snapshots/iter-2.md": "4d4bdec8095e91c12ae14f8f52e7ec7d753d31c9041446c5b41591420f40dc94",
+  "snapshots/iter-3.md": "4d4bdec8095e91c12ae14f8f52e7ec7d753d31c9041446c5b41591420f40dc94",
+  "snapshots/original.md": "7fbf9b737e38d9d90b92ce703b69b876b77c67a241dda4fbaa0196daba1160ce",
+  "snapshots/holdout.md": "4d4bdec8095e91c12ae14f8f52e7ec7d753d31c9041446c5b41591420f40dc94"
+}

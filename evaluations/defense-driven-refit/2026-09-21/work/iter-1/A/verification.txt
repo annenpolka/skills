@@ -1,0 +1,8 @@
+test_name (test_preview.PreviewTests.test_name) ... ok
+test_rejects_non_strings (test_preview.PreviewTests.test_rejects_non_strings) ... ok
+test_string_boundary (test_preview.PreviewTests.test_string_boundary) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.000s
+
+OK

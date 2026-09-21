@@ -1,0 +1,7 @@
+{
+  "test_returncode": 0,
+  "valid_cases": 5,
+  "invalid_cases": 8,
+  "no_classes": true,
+  "test_output": "test_name (test_preview.PreviewTests.test_name) ... ok\ntest_non_strings_raise_type_error (test_preview.PreviewTests.test_non_strings_raise_type_error) ... ok\ntest_string_boundary (test_preview.PreviewTests.test_string_boundary) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n"
+}

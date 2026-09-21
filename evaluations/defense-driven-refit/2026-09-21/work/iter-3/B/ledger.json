@@ -1,0 +1,70 @@
+{
+  "dial": {"audience": "PM", "scope": "design.md", "granularity": "境界", "strength": "資料確認"},
+  "source_note": "README.md and original design.md only. Characterization is reported second-hand, not executed. No invented decision history.",
+  "items": [
+    {
+      "id": "D-001",
+      "scope": {"ref": "design.md", "version": "sha256:38b948b6e15ab0b8baf0bff0d80e66f83929ad4dafc13092239bca86b0aee0fc"},
+      "layer": "構造",
+      "origin": "deviation",
+      "question": "なぜこの形",
+      "current_answer": "This is an owner-decision review draft; it does not approve retry behavior or delivery guarantees.",
+      "grounding": [{"requirement": "README.md: narrow claims; do not select retry/idempotency semantics without owner decision."}],
+      "evidence": [{"execution_result": "verification.txt: document assertions and content hash check only; not runtime validation."}],
+      "gap": "Unsupported optimality and exactly-once claims removed.",
+      "resolution": {"action": "narrow", "reason": "Supplied material supports no such guarantees."},
+      "verification": {"status": "done", "plan": "Check revised claims against supplied sources; no runtime verification.", "result": "Executed document assertions confirmed unsupported original guarantees are absent and unresolved policy wording is present; source review of README.md and design.md confirms documentation-only limits. No runtime or provider test executed.", "artifact_version": "sha256:38b948b6e15ab0b8baf0bff0d80e66f83929ad4dafc13092239bca86b0aee0fc"},
+      "final_answer": "This is an owner-decision review draft; it does not approve retry behavior or delivery guarantees.",
+      "admitted_limit": {"limit": "Only supplied documentation reviewed.", "revisit_condition": "When implementation and provider contract are available, verify approved behavior."},
+      "depends_on": []
+    },
+    {
+      "id": "D-002",
+      "scope": {"ref": "design.md", "version": "sha256:38b948b6e15ab0b8baf0bff0d80e66f83929ad4dafc13092239bca86b0aee0fc"},
+      "layer": "境界",
+      "origin": "asked",
+      "question": "Why three attempts?",
+      "current_answer": "No requirement or measurement justifies three attempts.",
+      "grounding": [{"requirement": "README.md: narrow claims; do not select retry/idempotency semantics without owner decision."}],
+      "evidence": [{"characterization_test": "README.md reports: a simulation sends three times after a timeout; report itself and executable are not supplied.", "preservation_only": true}],
+      "gap": "Optimal count and total-attempt/additional-retry interpretation unresolved.",
+      "resolution": {"action": "investigate", "reason": "Requires an owner-approved attempt budget and acceptable delay/duplicate risk."},
+      "verification": {"status": "pending", "plan": "Obtain owner decision and relevant source contract; review revised boundary before approval.", "result": null, "artifact_version": null},
+      "final_answer": null,
+      "admitted_limit": {"limit": "No approved attempt count.", "revisit_condition": "Named product/service owner supplies total/additional attempt definition, budget, delay and duplicate tolerance before retry-policy approval."},
+      "depends_on": ["D-001"]
+    },
+    {
+      "id": "D-003",
+      "scope": {"ref": "design.md", "version": "sha256:38b948b6e15ab0b8baf0bff0d80e66f83929ad4dafc13092239bca86b0aee0fc"},
+      "layer": "境界",
+      "origin": "asked",
+      "question": "What happens if the operation succeeded but its response was lost?",
+      "current_answer": "Outcome is ambiguous; another call could duplicate a notification.",
+      "grounding": [{"requirement": "README.md: narrow claims; do not select retry/idempotency semantics without owner decision."}],
+      "evidence": [],
+      "gap": "Unknown provider semantics and owner policy prohibit a delivery guarantee.",
+      "resolution": {"action": "investigate", "reason": "Need provider contract and owner policy for ambiguous outcomes."},
+      "verification": {"status": "pending", "plan": "Obtain owner decision and relevant source contract; review revised boundary before approval.", "result": null, "artifact_version": null},
+      "final_answer": null,
+      "admitted_limit": {"limit": "Exactly-once delivery and next action are unverified; no policy selected.", "revisit_condition": "Provider supplies side-effect/deduplication contract and owner approves duplicate-versus-missed-delivery tolerance and handling before guarantee approval."},
+      "depends_on": ["D-001"]
+    },
+    {
+      "id": "D-004",
+      "scope": {"ref": "design.md", "version": "sha256:38b948b6e15ab0b8baf0bff0d80e66f83929ad4dafc13092239bca86b0aee0fc"},
+      "layer": "境界",
+      "origin": "impact",
+      "question": "どの前提を焼き込んでいる？",
+      "current_answer": "External notification side effects may survive a lost response; timeout is partial failure, not proof of non-delivery.",
+      "grounding": [{"requirement": "README.md: narrow claims; do not select retry/idempotency semantics without owner decision."}],
+      "evidence": [],
+      "gap": "External-side-effect and partial-failure handling remains unapproved even for ordinary retry logic.",
+      "resolution": {"action": "investigate", "reason": "Unresolved boundary must remain visible to PM."},
+      "verification": {"status": "pending", "plan": "Obtain owner decision and relevant source contract; review revised boundary before approval.", "result": null, "artifact_version": null},
+      "final_answer": null,
+      "admitted_limit": {"limit": "No provider test, code, or runtime evidence; owner identity also unknown.", "revisit_condition": "Assign decision owner, obtain D-002 and D-003 decisions, and review their joint failure behavior before approval."},
+      "depends_on": ["D-002", "D-003"]
+    }
+  ]
+}

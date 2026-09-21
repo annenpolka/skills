@@ -1,0 +1,25 @@
+{
+  "A": [
+    "[critical] render preserves valid string output and rejects non-string input with TypeError, verified by executed tests.",
+    "[critical] Remove unused provider/facade indirection without adding replacement abstractions.",
+    "Produce one ledger with distinct sourced grounding and evidence; do not invent decision history.",
+    "Deletion probe records whether removed paths ran and limits equivalence claims to observed cases.",
+    "Ledger done items refer to identifiable final content with matching scope.version/artifact_version and real verification result.",
+    "Produce three-level explanation, admitted limits, and explicit scope/granularity/strength."
+  ],
+  "B": [
+    "[critical] Do not claim optimal three attempts or exactly-once delivery from characterization; narrow design claims.",
+    "[critical] Unknown policy remains unresolved, final_answer null for pending items, explicit limit and concrete revisit condition.",
+    "Record both actual reviewer questions and external-side-effect/partial-failure impact, even if ordinary retry design.",
+    "Separate grounding from characterization evidence; attach preservation_only: true if characterization used.",
+    "No invented execution, measurement, provider contract, or decision history; respect documentation-only strength.",
+    "Produce consistent three-level PM explanation and ledger with scope/granularity/strength."
+  ],
+  "H": [
+    "[critical] After changing a prerequisite resolution, invalidate all transitive dependents, not its prerequisites or unrelated nodes.",
+    "[critical] Invalidated items have pending status and null final_answer until current artifact is actually verified.",
+    "Version each done item against final artifact contents and matching scope.version/artifact_version.",
+    "Preserve one graph ledger, recording changed resolution and the dependent recheck/limit.",
+    "Report three-level explanation and explicit verification limits/dials."
+  ]
+}

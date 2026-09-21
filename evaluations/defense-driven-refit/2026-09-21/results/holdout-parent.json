@@ -1,0 +1,10 @@
+{
+  "checks": "passed",
+  "transitive_dependents": [
+    "B",
+    "C"
+  ],
+  "preserved_prerequisite": "P",
+  "preserved_other_branch": "U",
+  "ids_and_edges_preserved": true
+}

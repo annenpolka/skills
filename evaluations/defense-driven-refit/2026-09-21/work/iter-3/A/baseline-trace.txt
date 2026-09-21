@@ -1,0 +1,18 @@
+test_preview.py(1):  import unittest
+test_preview.py(2):  from preview import render
+preview.py(1):  class GreetingProvider:
+preview.py(1):  class GreetingProvider:
+preview.py(2):      def render(self, name):
+preview.py(5):  class GreetingFacade:
+preview.py(5):  class GreetingFacade:
+preview.py(6):      def __init__(self):
+preview.py(9):      def render(self, name):
+preview.py(12):  def render(name):
+test_preview.py(4):  class PreviewTests(unittest.TestCase):
+test_preview.py(4):  class PreviewTests(unittest.TestCase):
+test_preview.py(5):      def test_name(self):
+test_preview.py(6):          self.assertEqual(render("Ada"), "Hello, Ada")
+preview.py(13):      return GreetingFacade().render(name)
+preview.py(7):          self.provider = GreetingProvider()
+preview.py(10):          return self.provider.render(name)
+preview.py(3):          return "Hello, " + str(name)
