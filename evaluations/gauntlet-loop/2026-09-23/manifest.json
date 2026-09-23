@@ -1,0 +1,17 @@
+{
+  "checklists.json": "c7d83ab15c0ec55c5a39df6b77c566e072aa348d866a21eba2cae934e84ae4c0",
+  "contract.md": "917981b3158f124975c4d722f7d06d7287fba07f459f1da53f904f4cbfd4d203",
+  "ledger.md": "df2977f0920bb0fc7856358edb818103852a95dcd650adae03c08166bc1320fd",
+  "protocol.md": "4021fdb6b23cecba787c95e90bb23f7fba74bccd556f4403f81ec6c58da198aa",
+  "report.md": "ccc6427989d8661dc880b0b93c067c9e8ec128b97a94444391f000d5dc13cf66",
+  "snapshots/final.md": "96fa277ff8e7e23149b6a19c35568946483f29ae8e6947ed908c7b839dc627ce",
+  "snapshots/holdout.md": "b550c27d0b58fee2f81deccecd12873613090bab93bd0bab9c0ca99bc47c1f7c",
+  "snapshots/iter-1.md": "5db155af4f77e39ccba5d04be8b80674e8051ab8ad981cf832ea8120eadd3455",
+  "snapshots/iter-2.md": "4c05b5ddc2c166a90482224a1984da120d1013aee0efc5547ea00ccd5508519a",
+  "snapshots/iter-3.md": "60a785b97027cb25700601bb0f77f8bfd407392c6768ee6e4cb3795e4c80f34d",
+  "snapshots/iter-4.md": "62fc116ea737d3b54a448a810e64801389f526e34078dc79edc3c4d47f670514",
+  "snapshots/iter-5.md": "4d965bac758e305986639bc752cd3e2e3e59c23bd10ebdf3872ebf110abb145f",
+  "snapshots/iter-6.md": "b550c27d0b58fee2f81deccecd12873613090bab93bd0bab9c0ca99bc47c1f7c",
+  "snapshots/iter-7.md": "84b71788df04227dfb4fd3dc0d2b3f46afe9d1a96f36ca8329232a5e30810496",
+  "snapshots/original.md": "5db155af4f77e39ccba5d04be8b80674e8051ab8ad981cf832ea8120eadd3455"
+}

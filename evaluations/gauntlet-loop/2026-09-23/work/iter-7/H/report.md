@@ -1,0 +1,2 @@
+Executor self-report (iter 7, H recheck). 6/6 ○; parent agrees. Holdout-exposed fixes landed: external top rung (human-written messages), dev/held-out split sealed with sha256, no sub-agent-only line in the Codex prompt. Trace: all OK. Retries: 0. tool_uses 5, 107s.
+Unclear points (minor): gate need when domain type fixes ladder structure; concrete sealing command example; plateau default vs short budget (2nd occurrence with H → patched in final snapshot, not re-tested).
