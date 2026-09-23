@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Fake `codex` for helper tests. Records argv, emits exec-style JSONL events, and writes a
+# rollout under $CODEX_HOME/sessions. Behavior is chosen with FAKE_MODE.
+set -eo pipefail
+printf '%s\n' "$@" > "$FAKE_STATE/argv.$(date +%s%N 2>/dev/null || date +%s).$$"
+printf '%s\0' "$@" > "$FAKE_STATE/last-argv"
+cat > "$FAKE_STATE/last-stdin"
+
+model="" sandbox="" approval="" tid="" prev=0
+args=("$@")
+for ((i = 0; i < ${#args[@]}; i++)); do
+  case "${args[$i]}" in
+    -m) model=${args[$((i + 1))]} ;;
+    -s) sandbox=${args[$((i + 1))]} ;;
+    resume) tid=${args[$((i + 1))]} ;;
+    -c) case "${args[$((i + 1))]}" in
+          sandbox_mode=*) sandbox=${args[$((i + 1))]#sandbox_mode=}; sandbox=${sandbox//\"/} ;;
+          approval_policy=*) approval=${args[$((i + 1))]#approval_policy=}; approval=${approval//\"/} ;;
+        esac ;;
+  esac
+done
+
+mode=${FAKE_MODE:-ok}
+if [ "$mode" = startup ]; then echo "Error: thread/resume failed: no rollout found for thread id $tid" >&2; exit 1; fi
+[ -n "$tid" ] || tid="0000fake-$(date +%s)-$$"
+dir="$CODEX_HOME/sessions/2026/01/01"; mkdir -p "$dir"
+rollout="$dir/rollout-2026-01-01T00-00-00-$tid.jsonl"
+[ -f "$FAKE_STATE/total-$tid" ] && prev=$(cat "$FAKE_STATE/total-$tid")
+total=$((prev + 1000))
+echo "$total" > "$FAKE_STATE/total-$tid"
+[ "$mode" = mismatch ] && sandbox=danger-full-access
+turn_id="turn-$$"
+jq -cn --arg cwd "$(pwd -P)" --arg m "$model" --arg a "$approval" --arg s "$sandbox" --arg t "$turn_id" \
+  '{type: "turn_context", payload: {turn_id: $t, cwd: $cwd, model: $m, effort: null, approval_policy: $a,
+    approvals_reviewer: "user", sandbox_policy: {type: $s}}}' >> "$rollout"
+jq -cn --arg t "$turn_id" --argjson total "$total" \
+  '{type: "token_usage_record", payload: {turn_id: $t, turn_token_usage: {input_tokens: 1000, output_tokens: 10},
+    thread_token_usage: {input_tokens: $total, output_tokens: 10}}}' >> "$rollout"
+
+echo '{"type":"response_item","payload":{"type":"custom_tool_call","name":"exec","input":"tools.exec_command({cmd:\"sed -n 1,5p a.py\"})"}}' >> "$rollout"
+echo '{"type":"thread.started","thread_id":"'"$tid"'"}'
+echo '{"type":"turn.started"}'
+echo 'not json from a plugin'
+echo '{"type":"item.completed","item":{"id":"item_0","type":"error","message":"Skill descriptions were shortened"}}'
+case "$mode" in
+  fail)
+    echo '{"type":"error","message":"boom"}'
+    echo '{"type":"turn.failed","error":{"message":"boom"}}'; exit 1 ;;
+  hang)
+    echo '{"type":"item.started","item":{"id":"item_1","type":"command_execution","status":"in_progress"}}'
+    perl -e 'setpgrp(0,0); exec "sleep", 300' &
+    wait; exit 0 ;;
+  denial)
+    echo '{"type":"response_item","payload":{"type":"custom_tool_call_output","output":"zsh:1: operation not permitted: x"}}' >> "$rollout" ;;
+esac
+echo '{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"done"}}'
+echo '{"type":"turn.completed","usage":{"input_tokens":'"$total"',"cached_input_tokens":0,"output_tokens":10}}'
+for ((i = 0; i < ${#args[@]}; i++)); do
+  [ "${args[$i]}" = -o ] && echo done > "${args[$((i + 1))]}"
+done
+exit 0

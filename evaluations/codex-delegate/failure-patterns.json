@@ -1,0 +1,94 @@
+{
+  "skill": "codex-delegate",
+  "patterns": [
+    {
+      "name": "Caller evidence inside the delegate's writable set",
+      "seenIn": ["iter1-A", "iter1-C"],
+      "generalFixRule": "Evidence the caller uses to judge the delegate must sit outside the delegate's writable roots or be excluded from them on every dispatch and resume.",
+      "fix": "v2 prose rule; v6 the helper adds exclude_slash_tmp / exclude_tmpdir_env_var automatically when the run directory resolves under them.",
+      "fixStatus": "resolved (iter2 onward: every workspace-write run excluded /tmp)"
+    },
+    {
+      "name": "Baseline ordering and coverage",
+      "seenIn": ["iter1-B", "iter2-A", "iter2-C", "iter3-A", "iter4-A", "iter4-B", "iter4-C", "iter5-A"],
+      "generalFixRule": "Take the baseline before any caller command that could write to the target; it must show which path changed (paths with type and mode, per-file checksums, a copy for content diffs), whether or not the target is a git repository.",
+      "fix": "v2 baseline-first rule; v3 numbered step 1; v5 definition; v6 `helper snapshot` / `compare`.",
+      "fixStatus": "resolved by the v6 helper (no recurrence after iter5)"
+    },
+    {
+      "name": "Documented field semantics generalized from narrow probes",
+      "seenIn": ["iter1-C", "iter1-A", "iter2-A", "iter2-C", "holdout-H"],
+      "generalFixRule": "When a documented field comes from single-turn or completed-turn probes, qualify it for resumed and interrupted turns and name the authoritative per-turn record; update every copy of the claim in the same edit.",
+      "fix": "v2 running-total wording (a stale copy in constraints.md survived until v3); v10 usage taken from the rollout's per-turn token_usage_record.",
+      "fixStatus": "resolved in v10 (holdout H exposed that turn.completed.usage omits an interrupted turn)"
+    },
+    {
+      "name": "Template divergence: conditional flags, cd guard, and per-turn outputs",
+      "seenIn": ["iter1-C", "iter2-A", "iter3-A", "iter4-C", "iter5-B", "iter5-C"],
+      "generalFixRule": "Every flag, guard, and output the prose requires must live in the one template the executor copies; for recurring template-interpretation failures, move the mechanics into a helper.",
+      "fix": "v3 complete templates; v4 file-based state; v6 structural rewrite into scripts/codex-delegate.sh (run/resume store and re-pass settings, refuse a missing workspace, write turn-N/ outputs).",
+      "fixStatus": "resolved by the v6 helper; this pattern triggered the divergence rule (unclear points 13, 9, 10, 8, 8)"
+    },
+    {
+      "name": "Supervision requirement without a mechanism",
+      "seenIn": ["iter1-A", "iter1-B", "iter1-C", "iter2-B", "iter3-B"],
+      "generalFixRule": "A required time limit or stop needs one concrete, portable mechanism that targets the launched PID and cleans up after itself.",
+      "fix": "v3 watchdog; v4 polling watchdog without orphans; v6 helper --limit and stop.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Process identification by name",
+      "seenIn": ["iter1-A", "iter3-B", "holdout-H"],
+      "generalFixRule": "Identify processes by the PID the caller launched and its recorded descendants, and signal a recorded PID only after its command line still matches.",
+      "fix": "v3 descendants file; v10 `helper reap` with command-line guard.",
+      "fixStatus": "resolved in v10"
+    },
+    {
+      "name": "Wait mechanism for callers that may not be able to yield",
+      "seenIn": ["iter4-C", "iter5-B", "iter6-B", "iter6-C", "iter7-A", "iter7-C"],
+      "generalFixRule": "Give an observable test for which wait applies (does the host re-invoke you when a background command exits?), a polling fallback, and one mechanism per turn.",
+      "fix": "v5 one-signal rule; v7 `helper check` polling; v8 observable criterion.",
+      "fixStatus": "resolved in v8 (no recurrence in iter8-iter9)"
+    },
+    {
+      "name": "Delta brief and brief fields defined by task type or reason",
+      "seenIn": ["iter1-C", "iter2-B", "iter3-A", "iter3-B", "iter3-C", "iter4-C", "iter9-C"],
+      "generalFixRule": "Define each brief field with its meaning per task type and an explicit 'none'; define a delta brief by what the resumed turn needs, restating the fields that still apply; list expected failures for phases that leave them.",
+      "fix": "v4 per-task-type fields and unified delta brief; v5 carry-over; v10 expected failing set.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Closing format shape",
+      "seenIn": ["iter1-B", "iter5-B", "iter7-B", "iter9-A"],
+      "generalFixRule": "Split the question into parts, ask only for those parts and their evidence, mark which lines acceptance depends on, and accept on verified claims even when the format drifts.",
+      "fix": "v4 one line per part; v6 split compound questions; v8 accept on verified claims; v10 mark acceptance-relevant lines.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Scope check against a derived summary instead of the authoritative record",
+      "seenIn": ["iter2-B", "iter6-A", "iter7-A", "iter7-B", "iter8-C"],
+      "generalFixRule": "Check scope against the rollout's tool-call records for the turn (including patch edits and omitted attempts), flag truncated inputs, and count only paths the executor chose.",
+      "fix": "v3 denial grep; v7 commands list; v8 tool_calls from the rollout; v9 truncation flag.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Rollout records attributed to the wrong turn",
+      "seenIn": ["parent verification after holdout-H"],
+      "generalFixRule": "Map each helper turn to its own rollout turn_id when it runs, and take rollout fields only from that turn's segment.",
+      "fix": "v10 turn_contexts_before.txt / turn_id.txt and per-turn segments; test for re-checking an earlier turn.",
+      "fixStatus": "resolved in v10"
+    },
+    {
+      "name": "Helper output diverging from its own contract",
+      "seenIn": ["iter6-C"],
+      "generalFixRule": "Build a dry-run printout from the same argument array as the real launch and test that they match.",
+      "fix": "v7 dry-run fix and test.",
+      "fixStatus": "resolved"
+    }
+  ],
+  "nonBlockingObservations": [
+    "Every executor chose --ignore-user-config; none widened the sandbox or changed the approval policy after a problem.",
+    "Several executors ran jev-crosscheck on their own because the user's global CLAUDE.md requires it; they sent only fixture source, diffs, and closing messages.",
+    "A few self-attributed issues (redundant waiters, zsh PIPESTATUS, zsh '====' parsing) came from the executors' own shell use, not the skill."
+  ]
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex Delegate"
+  short_description: "Delegate to Codex exec with pinned sandbox and thread evidence"
+  default_prompt: "Use $codex-delegate to delegate this task to the Codex CLI and verify its result."

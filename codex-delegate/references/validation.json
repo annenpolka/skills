@@ -1,0 +1,177 @@
+{
+  "checkedAt": "2026-09-23",
+  "cliVersion": "codex-cli 0.155.1",
+  "environment": {
+    "os": "macOS",
+    "authMethod": "ChatGPT login",
+    "workspace": "scratch git repository with one committed file; a separate non-git directory for p9",
+    "model": "gpt-6-luna with model_reasoning_effort low",
+    "userConfig": "sandbox_mode workspace-write, approval_policy on-request, approvals_reviewer guardian_subagent (reported as auto_review), workspace-write network_access true, one extra writable root, default model gpt-6-astra, memories and hooks features enabled"
+  },
+  "scope": "exec-mode contract probes for delegation: event stream, effective settings, sandbox and approval interaction, resume restoration, startup errors, interruption. Not a model-quality, cost, or security-isolation audit.",
+  "probes": [
+    {
+      "id": "p1",
+      "intent": "Baseline event stream and effective settings without sandbox flags",
+      "command": "codex exec -m gpt-6-luna -c model_reasoning_effort=\"low\" --json -o <file> - <<< 'Reply with exactly: OK'",
+      "observed": "exit 0; events thread.started, turn.started, item.completed(error: skill descriptions shortened), item.completed(agent_message OK), turn.completed with usage; -o file holds OK. Rollout turn_context: model gpt-6-luna, approval_policy on-request, approvals_reviewer auto_review, sandbox_policy workspace-write with network_access true and the extra writable root, effort low; permission_profile granted write to the workspace, the extra root, /tmp, and $TMPDIR, and read-only access to .git, .agents, and .codex under each writable root. The documented read-only default did not apply because the user config set sandbox_mode. The rollout's token_count event carried total_token_usage and rate_limits (primary.used_percent, window_minutes, resets_at), and its response_item records held the injected instructions and the brief"
+    },
+    {
+      "id": "p2",
+      "intent": "Write request under -s read-only with the user's on-request approval and auto reviewer",
+      "command": "codex exec -m gpt-6-luna -s read-only --json - <<< '<create b.txt with a shell command; request permission once if it fails>'",
+      "observed": "exit 0; turn.completed; b.txt created. Rollout: first exec_command failed with 'operation not permitted'; second call carried sandbox_permissions require_escalated and a justification; approved and exited 0 after about 3 seconds. The JSON stream showed only the escalated command_execution, not the denied attempt"
+    },
+    {
+      "id": "p3",
+      "intent": "Same write request with approval pinned to never",
+      "command": "codex exec -m gpt-6-luna -s read-only -c approval_policy=\"never\" --json - <<< '<create c.txt ...>'",
+      "observed": "exit 0; turn.completed; c.txt not created; command_execution exit_code 0 because the command used '|| printf missing', aggregated_output contained 'operation not permitted'; turn_context approval_policy never, sandbox read-only"
+    },
+    {
+      "id": "p4",
+      "intent": "Resume the p3 thread without re-passing sandbox or approval",
+      "command": "codex exec resume <p3-thread> -m gpt-6-luna --json - <<< '<create d.txt ...>'",
+      "observed": "exit 0; same thread_id; d.txt created; the new turn_context reported sandbox workspace-write and approval on-request from the user config. Sandbox and approval were not restored"
+    },
+    {
+      "id": "p5",
+      "intent": "Resume the same thread with sandbox and approval re-passed through -c",
+      "command": "codex exec resume <p3-thread> -m gpt-6-luna -c sandbox_mode=\"read-only\" -c approval_policy=\"never\" --json - <<< '<create e.txt ...>'",
+      "observed": "exit 0; e.txt not created; turn_context read-only and never"
+    },
+    {
+      "id": "p6",
+      "intent": "Resume without -m",
+      "command": "codex exec resume <p3-thread> -c sandbox_mode=\"read-only\" -c approval_policy=\"never\" --json - <<< 'Reply OK'",
+      "observed": "exit 0; turn_context model gpt-6-astra (the config default), not the thread's gpt-6-luna. The model was not restored"
+    },
+    {
+      "id": "p7",
+      "intent": "Unsupported model",
+      "command": "codex exec -m gpt-nonexistent-9 -s read-only -c approval_policy=\"never\" --json - <<< 'Reply OK'",
+      "observed": "exit 1; item.completed error 'Model metadata for gpt-nonexistent-9 not found. Defaulting to fallback metadata'; then top-level error and turn.failed with status 400 invalid_request_error 'not supported when using Codex with a ChatGPT account'"
+    },
+    {
+      "id": "p8",
+      "intent": "Resume an unknown thread ID",
+      "command": "codex exec resume 11111111-2222-3333-4444-555555555555 -m gpt-6-luna --json - <<< 'Reply OK'",
+      "observed": "exit 1; no JSON on stdout; stderr 'Error: thread/resume: thread/resume failed: no rollout found for thread id ... (code -32600)'"
+    },
+    {
+      "id": "p9",
+      "intent": "Non-git, untrusted directory with and without --skip-git-repo-check",
+      "command": "codex exec ... --json - (in a non-git directory under /private/tmp)",
+      "observed": "without the flag: exit 1, no JSON, stderr 'Not inside a trusted directory and --skip-git-repo-check was not specified.'; with --skip-git-repo-check: exit 0, turn.completed"
+    },
+    {
+      "id": "p10",
+      "intent": "SIGTERM to the codex launcher while the delegate runs `sleep 40`",
+      "command": "codex exec -m gpt-6-luna -s workspace-write -c approval_policy=\"never\" --json - < brief & ...; kill -TERM $!",
+      "observed": "exit 0; events end at item.started(command_execution); no turn.completed or turn.failed; the sleep process survived with ppid 1 in its own process group. A separate attempt that signalled a PID found with pgrep -f hit a wrapper shell and left codex running to completion"
+    },
+    {
+      "id": "p10r",
+      "intent": "Resume the SIGTERM-interrupted thread",
+      "command": "codex exec resume <p10-thread> -m gpt-6-luna -c sandbox_mode=\"workspace-write\" -c approval_policy=\"never\" --json - <<< '<skip the sleep; continue>'",
+      "observed": "exit 0; same thread_id; turn.completed; f.txt created. The closing message came back in Japanese without a language instruction, following the user's AGENTS.md or personality"
+    },
+    {
+      "id": "p11",
+      "intent": "--ephemeral then resume",
+      "command": "codex exec --ephemeral ... ; codex exec resume <thread> ...",
+      "observed": "first run exit 0 with no rollout file; resume exit 1 'no rollout found for thread id'"
+    },
+    {
+      "id": "p12",
+      "intent": "--ignore-user-config without -s",
+      "command": "codex exec --ignore-user-config -m gpt-6-luna --json - <<< 'Reply with exactly: OK'",
+      "observed": "exit 0; turn_context sandbox read-only, approval never, reviewer user, personality pragmatic. Injected context still included global AGENTS.md, the skills list, and plugin recommendations; the memory block present in p1 was absent"
+    },
+    {
+      "id": "p13",
+      "intent": "Pin writable roots, network, and temp directories through -c (preview)",
+      "command": "codex debug prompt-input -c sandbox_mode=\"workspace-write\" -c 'sandbox_workspace_write.writable_roots=[]' -c sandbox_workspace_write.network_access=false -c approval_policy=\"never\" hi; and a variant adding exclude_slash_tmp=true and exclude_tmpdir_env_var=true",
+      "observed": "permissions block: extra root removed, network restricted, 'Approval policy is currently never. Do not provide the sandbox_permissions for any reason'. Writable roots were /private/tmp, the workspace, and $TMPDIR; with both exclusions only the workspace remained"
+    },
+    {
+      "id": "p14",
+      "intent": "Resume from a different directory",
+      "command": "cd <other-git-dir>; codex exec resume <p10-thread> -m gpt-6-luna -c sandbox_mode=\"read-only\" -c approval_policy=\"never\" --json - <<< 'Run pwd'",
+      "observed": "exit 0; turn_context cwd and the pwd output were the new directory, not the thread's original workspace. From a non-git untrusted directory the resume exited 1 with the trusted-directory error"
+    },
+    {
+      "id": "p15",
+      "intent": "--output-schema with -o, --ignore-user-config, -s workspace-write",
+      "command": "codex exec --ignore-user-config -m gpt-6-luna -s workspace-write --output-schema schema.json -o last.json --json - <<< '<list files>'",
+      "observed": "exit 0; last.json held a schema-conforming object; turn_context workspace-write with network_access false, no writable_roots, approval never, reviewer user"
+    },
+    {
+      "id": "p17",
+      "intent": "SIGINT to the codex launcher during `sleep 25`, then resume",
+      "command": "codex exec --ignore-user-config ... & ...; kill -INT $!; then codex exec resume <thread> --ignore-user-config ...",
+      "observed": "exit 1; events end at item.started; stderr 'failed to record rollout items: thread ... not found'; resume exit 0 with turn.completed"
+    },
+    {
+      "id": "p18",
+      "intent": "Resume a --ignore-user-config thread without re-passing the flag",
+      "command": "codex exec resume <p15-thread> -m gpt-6-luna -c sandbox_mode=\"read-only\" -c approval_policy=\"never\" --json - <<< 'Reply OK'",
+      "observed": "exit 0; the new turn_context personality changed from pragmatic to the user config's friendly, so the user config loaded again"
+    },
+    {
+      "id": "e1",
+      "intent": "Token usage across a resumed turn (observed during evaluation round iter1, scenario C)",
+      "command": "codex exec ... then codex exec resume <thread> ... (both --ignore-user-config, workspace-write, never)",
+      "observed": "first turn.completed usage.input_tokens 82460; resumed turn.completed usage.input_tokens 174198; rollout token_count total_token_usage.input_tokens rose from 82460 at the end of the first turn to 174198 over four requests in the resumed turn while last_token_usage stayed near 23000 per request. turn.completed.usage is the thread's running total"
+    },
+    {
+      "id": "e2",
+      "intent": "sandbox_policy shape without extra roots (p15 and evaluation iter1-A)",
+      "command": "codex exec --ignore-user-config -s workspace-write -c 'sandbox_workspace_write.exclude_slash_tmp=true' ...",
+      "observed": "turn_context.sandbox_policy was {type: workspace-write, network_access: false, exclude_tmpdir_env_var: false, exclude_slash_tmp: true} with no writable_roots key; effort was null when no reasoning effort was set"
+    },
+    {
+      "id": "e3",
+      "intent": "Workspace under /tmp with exclude_slash_tmp (evaluation iter2-A and iter2-C)",
+      "command": "cd /private/tmp/.../workspace; codex exec --ignore-user-config -s workspace-write -c 'approval_policy=\"never\"' -c 'sandbox_workspace_write.exclude_slash_tmp=true' ...",
+      "observed": "edits in the workspace landed; permission_profile listed the workspace with write access, $TMPDIR with write access, no slash_tmp entry, and .git/.agents/.codex read-only"
+    },
+    {
+      "id": "e4",
+      "intent": "Find sandbox denials and escalation requests in the rollout",
+      "command": "jq -c 'select(.type==\"response_item\" and (.payload.type | test(\"call\")))' <rollout> | grep -oE 'operation not permitted|require_escalated'",
+      "observed": "on the p2 thread: 1 operation not permitted and 1 require_escalated in custom_tool_call / custom_tool_call_output records; on the p3 thread (p3 and p5 turns): 2 operation not permitted. The records wrap tools.exec_command calls in custom_tool_call arguments"
+    },
+    {
+      "id": "e5",
+      "intent": "Helper end to end with the real CLI: snapshot, run, compare, accepted snapshot, resume, compare",
+      "command": "codex-delegate.sh snapshot ws run/baseline; run --run-dir run --workspace ws --model gpt-6-luna --sandbox workspace-write --brief b1; compare run/baseline ws; snapshot ws run/accepted-1; resume --run-dir run --brief b2; compare run/accepted-1 ws",
+      "observed": "turn 1 completed with no mismatches (workspace-write, network off, exclude_slash_tmp true, approval never); compare showed only the apply_discount line; turn 2 resumed the same thread with the stored flags, completed with no mismatches, usage_turn 61759 of a 160566 total; compare against accepted-1 showed only the bulk_total loop; caller tests OK"
+    },
+    {
+      "id": "e6",
+      "intent": "Token accounting and stderr across an interrupted turn (evaluation holdout H)",
+      "command": "helper run (brief starts with sleep 45); helper stop about 10 s after the sleep started; helper resume with a delta brief",
+      "observed": "turn 1: exit 0, last event item.started, status interrupted; the orphaned sleep was recorded and later exited. turn 2: turn.completed usage.input_tokens 83876 while the rollout's token_usage_record showed turn 1 = 19702 and thread total 103578, so turn.completed.usage omitted the interrupted turn. stderr of turn 2 repeated 'Custom tool call output is missing for call id <interrupted call>' and the turn completed"
+    },
+    {
+      "id": "e7",
+      "intent": "Host wait behavior for Claude Code subagent callers (evaluation iter7-A, iter7-C, iter8-A, iter10-A)",
+      "command": "a Claude Code subagent started the helper as a background Bash task and ended its turn",
+      "observed": "each subagent was re-invoked by the background task's exit notification and continued with the result; no polling was needed"
+    },
+    {
+      "id": "e8",
+      "intent": "reap after a SIGTERM stop (evaluation iter10-H)",
+      "command": "helper stop during `sleep 45`; helper reap",
+      "observed": "reap.log: two recorded codex children already gone, 'signaled <pid> sleep 45' for the orphaned sleep; leftover_pids became empty; usage_turn 20009 for the interrupted turn and 85964 for the resumed turn, thread total 105973"
+    }
+  ],
+  "notProbed": [
+    "Hook trust behavior and --dangerously-bypass-hook-trust",
+    "danger-full-access and --dangerously-bypass-approvals-and-sandbox",
+    "file_change, mcp_tool_call, web_search, and todo_list item shapes (documented item categories)",
+    "API-key authentication (CODEX_API_KEY)",
+    "Nested sandboxing when the host itself runs Codex inside another sandbox"
+  ]
+}

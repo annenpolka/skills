@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "target": "codex-delegate",
+  "shippedCandidate": "v10 + post-round polish",
+  "shippedAt": "2026-09-23",
+  "skillDir": "codex-delegate",
+  "files": {
+    "SKILL.md": "be7f3a9fed3294f235f6b8d9bc6600dcb5083adeac43d65e552db95fc561092a",
+    "references/cli-contract.md": "6ec2cc9fbaf8acff0e702428bb17e95bdebf36731e7a78a984a479ebc9a121e5",
+    "references/constraints.md": "4b2659983759e9845ee9f8cf3598410c32ec8592b3ca71b98112a4ce655078be",
+    "references/helper.md": "41938b3829b7f04ed7c244a81e11f5acd348f5843acc7eb1fe6b449e21d70d44",
+    "references/validation.json": "2ea2ad87354d8943eaf079c3ac53af8ec8a3345d9ce9d26e4c834b6332841414",
+    "scripts/codex-delegate.sh": "dd88d55152bdea0031b1f264d1c6fcc65ac2a7a198f814079c0730d34e0755b1",
+    "tests/fake-codex": "9ea17742e57adc34755fc1e36666a35ff14aa19b83d78e3cc334c0069911a6ba",
+    "tests/run-tests.sh": "d3b684e79503a691b919f61f28639dcd14cf6f69b59fde6574d7c291fa612558",
+    "agents/openai.yaml": "43672c23c23533b19ff2d68d8ddc873fe4796158a100dbf98958227e645d1bae"
+  },
+  "candidateSkillSha256": {
+    "v1": "54ba77eced1d1f1361a7136bea851d9355922a0982e88cb38b93af0adb81838b",
+    "v2": "09e6b0337cc317daad1f741a6f150a5b24de736950831c6a6229389dfd59f586",
+    "v3": "0726d333ac911300326319083f79f42910ebd36e83dcbfd5c7c9055109f8f412",
+    "v4": "c232832d35d0ecbbbf88577be6ea740d38c8d05845ffc79baf83341aeef42b37",
+    "v5": "c5d46a6fd4c7213745955149962084b0d6f75c913902a40f7845db2f2610521e",
+    "v6": "1bae6ba04cb7cb656cbed9cae4f241b78ce2a9e4508ad8cfc7c20faf3b6ac25e",
+    "v7": "1910b6c7eb403a19289cb07305b6e85d2435966a8ef36160cc5224e5ee2c37cd",
+    "v8": "3534a6b332a28f27fd86f8fde29cf360def88fcc40e2b933a67799752bb3f05e",
+    "v9": "aa88f6a12c08f38f5aab88387383382f44c1ee6e888b8244001bfc385b41dac7",
+    "v10": "10cbff7dc446ba28e4b08bcd44ae75a835699d202ccdc26e28a1fb45a0e77915"
+  },
+  "verification": {
+    "executorRounds": 10,
+    "allRoundsSuccess": true,
+    "holdout": "H passed 5/5 at first use (iter9)",
+    "helperTests": "64/64 (bash tests/run-tests.sh)",
+    "convergence": "not reached; stopped by resource cutoff"
+  }
+}

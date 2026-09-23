@@ -1,0 +1,294 @@
+{
+  "schemaVersion": 1,
+  "target": "codex-delegate",
+  "executor": "Claude Code general-purpose subagent, fresh per scenario and round",
+  "reviewer": "parent: independent file-hash comparison against parent-held baselines, test reruns in a copy, and rollout turn_context inspection for every thread",
+  "method": "Fixed scenarios and checklists frozen in scenarios.json before dispatch; real codex exec runs (gpt-6-luna, ChatGPT login, CLI 0.155.1) against small fixtures; self-reported unclear points adjudicated by the parent before they count.",
+  "canonicalTaskMetrics": {
+    "source": "tool_uses and duration_ms from the Agent task notifications"
+  },
+  "stopping": "Resource cutoff. Every round met every requirement (accuracy 100%), but new skill-attributed unclear points never reached zero (13, 9, 10, 8, 8, 5, 6, 7, 10, 11). After v5 the divergence rule triggered the helper rewrite; later points were progressively lower severity. The holdout scenario H passed 5/5 on first use (iter9).",
+  "shippedAfterEvaluation": "v10 plus post-round polish from iter10 findings (see README); the polish was verified by the helper tests (64/64) and a live run, not by another executor round.",
+  "rounds": [
+    {
+      "round": "iter1",
+      "candidate": "v1",
+      "change": "baseline; raw codex exec templates in SKILL.md",
+      "scenarios": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 25,
+          "duration_ms": 274871
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 23,
+          "duration_ms": 200412
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 23,
+          "duration_ms": 260082
+        }
+      },
+      "newSkillAttributedUnclearPoints": 13
+    },
+    {
+      "round": "iter2",
+      "candidate": "v2",
+      "change": "caller-owned evidence first and out of the delegate's reach; usage and field-omission corrections",
+      "scenarios": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 29,
+          "duration_ms": 254106
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 29,
+          "duration_ms": 298705
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 28,
+          "duration_ms": 234544
+        }
+      },
+      "newSkillAttributedUnclearPoints": 9
+    },
+    {
+      "round": "iter3",
+      "candidate": "v3",
+      "change": "numbered Prepare, complete templates with a flag array, watchdog, descendants, denial grep",
+      "scenarios": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 24,
+          "duration_ms": 222083
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 28,
+          "duration_ms": 292578
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 34,
+          "duration_ms": 300932
+        }
+      },
+      "newSkillAttributedUnclearPoints": 10
+    },
+    {
+      "round": "iter4",
+      "candidate": "v4",
+      "change": "brief fields per task type, unified delta brief, polling watchdog, file-based thread ID",
+      "scenarios": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 20,
+          "duration_ms": 181718
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 28,
+          "duration_ms": 258791
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 26,
+          "duration_ms": 274594
+        }
+      },
+      "newSkillAttributedUnclearPoints": 8
+    },
+    {
+      "round": "iter5",
+      "candidate": "v5",
+      "change": "verification-protocol precision",
+      "scenarios": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 27,
+          "duration_ms": 287130
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 27,
+          "duration_ms": 260218
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 38,
+          "duration_ms": 331805
+        }
+      },
+      "newSkillAttributedUnclearPoints": 8
+    },
+    {
+      "round": "iter6",
+      "candidate": "v6",
+      "change": "structural rewrite: scripts/codex-delegate.sh (divergence rule after 10, 8, 8)",
+      "scenarios": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 24,
+          "duration_ms": 217151
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 31,
+          "duration_ms": 351986
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 27,
+          "duration_ms": 260919
+        }
+      },
+      "newSkillAttributedUnclearPoints": 5
+    },
+    {
+      "round": "iter7",
+      "candidate": "v7",
+      "change": "run-dir first, commands list, check polling, dry-run fix",
+      "scenarios": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 25,
+          "duration_ms": 270496
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 21,
+          "duration_ms": 210252
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 24,
+          "duration_ms": 245519
+        }
+      },
+      "newSkillAttributedUnclearPoints": 6
+    },
+    {
+      "round": "iter8",
+      "candidate": "v8",
+      "change": "rollout tool_calls, numbered Verify steps, observable wait criterion",
+      "scenarios": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 25,
+          "duration_ms": 272942
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 21,
+          "duration_ms": 206468
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 24,
+          "duration_ms": 278739
+        }
+      },
+      "newSkillAttributedUnclearPoints": 7
+    },
+    {
+      "round": "iter9",
+      "candidate": "v9",
+      "change": "polish; holdout H first used",
+      "scenarios": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 26,
+          "duration_ms": 290658
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 29,
+          "duration_ms": 267868
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 25,
+          "duration_ms": 256587
+        },
+        "H": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 37,
+          "duration_ms": 441672
+        }
+      },
+      "newSkillAttributedUnclearPoints": 10
+    },
+    {
+      "round": "iter10",
+      "candidate": "v10",
+      "change": "per-turn rollout attribution, usage from token_usage_record, reap; H rerun as a regression check",
+      "scenarios": {
+        "A": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 26,
+          "duration_ms": 264677
+        },
+        "B": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 23,
+          "duration_ms": 225595
+        },
+        "C": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 27,
+          "duration_ms": 282800
+        },
+        "H": {
+          "success": "○",
+          "accuracy": 100,
+          "tool_uses": 36,
+          "duration_ms": 349120
+        }
+      },
+      "newSkillAttributedUnclearPoints": 11
+    }
+  ],
+  "limitations": [
+    "Fixtures are small (one module plus tests); the evaluation measures the delegation protocol, not coding quality at scale.",
+    "The requirements checklist is shown to executors, so some items can be satisfied from the checklist itself; qualitative self-reports carry the instruction-side signal.",
+    "All runs used one machine, one user Codex config (workspace-write, on-request, automatic reviewer), one model (gpt-6-luna), and ChatGPT login; API-key auth, Linux, and WSL were not exercised.",
+    "Executors ran as subagents of the parent session; parallel scenarios shared the machine, and one executor's process check once matched another scenario's run (iter1-A).",
+    "Holdout H was used once as a true holdout (iter9) and again as a regression check (iter10) after the helper gained reap.",
+    "Unclear points were counted by the parent after removing duplicates and executor-attributed shell mistakes; counts are approximate."
+  ]
+}
