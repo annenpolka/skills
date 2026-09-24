@@ -84,6 +84,41 @@
       "generalFixRule": "Build a dry-run printout from the same argument array as the real launch and test that they match.",
       "fix": "v7 dry-run fix and test.",
       "fixStatus": "resolved"
+    },
+    {
+      "name": "Load boundary also dropped the platform's sandbox implementation",
+      "seenIn": ["windows-2026-09-24"],
+      "generalFixRule": "When stripping the user config, carry the keys that choose how the requested boundary is implemented (not what it allows), and warn when they are missing.",
+      "fix": "Helper re-passes [windows] sandbox from config.toml under --ignore-user-config; tests for carry, resume, explicit override, --keep-user-config, and the warning.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Helper plumbing assumed POSIX tools",
+      "seenIn": ["windows-2026-09-24"],
+      "generalFixRule": "Pass data between tools through files rather than /dev/fd paths, fix line endings at the tool boundary, and run the helper tests on every supported host shell.",
+      "fix": "Events slurped from a file, jq --binary for a native jq.exe, /proc in place of pgrep and ps -o, sha256sum's '*' marker normalized; 28 failing tests on Git Bash now pass.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Stop signal that never reached the delegate",
+      "seenIn": ["windows-2026-09-24"],
+      "generalFixRule": "End a delegate with the platform's own process-tree mechanism and confirm the child is gone.",
+      "fix": "On Windows, stop and the time limit end the launcher's process tree with taskkill /T /F; native descendants recorded as w<WINPID>; test with a native child under the fake codex.",
+      "fixStatus": "resolved (a live codex.exe timeout was not probed)"
+    },
+    {
+      "name": "Path spelling reported as a settings mismatch",
+      "seenIn": ["windows-2026-09-24"],
+      "generalFixRule": "Normalize paths for the platform before calling a setting mismatched; keep a test for a genuinely different directory.",
+      "fix": "cwd compared after normalizing Windows spellings; tests for the backslash form and for another directory.",
+      "fixStatus": "resolved"
+    },
+    {
+      "name": "Sandbox read denied by a filesystem ACL",
+      "seenIn": ["windows-2026-09-24"],
+      "generalFixRule": "Treat a denied read as a scope or authorization question for the user; never relocate the data to get past the sandbox.",
+      "fix": "Documented in SKILL.md step 5 and constraints.md (Windows); denial_count now counts the Windows messages.",
+      "fixStatus": "documented"
     }
   ],
   "nonBlockingObservations": [

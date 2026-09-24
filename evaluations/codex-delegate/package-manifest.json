@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
   "target": "codex-delegate",
-  "shippedCandidate": "v10 + post-round polish",
-  "shippedAt": "2026-09-23",
+  "shippedCandidate": "v10 + post-round polish + Windows port",
+  "shippedAt": "2026-09-24",
   "skillDir": "codex-delegate",
   "files": {
-    "SKILL.md": "be7f3a9fed3294f235f6b8d9bc6600dcb5083adeac43d65e552db95fc561092a",
+    "SKILL.md": "c0ebcebd366f69f3d4fab72e86dc2c001f9f0757d5435b47cd3a3c964376de57",
     "references/cli-contract.md": "6ec2cc9fbaf8acff0e702428bb17e95bdebf36731e7a78a984a479ebc9a121e5",
-    "references/constraints.md": "4b2659983759e9845ee9f8cf3598410c32ec8592b3ca71b98112a4ce655078be",
-    "references/helper.md": "41938b3829b7f04ed7c244a81e11f5acd348f5843acc7eb1fe6b449e21d70d44",
-    "references/validation.json": "2ea2ad87354d8943eaf079c3ac53af8ec8a3345d9ce9d26e4c834b6332841414",
-    "scripts/codex-delegate.sh": "dd88d55152bdea0031b1f264d1c6fcc65ac2a7a198f814079c0730d34e0755b1",
-    "tests/fake-codex": "9ea17742e57adc34755fc1e36666a35ff14aa19b83d78e3cc334c0069911a6ba",
-    "tests/run-tests.sh": "d3b684e79503a691b919f61f28639dcd14cf6f69b59fde6574d7c291fa612558",
+    "references/constraints.md": "52c6bbec9f1913c222aec3f702c4712d2a117936a27bef7d4e2ea5216fa43ac6",
+    "references/helper.md": "38f968b67104e0ca0f46c1667bfdee615f0923e0d297802b96a892e03ca4f919",
+    "references/validation.json": "742012d9623f0b1f4adc678185701a32cb9ee0104f2535bfbeccc337081b6383",
+    "scripts/codex-delegate.sh": "bb1888222df77c8429d14edc847114be3f7dd32dfe78e1032c57d816b8ee6a1c",
+    "tests/fake-codex": "7254845221b2fe9f0b728a9de850a281201ff53053e3c14973f2d42e00fc8a36",
+    "tests/run-tests.sh": "5e422d88fbb2eab035b2f2ed76ea0075afe52de6dd9c0c11f4d4f9080be3f191",
     "agents/openai.yaml": "43672c23c23533b19ff2d68d8ddc873fe4796158a100dbf98958227e645d1bae"
   },
   "candidateSkillSha256": {
@@ -33,5 +33,16 @@
     "holdout": "H passed 5/5 at first use (iter9)",
     "helperTests": "64/64 (bash tests/run-tests.sh)",
     "convergence": "not reached; stopped by resource cutoff"
+  },
+  "windowsPort": {
+    "date": "2026-09-24",
+    "source": "live read-only delegations from Git Bash on Windows 11 (codex-cli 0.156.1, gpt-6-astra) and probes w1-w6 in references/validation.json",
+    "helperTests": {
+      "windowsGitBash": "75 passed, 0 failed (36/64 before the port)",
+      "linuxWsl": "65 passed, 0 failed, 2 Windows-only skipped (Ubuntu under WSL, jq 1.7.1)",
+      "macOS": "not re-run"
+    },
+    "mutationCheck": "with the taskkill tree ending and the windows.sandbox carry removed, 4 of the new tests failed",
+    "executorRounds": "none; the port was not re-evaluated with fresh executors"
   }
 }

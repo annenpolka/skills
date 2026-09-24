@@ -8,7 +8,8 @@ description: Delegate implementation, investigation, review, or consultation to 
 The caller owns the brief, sandbox choice, acceptance, integration, and the final answer.
 Codex is the executor; its closing message is not evidence. Read referenced files relative to
 this file, and run the helper as `bash <skill-dir>/scripts/codex-delegate.sh` (below: `helper`).
-It needs bash, `jq`, and the Codex CLI on macOS/Linux/WSL.
+It needs bash, `jq`, and the Codex CLI on macOS/Linux/WSL, or Git Bash/MSYS2 on Windows
+([Windows notes](references/constraints.md#windows-git-bash--msys2)).
 
 `codex exec` and `codex exec resume`, driven through the helper, are the only transport this
 skill uses. The interactive TUI, `codex cloud`, `codex exec review`, the MCP server, and plugin
@@ -49,7 +50,9 @@ in order.
    installed skills load either way. Inspect the target's `AGENTS.md`, `.codex/`, and current
    changes; you need not read the global `AGENTS.md`, but state in the brief what it could
    change, such as the reply language (a closing message came back in Japanese with no language
-   instruction; observed).
+   instruction; observed). On Windows the helper re-passes the config's `[windows] sandbox`,
+   which picks the sandbox implementation; without it every command was rejected as
+   `blocked by policy` (observed), so heed the helper's warning when the key is missing.
 
 5. **Choose the sandbox.** `workspace-write` for implementation reviewed after the fact (writes
    limited to the working directory, `/tmp`, and `$TMPDIR`; `.git`, `.codex`, and `.agents` stay
@@ -58,7 +61,10 @@ in order.
    can fail. The helper pins the approval policy to `never` on every turn: with `on-request` and
    an automatic approvals reviewer, a `-s read-only` run requested escalation and the reviewer
    approved a file write (observed). The helper refuses `danger-full-access`; that belongs only
-   in a container or VM, outside this skill.
+   in a container or VM, outside this skill. On Windows the sandbox runs commands as a separate
+   local account, and a directory whose ACL leaves it out reads as `Access ... is denied` even
+   in `read-only` (observed); settle access with the user rather than copying the files to a
+   place the sandbox can read.
 
 6. **Write the brief** to a file outside the workspace, next to the run directory. Give every
    field; write "none" where one does not apply:
@@ -110,7 +116,8 @@ bash <skill-dir>/scripts/codex-delegate.sh run \
   `helper check --run-dir <dir>` until it stops exiting 3 (running). Use one of the two per turn, and never start a second run because
   the first yielded.
 - `--limit` is the host-side time limit in seconds; size it to the task. To stop a turn
-  yourself, run `helper stop --run-dir <dir>`, which records the launcher's descendants first.
+  yourself, run `helper stop --run-dir <dir>`, which records the launcher's descendants first
+  (on Windows it also ends the launcher's native process tree, which no signal reaches).
 
 To continue the thread — a correction, an interrupted turn, or a planned next phase — first run
 `helper snapshot <target> <run-dir>/accepted-<N>`, where N is the latest turn whatever its

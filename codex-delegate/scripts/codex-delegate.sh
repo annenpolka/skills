@@ -7,6 +7,14 @@ set -eo pipefail
 PROG=$(basename "$0")
 SCHEMA=codex-delegate.result.v1
 
+# Git Bash, MSYS2, and Cygwin on Windows. A native jq.exe there writes CRLF, which leaks "\r" into
+# $(...) and `read`, unless it gets --binary; a jq that rejects the flag is left as it is.
+IS_WIN=0
+case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) IS_WIN=1 ;; esac
+JQ_FLAGS=()
+[ "$IS_WIN" = 1 ] && command jq -b -n 1 >/dev/null 2>&1 && JQ_FLAGS=(-b)
+jq() { command jq ${JQ_FLAGS[@]+"${JQ_FLAGS[@]}"} "$@"; }
+
 die() { echo "$PROG: $*" >&2; exit 2; }
 usage() {
   cat <<'EOF'
@@ -57,9 +65,10 @@ list_tree() {  # $1 = directory; prints sorted "TYPE MODE ./path" lines
   rm -rf "$t"
 }
 sum_tree() {  # $1 = directory; prints sorted "HASH  ./path" for regular files
+  # sed: Git Bash's sha256sum marks binary mode as "HASH *./path"
   (cd "$1" && find . -type f -exec sh -c \
     'if command -v sha256sum >/dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi' _ {} + \
-    | LC_ALL=C sort -k2)
+    | sed -E 's/^([0-9a-f]+) \*/\1  /' | LC_ALL=C sort -k2)
 }
 cmd_snapshot() {
   [ $# -eq 2 ] || { usage >&2; exit 2; }
@@ -107,9 +116,74 @@ cmd_compare() {
 }
 
 # ---------------------------------------------------------------- run / resume / check
-descendants() { local c; for c in $(pgrep -P "$1" 2>/dev/null); do echo "$c"; descendants "$c"; done; }
-record_descendants() {  # $1 = pid, $2 = file; writes "PID COMMAND" lines
-  local p; for p in $(descendants "$1"); do printf '%s %s\n' "$p" "$(ps -o command= -p "$p" 2>/dev/null)"; done > "$2"
+# Processes. POSIX: pgrep and ps. On Windows, MSYS/Cygwin processes come from /proc, and native
+# Windows processes (codex.exe and the commands it starts) from the Win32 process tree, recorded
+# as "w<WINPID>". A signal to the MSYS launcher does not reach them, so they end with taskkill.
+children() {
+  if command -v pgrep >/dev/null 2>&1; then pgrep -P "$1" 2>/dev/null || true
+  elif [ -r "/proc/$1/ppid" ]; then
+    local d pp; for d in /proc/[0-9]*; do
+      { read -r pp < "$d/ppid"; } 2>/dev/null || continue
+      [ "$pp" = "$1" ] && echo "${d#/proc/}"
+    done
+  fi
+  return 0
+}
+descendants() { local c; for c in $(children "$1"); do echo "$c"; descendants "$c"; done; }
+proc_cmd() {  # current command line of a PID; empty when it is gone
+  if [ "$IS_WIN" = 1 ]; then
+    [ -r "/proc/$1/cmdline" ] && tr '\0' ' ' < "/proc/$1/cmdline" 2>/dev/null | sed 's/ $//'
+  else ps -o command= -p "$1" 2>/dev/null; fi
+  return 0
+}
+win_procs() {  # every Windows process as "WINPID<TAB>PARENT<TAB>CREATED<TAB>COMMANDLINE"
+  MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' powershell.exe -NoProfile -NonInteractive -Command \
+    '[Console]::OutputEncoding = [Text.Encoding]::UTF8; Get-CimInstance Win32_Process | ForEach-Object {
+       $c = if ($_.CreationDate) { $_.CreationDate.ToFileTimeUtc() } else { 0 }
+       "{0}`t{1}`t{2}`t{3}" -f $_.ProcessId, $_.ParentProcessId, $c, "$($_.CommandLine)".Trim() }' 2>/dev/null \
+    | tr -d '\r'
+}
+win_tree() {  # $1 = root WINPIDs, $2 = WINPIDs to leave out; prints "WINPID COMMANDLINE" per descendant
+  win_procs | awk -F '\t' -v roots="$1" -v skip="$2" '
+    { p = $1; par[p] = $2; st[p] = $3 + 0; cmd[p] = substr($0, length($1) + length($2) + length($3) + 4); ord[n++] = p }
+    END {
+      k = split(roots, r, " "); for (i = 1; i <= k; i++) { keep[r[i]] = 1; out[r[i]] = 1 }
+      k = split(skip, s, " "); for (i = 1; i <= k; i++) out[s[i]] = 1
+      do { ch = 0
+        for (i = 0; i < n; i++) { p = ord[i]; q = par[p]   # a reused parent PID is newer than the child
+          if (!(p in keep) && (q in keep) && p != q && (q in st) && st[p] >= st[q]) { keep[p] = 1; ch = 1 } }
+      } while (ch)
+      for (i = 0; i < n; i++) { p = ord[i]; if ((p in keep) && !(p in out)) print p, cmd[p] }
+    }'
+}
+record_descendants() {  # $1 = pid, $2 = file; writes "PID COMMAND" lines ("w<WINPID> COMMAND" for native Windows)
+  local p w list wins=""
+  list=$(descendants "$1")
+  { for p in $list; do printf '%s %s\n' "$p" "$(proc_cmd "$p")"; done
+    if [ "$IS_WIN" = 1 ]; then
+      for p in "$1" $list; do w=$(cat "/proc/$p/winpid" 2>/dev/null) && wins="$wins $w"; done
+      [ -z "$wins" ] || win_tree "$wins" "$wins" | sed 's/^/w/'
+    fi
+  } > "$2"
+}
+terminate_launcher() {  # $1 = launcher pid. On Windows also ends its Win32 process tree
+  local w
+  if [ "$IS_WIN" = 1 ] && w=$(cat "/proc/$1/winpid" 2>/dev/null); then
+    MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' taskkill /T /F /PID "$w" >/dev/null 2>&1 || true
+  fi
+  kill -TERM "$1" 2>/dev/null || true
+}
+leftovers() {  # $1 = descendants file; prints each recorded ID that is still alive (by PID)
+  local p _ wins=""
+  grep -q '^w' "$1" && wins=$(win_procs | cut -f1)
+  while read -r p _; do
+    [ -n "$p" ] || continue
+    case "$p" in
+      w*) printf '%s\n' "$wins" | grep -qx "${p#w}" && echo "$p" ;;
+      *) kill -0 "$p" 2>/dev/null && echo "$p" ;;
+    esac
+  done < "$1"
+  return 0
 }
 latest_turn() { local n=0; while [ -d "$1/turn-$((n + 1))" ]; do n=$((n + 1)); done; echo $n; }
 rollout_for() {
@@ -149,14 +223,15 @@ check_turn() {  # $1 = run dir, $2 = turn number; writes turn-N/result.json and 
                | {type, name, input: $in[0:400], input_length: ($in | length), truncated: (($in | length) > 400)}' \
       "$td/.segment.jsonl" | jq -sc '.')
     denials=$(jq -c 'select(.type=="response_item" and ((.payload.type // "") | test("call")))' "$td/.segment.jsonl" \
-      | grep -cE 'operation not permitted|Permission denied|Read-only file system|require_escalated' || true)
+      | grep -cE 'operation not permitted|Permission denied|Read-only file system|require_escalated|Access (to the path .* )?is denied|UnauthorizedAccess|blocked by policy' || true)
     rm -f "$td/.segment.jsonl"
   fi
-  [ "$n" -gt 1 ] && [ -f "$rd/turn-$((n - 1))/result.json" ] && prev=$(jq -c '.usage_total' "$rd/turn-$((n - 1))/result.json")
+  [ "$n" -gt 1 ] && [ -s "$rd/turn-$((n - 1))/result.json" ] && prev=$(jq -c '.usage_total' "$rd/turn-$((n - 1))/result.json")
   if [ -f "$td/descendants.txt" ]; then
-    alive=$(while read -r p _; do [ -n "$p" ] && kill -0 "$p" 2>/dev/null && echo "$p"; done < "$td/descendants.txt" \
-      | jq -R 'tonumber' | jq -sc '.')
+    alive=$(leftovers "$td/descendants.txt" | jq -R 'tonumber? // .' | jq -sc '.')
   fi
+  # A file rather than <(...): a native Windows jq cannot open the MSYS /proc/<pid>/fd path.
+  jq -cR 'fromjson? // empty' "$td/events.jsonl" > "$td/.events.json" 2>/dev/null || : > "$td/.events.json"
   jq -n --arg schema "$SCHEMA" --argjson turn "$n" --arg code "$code" --arg tid "$tid" \
     --arg rollout "$rollout" --argjson ctx "$ctx" --argjson denials "${denials:-null}" \
     --argjson prev "$prev" --argjson alive "$alive" --argjson tools "$tools" --argjson usagerec "$usagerec" \
@@ -164,7 +239,11 @@ check_turn() {  # $1 = run dir, $2 = turn number; writes turn-N/result.json and 
     --argjson stopped "$([ -e "$td/stopped" ] && echo true || echo false)" \
     --argjson limit "$(cat "$td/limit.txt" 2>/dev/null || echo null)" \
     --slurpfile settings "$settings" \
-    --slurpfile events <(jq -cR 'fromjson? // empty' "$td/events.jsonl" 2>/dev/null || true) '
+    --slurpfile events "$td/.events.json" '
+    # Windows spellings of one directory: drive with either slash, /c/..., /cygdrive/c/...
+    def normpath: gsub("\\\\"; "/") | sub("^/(cygdrive/)?(?<d>[A-Za-z])/"; "\(.d):/")
+      | if test("^[A-Za-z]:/") then ascii_downcase else . end
+      | if length > 1 and endswith("/") then .[:-1] else . end;
     $settings[0] as $s
     | ($events | map(.type)) as $types
     | ([$events[] | select(.type=="turn.failed" or .type=="error")
@@ -176,7 +255,7 @@ check_turn() {  # $1 = run dir, $2 = turn number; writes turn-N/result.json and 
     | ($types | last) as $last_event
     | {cwd: $s.workspace, model: $s.model, approval_policy: "never", sandbox: $s.sandbox} as $expected
     | (if $ctx == null then ["no turn_context found in the rollout"] else
-        [ (if $ctx.cwd != $expected.cwd then "cwd \($ctx.cwd) != \($expected.cwd)" else empty end),
+        [ (if ($ctx.cwd | normpath) != ($expected.cwd | normpath) then "cwd \($ctx.cwd) != \($expected.cwd)" else empty end),
           (if $ctx.model != $expected.model then "model \($ctx.model) != \($expected.model)" else empty end),
           (if $ctx.approval_policy != "never" then "approval_policy \($ctx.approval_policy) != never" else empty end),
           (if $ctx.sandbox_policy.type != $expected.sandbox then "sandbox \($ctx.sandbox_policy.type) != \($expected.sandbox)" else empty end) ]
@@ -204,6 +283,7 @@ check_turn() {  # $1 = run dir, $2 = turn number; writes turn-N/result.json and 
         paths: {brief: "\($s.run_dir)/turn-\($turn)/brief.txt", events: "\($s.run_dir)/turn-\($turn)/events.jsonl",
                 stderr: "\($s.run_dir)/turn-\($turn)/stderr.log", last_message: "\($s.run_dir)/turn-\($turn)/last-message.txt"}
       }' > "$td/result.json.tmp"
+  rm -f "$td/.events.json"
   mv "$td/result.json.tmp" "$td/result.json"
   jq -r '.status' "$td/result.json"
 }
@@ -226,7 +306,7 @@ dispatch() {  # $1 = run dir, $2 = turn number, $3 = limit, $4 = dry-run flag, r
   pid=$!; echo "$pid" > "$td/launcher.pid"
   ( i=0; while kill -0 "$pid" 2>/dev/null; do
       if [ "$i" -ge "$limit" ]; then record_descendants "$pid" "$td/descendants.txt"
-        touch "$td/timed-out"; kill -TERM "$pid"; break; fi
+        touch "$td/timed-out"; terminate_launcher "$pid"; break; fi
       sleep 1; i=$((i + 1)); done ) >/dev/null 2>&1 &
   set +e; wait "$pid"; code=$?; set -e
   echo "$code" > "$td/exit_code.txt"
@@ -236,6 +316,17 @@ dispatch() {  # $1 = run dir, $2 = turn number, $3 = limit, $4 = dry-run flag, r
   status=$(check_turn "$rd" "$n")
   echo "turn $n: $status  result=$td/result.json"
   [ "$status" = completed ]
+}
+
+win_sandbox_setting() {  # the user's [windows] sandbox value; reads only that key of config.toml
+  local cfg="${CODEX_HOME:-$HOME/.codex}/config.toml"
+  [ -f "$cfg" ] || return 0
+  tr -d '\r' < "$cfg" | awk '
+    BEGIN { top = 1 }
+    /^[[:space:]]*\[/ { top = 0; t = ($0 ~ /^[[:space:]]*\[windows\][[:space:]]*(#.*)?$/); next }
+    (t && /^[[:space:]]*sandbox[[:space:]]*=/) || (top && /^[[:space:]]*windows\.sandbox[[:space:]]*=/) {
+      sub(/^[^=]*=[[:space:]]*/, ""); sub(/[[:space:]]*(#.*)?$/, ""); gsub(/["'\'']/, ""); print; exit }' \
+    | grep -E '^[A-Za-z_-]+$' || true
 }
 
 forbidden_extra() {
@@ -275,6 +366,16 @@ cmd_run() {
   under "$rdc" "$ws" && die "run directory must be outside the workspace"
   if [ "$dry" = 0 ]; then mkdir -p "$rdc" && chmod 700 "$rdc"; fi
   [ "$keep" = 1 ] || auto+=(--ignore-user-config)
+  # --ignore-user-config also drops [windows] sandbox, and without it every command is rejected
+  # ("blocked by policy", observed). It picks the sandbox implementation, not the sandbox mode.
+  if [ "$IS_WIN" = 1 ] && [ "$keep" = 0 ]; then
+    case " ${extra[*]-} " in *windows.sandbox*) ;; *)
+      local wsb; wsb=$(win_sandbox_setting)
+      if [ -n "$wsb" ]; then auto+=(-c "windows.sandbox=\"$wsb\"")
+      else echo "$PROG: warning: no [windows] sandbox in config.toml; Codex will reject every command" \
+        "(pass -- -c 'windows.sandbox=\"elevated\"' or set up the Windows sandbox)" >&2; fi ;;
+    esac
+  fi
   git -C "$ws" rev-parse --is-inside-work-tree >/dev/null 2>&1 || auto+=(--skip-git-repo-check)
   if [ "$sandbox" = workspace-write ]; then
     [ "$keep" = 1 ] && auto+=(-c 'sandbox_workspace_write.writable_roots=[]' -c 'sandbox_workspace_write.network_access=false')
@@ -356,24 +457,33 @@ cmd_stop() {
   n=$(latest_turn "$rd"); td="$rd/turn-$n"
   pid=$(cat "$td/launcher.pid" 2>/dev/null || true)
   [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null || die "turn $n is not running"
-  record_descendants "$pid" "$td/descendants.txt"; touch "$td/stopped"; kill -TERM "$pid"
-  echo "sent SIGTERM to $pid; descendants recorded in $td/descendants.txt"
+  record_descendants "$pid" "$td/descendants.txt"; touch "$td/stopped"; terminate_launcher "$pid"
+  if [ "$IS_WIN" = 1 ]; then echo "ended the Windows process tree of $pid and sent SIGTERM; descendants recorded in $td/descendants.txt"
+  else echo "sent SIGTERM to $pid; descendants recorded in $td/descendants.txt"; fi
 }
 
 cmd_reap() {
-  local rd="" n="" td p cmdline now
+  local rd="" n="" td p cmdline now wins=""
   while [ $# -gt 0 ]; do
     case "$1" in --run-dir) rd=$2; shift 2 ;; --turn) n=$2; shift 2 ;; *) usage >&2; die "unknown argument: $1" ;; esac
   done
   rd=$(canon_dir "$rd") || die "run directory not found"
   [ -n "$n" ] || n=$(latest_turn "$rd")
   td="$rd/turn-$n"; [ -f "$td/descendants.txt" ] || die "no descendants recorded for turn $n"
+  grep -q '^w' "$td/descendants.txt" && wins=$(win_procs)
   while read -r p cmdline; do
     [ -n "$p" ] || continue
-    now=$(ps -o command= -p "$p" 2>/dev/null || true)
+    case "$p" in
+      w*) now=$(printf '%s\n' "$wins" | awk -F '\t' -v p="${p#w}" '$1 == p {
+            print substr($0, length($1) + length($2) + length($3) + 4); exit }') ;;
+      *) now=$(proc_cmd "$p") ;;
+    esac
     if [ -z "$now" ]; then echo "gone $p"
-    elif [ "$now" = "$cmdline" ]; then kill -TERM "$p" 2>/dev/null && echo "signaled $p $cmdline" || echo "gone $p"
-    else echo "skipped $p (now: $now)"; fi
+    elif [ "$now" != "$cmdline" ]; then echo "skipped $p (now: $now)"
+    else case "$p" in  # Windows has no SIGTERM for a native process; taskkill /F ends it
+      w*) MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' taskkill /F /PID "${p#w}" >/dev/null 2>&1 ;;
+      *) kill -TERM "$p" 2>/dev/null ;;
+    esac && echo "signaled $p $cmdline" || echo "gone $p"; fi
   done < "$td/descendants.txt" | tee -a "$td/reap.log"
   sleep 1
   echo "turn $n: $(check_turn "$rd" "$n")  result=$td/result.json"

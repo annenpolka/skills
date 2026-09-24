@@ -173,5 +173,61 @@
     "file_change, mcp_tool_call, web_search, and todo_list item shapes (documented item categories)",
     "API-key authentication (CODEX_API_KEY)",
     "Nested sandboxing when the host itself runs Codex inside another sandbox"
-  ]
+  ],
+  "windows": {
+    "checkedAt": "2026-09-24",
+    "cliVersion": "codex-cli 0.156.1",
+    "environment": {
+      "os": "Windows 11 Home 10.0.26200",
+      "shell": "Git Bash (MSYS2 bash, Cygwin ps 3.6.7); jq 1.8.2 native jq.exe from scoop; no pgrep",
+      "codex": "scoop shim codex.exe (native PE)",
+      "authMethod": "ChatGPT login",
+      "model": "gpt-6-astra with model_reasoning_effort high, read-only consultations",
+      "userConfig": "[windows] sandbox = \"elevated\", approvals_reviewer auto_review; the helper's --ignore-user-config was in effect"
+    },
+    "probes": [
+      {
+        "id": "w1",
+        "intent": "read-only consultation with the helper's defaults (--ignore-user-config)",
+        "command": "helper run --sandbox read-only (no extra arguments)",
+        "observed": "Every exec_command was rejected: stderr 'exec_command failed: CreateProcess { message: \"Rejected(...pwsh.exe -Command ...) rejected: blocked by policy\" }'. The turn still completed (turn.completed last, exit 0) and the model answered from the brief alone. --ignore-user-config had dropped [windows] sandbox"
+      },
+      {
+        "id": "w2",
+        "intent": "the same with the sandbox implementation re-passed",
+        "command": "helper run --sandbox read-only -- -c 'windows.sandbox=\"elevated\"'",
+        "observed": "Commands ran (pwsh Get-Content, rg). turn_context: sandbox_policy read-only, approval never. The model also used the web_search tool once although the brief listed only local files"
+      },
+      {
+        "id": "w3",
+        "intent": "reading directories whose ACL leaves out the sandbox account",
+        "command": "Get-Content on files under a clone renamed from a Python 3.13 tempfile.mkdtemp() directory",
+        "observed": "'Access to the path ... is denied' (and a missing-path error for a sibling). icacls showed a protected ACL with OWNER RIGHTS, SYSTEM, and Administrators only; readable siblings carried <host>\\CodexSandboxUsers:(M) by inheritance. A git worktree of the same repository created normally was readable"
+      },
+      {
+        "id": "w4",
+        "intent": "helper bookkeeping under Git Bash with a native jq.exe",
+        "command": "helper run, then helper resume --dry-run",
+        "observed": "result.json was empty: jq could not open '--slurpfile events /proc/<pid>/fd/63' from process substitution. resume printed every stored argument with a trailing carriage return ($'--ignore-user-config\\r'): `read` from jq -r output keeps the CR, although $(...) in Git Bash dropped it. After a rebuilt result, status was settings_mismatch only because the rollout cwd used backslashes (C:\\Users\\...) and settings.json held C:/Users/..."
+      },
+      {
+        "id": "w5",
+        "intent": "does a signal to the MSYS launcher reach a native child",
+        "command": "( exec cmd //c \"ping -n 20 127.0.0.1 >nul\" ) & kill -TERM $!",
+        "observed": "wait returned 143 for the MSYS process, but cmd.exe and ping kept running with their parent gone. After exec of a native program, /proc/<pid>/winpid named the native process (cmd.exe, whose parent was the pre-exec MSYS process); after exec of an MSYS program the Windows process changed and its Windows parent link broke, while /proc/<pid>/ppid kept the MSYS relation"
+      },
+      {
+        "id": "w6",
+        "intent": "helper tests on Git Bash",
+        "command": "bash tests/run-tests.sh",
+        "observed": "Before the Windows changes: 36 passed, 28 failed (empty results, no pgrep, ps without -o, 'HASH *./path' from sha256sum, chmod 600 leaving NTFS files at 644). After: 75 passed; with the taskkill and windows.sandbox changes removed, 4 of the new tests failed"
+      }
+    ],
+    "notProbed": [
+      "Cygwin (non-MSYS) and WSL-to-Windows setups; a jq built for MSYS2 rather than native",
+      "A real timeout or stop of a live codex.exe turn (the tree ending was probed with cmd.exe/ping under the fake codex)",
+      "Where the elevated sandbox's command processes sit in the process tree, and whether workspace-write honours the same ACL rules",
+      "[windows] sandbox = \"unelevated\""
+    ]
+  }
 }

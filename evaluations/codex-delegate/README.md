@@ -83,6 +83,24 @@ watchdog、成否判定、rollout 読み取り、スナップショットと比�
 - holdout H は1回目のみ真の holdout で、2回目は回帰確認として使った。
 - 生ログ、rollout、実行主体のセッションは配布しない。
 
+## Windows 対応（2026-09-24）
+
+評価ラウンドではなく、Windows 11 の Git Bash から実際に行った読み取り専用の委譲（Codex CLI 0.156.1、
+gpt-6-astra）で起きた不具合の修正。観測は [validation.json](../../codex-delegate/references/validation.json) の
+`windows`（w1〜w6）、規則は [constraints.md](../../codex-delegate/references/constraints.md) の Windows 節にある。
+
+- `--ignore-user-config` が `[windows] sandbox` まで外し、すべてのコマンドが `blocked by policy` で拒否された。
+  ヘルパーはこの1キーだけを設定から引き継ぎ、無ければ警告する。
+- ネイティブの `jq.exe` は CRLF を出し（resume の引数に `\r` が付いた）、プロセス置換の `/proc/<pid>/fd` を開けず
+  `result.json` が空になった。rollout の cwd の `\` 区切りだけで `settings_mismatch` になった。
+- MSYS の起動プロセスへのシグナルはネイティブの子に届かない（`cmd.exe` で確認）。`stop` と時間切れは
+  `taskkill /T /F` でプロセスの木を終わらせ、ネイティブの子孫を `w<WINPID>` で記録する。
+- sandbox の実行アカウントを含まない ACL のディレクトリは、`read-only` でも読めなかった。回避のために
+  ファイルを別の場所へ写さず、利用者と扱いを決める（SKILL.md 手順5）。
+
+ヘルパーのテスト：Git Bash で 75 件合格（修正前は 64 件中 36 件）、WSL の Ubuntu で 65 件合格・Windows 専用 2 件を
+スキップ。macOS では再実行していない。新しい実行主体による評価ラウンドも行っていない。
+
 - [判定と計測値](results.json)
 - [固定シナリオ](scenarios.json)
 - [失敗パターン台帳](failure-patterns.json)

@@ -30,7 +30,7 @@ total=$((prev + 1000))
 echo "$total" > "$FAKE_STATE/total-$tid"
 [ "$mode" = mismatch ] && sandbox=danger-full-access
 turn_id="turn-$$"
-jq -cn --arg cwd "$(pwd -P)" --arg m "$model" --arg a "$approval" --arg s "$sandbox" --arg t "$turn_id" \
+jq -cn --arg cwd "${FAKE_CWD:-$(pwd -P)}" --arg m "$model" --arg a "$approval" --arg s "$sandbox" --arg t "$turn_id" \
   '{type: "turn_context", payload: {turn_id: $t, cwd: $cwd, model: $m, effort: null, approval_policy: $a,
     approvals_reviewer: "user", sandbox_policy: {type: $s}}}' >> "$rollout"
 jq -cn --arg t "$turn_id" --argjson total "$total" \
@@ -49,6 +49,10 @@ case "$mode" in
   hang)
     echo '{"type":"item.started","item":{"id":"item_1","type":"command_execution","status":"in_progress"}}'
     perl -e 'setpgrp(0,0); exec "sleep", 300' &
+    wait; exit 0 ;;
+  hang_native)  # Windows: a native child, which a signal to the MSYS launcher does not reach
+    echo '{"type":"item.started","item":{"id":"item_1","type":"command_execution","status":"in_progress"}}'
+    MSYS_NO_PATHCONV=1 cmd /c "ping -n 300 127.0.0.1 >nul" &
     wait; exit 0 ;;
   denial)
     echo '{"type":"response_item","payload":{"type":"custom_tool_call_output","output":"zsh:1: operation not permitted: x"}}' >> "$rollout" ;;

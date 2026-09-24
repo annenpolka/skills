@@ -4,14 +4,27 @@ set -o pipefail
 here=$(cd "$(dirname "$0")" && pwd -P)
 helper="$here/../scripts/codex-delegate.sh"
 root=$(mktemp -d /tmp/cdg-test.XXXXXX); root=$(cd "$root" && pwd -P)
-reap() { for f in "$root"/run*/turn-*/descendants.txt; do [ -f "$f" ] && kill $(cat "$f") 2>/dev/null; done; }
+reap() {  # the first field of each descendants.txt line is the PID ("w<WINPID>" for a native Windows one)
+  local f p _
+  for f in "$root"/run*/turn-*/descendants.txt; do
+    [ -f "$f" ] || continue
+    while read -r p _; do case "$p" in
+      w*) MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' taskkill /F /PID "${p#w}" >/dev/null 2>&1 ;;
+      ?*) kill "$p" 2>/dev/null ;;
+    esac; done < "$f"
+  done
+}
 trap 'reap; rm -rf "$root"' EXIT
 mkdir -p "$root/bin" "$root/state" "$root/home"
 cp "$here/fake-codex" "$root/bin/codex"; chmod +x "$root/bin/codex"
 export PATH="$root/bin:$PATH" CODEX_HOME="$root/home" FAKE_STATE="$root/state"
-pass=0 fail=0
+win=0; case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) win=1 ;; esac
+# the LF output the helper also asks a native Windows jq for
+if [ "$win" = 1 ] && command jq -b -n 1 >/dev/null 2>&1; then jq() { command jq -b "$@"; }; fi
+pass=0 fail=0 skipped=0
 ok() { pass=$((pass + 1)); echo "ok   - $1"; }
 no() { fail=$((fail + 1)); echo "FAIL - $1"; [ -n "${2:-}" ] && echo "       $2"; }
+skip() { skipped=$((skipped + 1)); echo "skip - $1"; }
 check() { if eval "$2"; then ok "$1"; else no "$1" "$2"; fi; }
 argv() { tr '\0' '\n' < "$root/state/last-argv"; }
 newws() { mkdir -p "$1"; printf 'x = 1\n' > "$1/a.py"; }
@@ -147,7 +160,9 @@ bash "$helper" snapshot "$t" "$root/snap" > /dev/null 2>&1; rc=$?
 check "snapshot created" '[ $rc -eq 0 ] && [ -s "$root/snap/paths.txt" ] && [ -f "$root/snap/copy/g.txt" ]'
 bash "$helper" compare "$root/snap" "$t" > "$root/cmp0" 2>&1; rc=$?
 check "identical target compares equal" '[ $rc -eq 0 ]'
-printf 'A\n' > "$t/sub dir/f 1.txt"; chmod 600 "$t/g.txt"; mkdir "$t/empty"
+# NTFS under MSYS keeps 644 for chmod 600; clearing write (the read-only attribute) shows as 444
+if [ "$win" = 1 ]; then chmod a-w "$t/g.txt"; else chmod 600 "$t/g.txt"; fi
+printf 'A\n' > "$t/sub dir/f 1.txt"; mkdir "$t/empty"
 bash "$helper" compare "$root/snap" "$t" > "$root/cmp1" 2>&1; rc=$?
 check "changes detected" '[ $rc -eq 1 ]'
 check "content diff shown for path with spaces" 'grep -q "^+A" "$root/cmp1"'
@@ -167,5 +182,48 @@ bash "$helper" run --run-dir "$root/ws11/deep/run" --workspace "$root/ws11" --mo
   --brief "$root/brief.txt" > /dev/null 2>&1; rc=$?
 check "nested new run dir inside workspace refused" '[ $rc -eq 2 ] && [ ! -e "$root/ws11/deep" ]'
 
-echo "passed $pass, failed $fail"
+# 11. effective cwd: another directory is a mismatch; Windows spellings of the same one are not
+newws "$root/ws12"
+FAKE_CWD=/elsewhere bash "$helper" run --run-dir "$root/run12" --workspace "$root/ws12" --model m \
+  --sandbox read-only --brief "$root/brief.txt" > /dev/null 2>&1
+check "another cwd is a settings mismatch" '[ "$(jq -r .status "$root/run12/turn-1/result.json")" = settings_mismatch ]'
+if [ "$win" = 1 ]; then
+  newws "$root/ws13"
+  FAKE_CWD=$(cygpath -w "$root/ws13") bash "$helper" run --run-dir "$root/run13" --workspace "$root/ws13" \
+    --model m --sandbox read-only --brief "$root/brief.txt" > /dev/null 2>&1
+  check "backslash drive path of the workspace matches" '[ "$(jq -r .status "$root/run13/turn-1/result.json")" = completed ]'
+else skip "backslash drive path of the workspace matches (Windows only)"; fi
+
+# 12. Windows: [windows] sandbox survives --ignore-user-config; native children end with the launcher
+if [ "$win" = 1 ]; then
+  printf 'model = "x"\n\n[windows]\nsandbox = "elevated"  # comment\n\n[other]\nsandbox = "no"\n' > "$CODEX_HOME/config.toml"
+  newws "$root/ws14"
+  bash "$helper" run --run-dir "$root/run14" --workspace "$root/ws14" --model m --sandbox read-only \
+    --brief "$root/brief.txt" > /dev/null 2>&1
+  check "windows.sandbox carried from config.toml" 'argv | grep -qx "windows.sandbox=\"elevated\""'
+  bash "$helper" resume --run-dir "$root/run14" --brief "$root/brief.txt" > /dev/null 2>&1
+  check "resume re-passes windows.sandbox" 'argv | grep -qx "windows.sandbox=\"elevated\""'
+  bash "$helper" run --run-dir "$root/run15" --workspace "$root/ws14" --model m --sandbox read-only \
+    --brief "$root/brief.txt" -- -c 'windows.sandbox="unelevated"' > /dev/null 2>&1
+  check "an explicit windows.sandbox is not doubled" '[ "$(argv | grep -c "^windows.sandbox=")" = 1 ] && argv | grep -qx "windows.sandbox=\"unelevated\""'
+  bash "$helper" run --run-dir "$root/run16" --workspace "$root/ws14" --model m --sandbox read-only \
+    --brief "$root/brief.txt" --keep-user-config > /dev/null 2>&1
+  check "keep-user-config adds no windows.sandbox" '! argv | grep -q "^windows.sandbox="'
+  rm "$CODEX_HOME/config.toml"
+  bash "$helper" run --run-dir "$root/run17" --workspace "$root/ws14" --model m --sandbox read-only \
+    --brief "$root/brief.txt" > /dev/null 2> "$root/err17"
+  check "missing windows.sandbox warns" 'grep -q "no \[windows\] sandbox" "$root/err17" && ! argv | grep -q "^windows.sandbox="'
+
+  newws "$root/ws18"
+  FAKE_MODE=hang_native bash "$helper" run --run-dir "$root/run18" --workspace "$root/ws18" --model m \
+    --sandbox read-only --brief "$root/brief.txt" --limit 3 > /dev/null 2>&1
+  r18="$root/run18/turn-1/result.json"
+  check "native timeout gives status interrupted" '[ "$(jq -r .status "$r18")" = interrupted ]'
+  check "native descendants recorded as w<WINPID>" 'grep -qiE "^w[0-9]+ .*ping" "$root/run18/turn-1/descendants.txt"'
+  wping=$(grep -iE "^w[0-9]+ .*ping" "$root/run18/turn-1/descendants.txt" | head -1 | cut -d" " -f1)
+  check "the time limit ended the native child" '[ -n "$wping" ] && ! tasklist //FI "PID eq ${wping#w}" //NH | grep -q "${wping#w}"'
+  check "no native leftovers reported" '[ "$(jq -r "[.leftover_pids[] | strings] | length" "$r18")" = 0 ]'
+else skip "Windows sandbox and native process tests (Windows only)"; fi
+
+echo "passed $pass, failed $fail, skipped $skipped"
 [ "$fail" -eq 0 ]

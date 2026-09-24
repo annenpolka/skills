@@ -10,7 +10,7 @@ agent may ask to leave the sandbox, and who answers.
 
 | Sandbox (`-s`) | Reads | Writes | Network |
 | --- | --- | --- | --- |
-| `read-only` | Everywhere | None | Off (documented) |
+| `read-only` | Everywhere (on Windows, what the sandbox account's ACLs allow; see [Windows](#windows-git-bash--msys2)) | None | Off (documented) |
 | `workspace-write` | Everywhere | Working directory, `writable_roots`, `/tmp`, `$TMPDIR`; never `.git`, `.codex`, `.agents` under a writable root | Off unless `sandbox_workspace_write.network_access = true` |
 | `danger-full-access` | Everywhere | Everywhere | On |
 
@@ -95,6 +95,42 @@ passed again. `exec resume` has no `-s` or `-C`: use `-c 'sandbox_mode="..."'` a
   hit a wrapper shell and leave Codex running), then look for leftover child commands before
   inspecting or taking over the worktree.
 - Both interrupted threads resumed normally with a delta brief.
+
+## Windows (Git Bash / MSYS2)
+
+Checked 2026-09-24 against Codex CLI 0.156.1 on Windows 11 with Git Bash and a native `jq.exe`
+(probes w1–w6 in [validation.json](validation.json)). Cygwin and WSL-to-Windows setups were not
+probed.
+
+- **The sandbox implementation lives in the user config.** `[windows] sandbox = "elevated"` (or
+  `"unelevated"`) selects how Codex sandboxes commands on Windows; `--ignore-user-config` drops
+  it, and then every command was rejected as `blocked by policy` while the turn still completed
+  and the model answered from the brief alone. The helper re-passes that one key (it is not the
+  sandbox mode, which stays pinned) and warns when the config has none.
+- **Reads are limited by NTFS ACLs.** The elevated sandbox runs commands as members of the local
+  group `CodexSandboxUsers`, so `read-only` does not mean "reads everywhere" here. A directory
+  with a protected ACL that leaves that group out (OWNER RIGHTS, SYSTEM, Administrators only —
+  what Python 3.13's `tempfile.mkdtemp()` creates on Windows, kept by a later rename) read as
+  `Access to the path ... is denied`. Settle access with the user (an inherited ACL, or a
+  checkout or worktree created normally); do not copy the files somewhere the sandbox can read
+  to get around it.
+- **Native processes do not get signals.** `codex.exe` and the commands it starts are native
+  Windows processes. A signal to the MSYS launcher ended only the MSYS process and left the
+  native child running (observed with `cmd.exe`). The helper's `stop` and time limit therefore
+  end the launcher's Windows process tree with `taskkill /T /F`, and record native descendants
+  (from `Get-CimInstance Win32_Process`) as `w<WINPID>` for `reap`, which also uses
+  `taskkill /F`. An MSYS program started by `exec` loses its Windows parent link (MSYS `/proc`
+  keeps it), so MSYS descendants are recorded by their MSYS PID and signalled as before.
+- **Tool quirks the helper handles:** a native `jq.exe` writes CRLF (`read` keeps the CR even
+  though Git Bash's `$(...)` drops it; the helper passes `--binary`), cannot open the
+  `/proc/<pid>/fd/N` path of a process substitution, and the rollout reports the working
+  directory with backslashes; Git Bash's `sha256sum` prints `HASH *./path`; there is no
+  `pgrep`, and Cygwin `ps` has no `-o`.
+- **Snapshots:** under MSYS, `chmod 600` leaves an NTFS file at 644, so a compare sees only the
+  read-only attribute (444) as a mode change.
+- **Web search is not a shell command.** A `read-only`, `--ignore-user-config` run still used the
+  `web_search` tool once. When the brief must stay offline, say so, and look for `web_search`
+  items in `events.jsonl` afterwards.
 
 ## Out of scope
 

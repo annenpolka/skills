@@ -5,6 +5,11 @@ evidence for each turn. It uses bash 3.2+, `jq`, and standard `find`/`stat`/`tar
 `sha256sum`. `bash scripts/codex-delegate.sh --help` lists the commands. `tests/run-tests.sh`
 exercises it against a fake `codex`.
 
+On Windows it runs under Git Bash or MSYS2 (`uname` `MINGW*`/`MSYS*`/`CYGWIN*`) and then also
+uses `powershell.exe` (`Get-CimInstance Win32_Process`) and `taskkill` for native processes, and
+`/proc` in place of `pgrep`/`ps -o`. It calls a native `jq.exe` with `--binary` so its output
+has no carriage returns. See [constraints](constraints.md#windows-git-bash--msys2).
+
 ## Commands
 
 | Command | Effect |
@@ -14,8 +19,8 @@ exercises it against a fake `codex`.
 | `run ...` | First turn of a new thread (see below) |
 | `resume --run-dir D --brief F [--limit S] [--dry-run]` | Next turn on the recorded thread with the stored settings |
 | `check --run-dir D [--turn N]` | Exit 3 while the helper or the launcher of the turn is alive and no result exists; otherwise rebuilds `result.json` and prints the status |
-| `stop --run-dir D` | Records the running launcher's descendants, marks the turn `stopped`, and sends SIGTERM to the launcher PID |
-| `reap --run-dir D [--turn N]` | For each recorded descendant, sends SIGTERM only if its current command line equals the recorded one; logs `signaled`, `gone`, or `skipped` to `reap.log` and rebuilds the result |
+| `stop --run-dir D` | Records the running launcher's descendants, marks the turn `stopped`, and sends SIGTERM to the launcher PID; on Windows it first ends the launcher's Windows process tree with `taskkill /T /F` (the watchdog does the same) |
+| `reap --run-dir D [--turn N]` | For each recorded descendant, sends SIGTERM only if its current command line equals the recorded one (`taskkill /F` for a native Windows `w<WINPID>`); logs `signaled`, `gone`, or `skipped` to `reap.log` and rebuilds the result |
 
 `run` options: `--run-dir`, `--workspace`, `--model`, `--sandbox read-only|workspace-write`,
 `--brief` (all required), `--limit SECONDS` (default 1800), `--effort LEVEL`,
@@ -29,7 +34,10 @@ In this order, so the pinned values win (a later `-c` overrides an earlier one; 
 1. `--ignore-user-config`, unless `--keep-user-config`. With `--keep-user-config` and
    `workspace-write`, also `sandbox_workspace_write.writable_roots=[]` and
    `sandbox_workspace_write.network_access=false`; pass a later `-c` in the extra arguments to
-   re-enable network when the task needs it.
+   re-enable network when the task needs it. On Windows with `--ignore-user-config`, also
+   `-c windows.sandbox="VALUE"` with the `[windows] sandbox` value of
+   `$CODEX_HOME/config.toml` (only that key is read), unless the extra arguments set it; when
+   the config has none, a warning on stderr.
 2. `--skip-git-repo-check` when the workspace is not inside a git work tree.
 3. With `workspace-write`: `sandbox_workspace_write.exclude_slash_tmp=true` when the run
    directory resolves under `/tmp` (on macOS `/private/tmp`), and
@@ -56,7 +64,7 @@ workspace path and refuses to start when it does not exist.
 | `turn-N/events.jsonl`, `stderr.log`, `last-message.txt` | Raw event stream, diagnostics, final message |
 | `turn-N/helper.pid`, `launcher.pid` | PIDs of the helper and of the `codex` launcher for this turn |
 | `turn-N/exit_code.txt`, `thread_id.txt` | Launcher exit code; the ID this turn's `thread.started` reported |
-| `turn-N/timed-out`, `stopped`, `descendants.txt`, `reap.log` | Present after the watchdog or `stop` ended the turn; `PID COMMAND` of each descendant recorded before the signal; what `reap` did |
+| `turn-N/timed-out`, `stopped`, `descendants.txt`, `reap.log` | Present after the watchdog or `stop` ended the turn; `PID COMMAND` of each descendant recorded before the signal (`w<WINPID> COMMAND` for a native Windows process); what `reap` did |
 | `turn-N/limit.txt`, `tool_calls.jsonl` | The time limit in seconds; the full payload of each rollout tool call for this turn |
 | `turn-N/turn_contexts_before.txt`, `turn_id.txt` | How many `turn_context` records the rollout held before this turn, and the rollout turn ID this turn maps to; rollout fields in the result come from that turn's records only |
 | `turn-N/result.json` | Structured outcome |
@@ -72,11 +80,11 @@ The run directory and each turn directory are created with mode 0700.
 | `exit_code`, `limit_seconds`, `timed_out`, `stopped`, `last_event` | Process and stream evidence |
 | `failures` | Messages from `turn.failed` and top-level `error` events |
 | `warnings` | Messages from `item.completed` items of type `error`; non-fatal |
-| `expected`, `effective`, `mismatches` | Requested `cwd`/model/approval/sandbox, the rollout's latest `turn_context`, and each difference |
+| `expected`, `effective`, `mismatches` | Requested `cwd`/model/approval/sandbox, the rollout's latest `turn_context`, and each difference; Windows spellings of one directory (`C:\x`, `C:/x`, `/c/x`, `/cygdrive/c/x`, any case) count as the same `cwd` |
 | `commands` | `command` and `exit_code` of each completed `command_execution` item in the event stream |
 | `tool_calls` | The rollout's tool-call records after the latest `turn_context`: `type`, `name`, the first 400 characters of the input, `input_length`, and `truncated`; includes patch edits and attempts the event stream omits. Full inputs are in `turn-N/tool_calls.jsonl` |
-| `denial_count` | Tool-call records (`response_item` payloads whose type contains `call`) after the latest `turn_context` that mention `operation not permitted`, `Permission denied`, `Read-only file system`, or `require_escalated`; the brief's own text is not counted |
-| `leftover_pids` | Recorded descendants still alive (by PID) after an interrupted turn |
+| `denial_count` | Tool-call records (`response_item` payloads whose type contains `call`) after the latest `turn_context` that mention `operation not permitted`, `Permission denied`, `Read-only file system`, `require_escalated`, or on Windows `Access ... is denied`, `UnauthorizedAccess`, or `blocked by policy`; the brief's own text is not counted |
+| `leftover_pids` | Recorded descendants still alive (by PID) after an interrupted turn; numbers, or `"w<WINPID>"` strings for native Windows processes |
 | `usage_total`, `usage_turn`, `usage_source` | The thread's and this turn's token usage from the turn's last rollout `token_usage_record`; when the rollout has none, `turn.completed.usage` and its difference from the previous turn |
 | `rollout`, `paths` | Rollout file and this turn's artifact paths |
 
