@@ -1,0 +1,3 @@
+def send(to, template, params):
+    """社内メール送信サービスへ enqueue する（実装省略）。"""
+    ...

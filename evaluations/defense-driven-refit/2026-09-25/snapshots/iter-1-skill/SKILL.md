@@ -58,7 +58,7 @@ ADRが審議録を持たないのと同じ理屈。
 | 種類 | 答える問い | 例 |
 |---|---|---|
 | 根拠 (grounding) | なぜその性質・選択が必要／妥当か | 要求、計測値（出典つき）、既存契約、名前つき規約、許容範囲の宣言 |
-| 証拠 (evidence) | 成果物が実際にその性質を持つか | テスト、型、実行結果、特性化テスト、資料・コードの確認 |
+| 証拠 (evidence) | 成果物が実際にその性質を持つか | テスト、型、実行結果、特性化テスト |
 
 二つを分けないと循環する。
 
@@ -77,14 +77,13 @@ ADRが審議録を持たないのと同じ理屈。
 - `requirement` — 要求・チケットへの参照
 - `measurement` — 値と出典
 - `existing_contract` — 既存API・既存実装との整合
-- `convention` — 名前つき規約（「Rails流儀」「チーム規約§3」）。外部の規格・推奨も、文書名・節・該当する記述を示せば置ける。名前だけでは根拠にならない。置けるのは規範（〜すべき）。製品の挙動（〜と動く）は、成果物がその性質を持つかの確認に使うなら証拠の `inspection` に置き、相手方 API の約束を選択の理由に使うなら `existing_contract` に置く
+- `convention` — 名前つき規約（「Rails流儀」「チーム規約§3」）
 - `freedom` — 許容範囲内の任意選択。「既存設定に合わせた。2や4を否定はしない」も弁明として成立する。すべての定数に必然を背負わせなくていい
 
-### 証拠の五種
+### 証拠の四種
 
 - `test` / `type` / `execution_result`
 - `characterization_test` — 必ず `preservation_only: true` を付ける。現在の挙動を変えないための証拠であり、現在の挙動が望ましいことの証拠ではない
-- `inspection` — 資料・コードを読んで確かめた事実。望ましくない現状の観察も含む。参照（ファイル:行、製品・ライブラリの挙動なら文書名と節）を付ける。strength=資料確認の結果はここに置く。実行して確かめたことにはならない
 
 ### 規則
 
@@ -104,9 +103,8 @@ ADRが審議録を持たないのと同じ理屈。
 id: D-014
 scope: {ref: "app/services/sync.rb:40-85", version: "a1b2c3d"}
 layer: 境界             # 構造 | 境界 | 手続き | 細部
-origin: deviation       # deviation | impact | counterexample | asked。複数から届いたら [deviation, impact]
-                        # asked の入口が模擬尋問なら simulated: true を付ける
-question: "なぜこの形: 差し替え用の中間層はなぜ要るのか"  # 尋問の五問のラベル: 具体的な問い
+origin: deviation       # deviation | impact | counterexample | asked
+question: なぜこの形    # 無いと何が壊れる | なぜこの形 | どの前提 | 誰の要求 | どう反証
 current_answer: テスト時の差し替えのために中間層を置いている
 grounding: []
 evidence: []
@@ -114,14 +112,13 @@ gap: 差し替えは現状どこからも利用されていない
 resolution:
   action: remove_or_align   # narrow | investigate | change | remove_or_align | defer
   reason: 独立した責務が確認できず、維持の利点が弱い
-  candidate: false          # depends_on 先の確定待ちなら true
 verification:
   status: pending           # pending | done
   plan: 公開契約と既存の利用経路に影響がないことを確認する
   result: null
   artifact_version: null
 final_answer: null
-admitted_limit: null        # {limit, revisit_condition, kind: accepted | unverified, accepted_by}
+admitted_limit: null        # {limit, revisit_condition}
 depends_on: [D-009]
 ```
 
@@ -129,13 +126,10 @@ depends_on: [D-009]
 
 - `verification.status: pending` の間、`final_answer` は null のまま。ここが台帳を飾りにしない一点
 - `verification.status: done` の記録は `artifact_version` を含み、`scope.version` と一致する
-- 版はコミットID。版管理の外では、全項目の `scope.ref` と根拠・証拠が参照したファイルを一式とし、その内容ハッシュを一つ作って `scope.version` に書く。作り方とファイルごとのハッシュの一覧を署名に残す（版が変わったとき、どの資料が変わったかを判別するため）。外部の Web 文書はハッシュに含めず、文書名・節・URL・参照日を署名に残す
-- 項目の `resolution` が変わったら、その項目を `depends_on` に含む項目を推移的に辿り、`verification.status` を pending に戻す
-- 版が変わったら、`scope.ref` か参照した資料が変わった done 項目を pending に戻す
-- 全項目が `origin` を持つ。入口に到達していない項目は作らない（木の先行生成をしない）。同じ問いに複数の入口から届いたら項目は一つにし、届いた入口をすべて並べる
+- 項目の `resolution` が変わったら、`depends_on` で辿れる全項目の `verification.status` を pending に戻す
+- 全項目が `origin` を持つ。入口に到達していない項目は作らない（木の先行生成をしない）
 - 全項目が「根拠が1つ以上」「`freedom` の宣言」「`admitted_limit`」のいずれかを持つ
-- 確かめて問題がなかった問いも項目に残してよい。`gap` と `resolution` を null にし、確かめた参照を grounding / evidence に置いて `verification` を done にする
-- 1項目は問い1つと対応1つ。複数の問い、または別々の判断が要る対応が混ざったら項目を分ける。選んだ対応に本来伴う限界は、同じ項目の `admitted_limit` に置く
+- 必須フィールドのみで20行以内に収める
 
 ### 層 (layer)
 
@@ -146,10 +140,7 @@ depends_on: [D-009]
 | 手続き | どう流すか（制御、アルゴリズム） | 処理シーケンス |
 | 細部 | 定数、分岐、エラー処理 | パラメータ |
 
-`depends_on` には、この項目の結論が前提にしている別の項目を入れる。上位層の決定が下位層の対象を消す・変えうる場合がその典型。
-行範囲が重なるだけでは依存とみなさない。上位のどの選択でも同じ対応が要るなら依存にしない。
-`depends_on` 先の `resolution` が確定するまで、自分の `resolution` は候補にとどめ、`resolution.candidate: true` を付ける。依存先が候補なら自分も候補。確定とは `action` を選び終え、`investigate` の結果を待っていないこと。
-候補になるのは対応の選び方だけ。gap は依存先を待たずに記録し、報告する。`resolution` の無い項目（gap なし）には付けず、依存先の改修で対象が変われば、改修が入って版が変わったときに版の規則で pending に戻る。
+同一scope内で、下位層の `resolution` は上位層の `resolution` 確定後にのみ確定する。
 質問は任意の順で到着してよく、記録はいつでもする。確定だけを上から行う。
 定数を磨いたモジュールをあとで消すのは無駄だから。
 
@@ -181,7 +172,7 @@ LLMが思う一般的コードより、プロジェクト内の慣行を優先�
 ### 2. 影響駆動 (impact) — 普通の実装でも成立するか
 
 退屈版と一致した箇所を無検査にしない。
-影響領域に該当するscopeは、退屈版一致でも `origin` に impact を含む項目を最低1つ持つ。
+影響領域に該当するscopeは、退屈版一致でも `origin: impact` の項目を最低1つ持つ。
 
 影響領域は成果物の外から供給する。成果物を見て決めると「驚いた箇所」に戻ってしまう。
 案件ごとの一覧が無ければ、次の初期一覧から該当を拾い、案件固有の項目を足す。
@@ -209,8 +200,7 @@ LLMが思う一般的コードより、プロジェクト内の慣行を優先�
 ```
 
 反例は差分ではなく反例なので、分類の労働が要らない。
-各反例はそのまま `origin: counterexample`、`question` のラベルが「どう反証」の項目として台帳に入る。
-改修案に対する反例もここに入る。項目の layer は、反例を当てた層ではなく、直す必要がある対象の層に置く。
+各反例はそのまま `origin: counterexample`、`question: どう反証` の項目として台帳に入る。
 説明が「何をしてよいか」だけ書いて「何をしてはいけないか」を書いていない箇所——仕様の境界——に最もよく刺さる。
 
 普通の再生成（理屈だけから成果物を再生成してdiff）は補助にとどめる。
@@ -226,7 +216,6 @@ LLMが思う一般的コードより、プロジェクト内の慣行を優先�
 
 想定問答はその前倒し。詰めてくる相手が特定できるなら、その人の質問傾向で模擬尋問をかけて先に掘る。
 生身の相手がいない一発生成では、この成果物を一番厳しく見るレビュアーを想定して同じことをする。
-模擬尋問から来た項目も `origin: asked` とし、`simulated: true` を付けて実際に来た質問と区別する。`simulated` は origin のうち asked の入口だけを修飾する。
 相手がいないことは、この工程を飛ばす理由にならない。
 
 ## 尋問の五問
@@ -303,12 +292,9 @@ LLMが思う一般的コードより、プロジェクト内の慣行を優先�
 台帳は一つ。見せ方は相手ごとに三段階で生成する。
 
 ```
-1. その場の回答            — 台帳IDや参照なしで言える文
-   - 冒頭: 「この成果物を採用してよいか」への答え。成果物全体で3文以内。採用を止める gap は層を問わず結論だけ入れる
-     採用を止める gap とは、要求・契約・既存仕様か `convention` に置いた規範に反し、成果物が受け付ける入力で到達できる経路。迷うものは理由を一文添えて入れる
-   - 構造・境界の各項目: その問いへの答え。項目ごとに3文以内。答えが未確定なら、現状と何を待っているかを答える
+1. その場の回答            — 上位層（構造・境界）は台帳IDや参照なしで言える文。3文以内
 2. 深掘りされたときの根拠  — grounding と evidence への参照
-3. 認める限界と見直す条件  — admitted_limit の一覧。kind（accepted / unverified）で分けて並べる
+3. 認める限界と見直す条件  — admitted_limit の一覧
 ```
 
 相手によって変えるのは長さと用語だけ。採用理由・未確認事項・認める限界の内容は変えない。
@@ -333,10 +319,8 @@ LLMが思う一般的コードより、プロジェクト内の慣行を優先�
 `gap` を持つ全項目が、次のどちらかになったら終わり。
 
 - `resolution` 確定かつ `verification.status: done`
-- その限界を受け入れて今回は直さないと決め、`admitted_limit` に `kind: accepted`、受け入れた主体（`accepted_by`）、見直し条件付きで列挙されている。主体にその判断の権限が無ければ `kind: unverified` に置く
+- `admitted_limit` に見直し条件付きで列挙されている
 
-改修を予定している項目に書いた `admitted_limit` は `kind: unverified`（未確認事項の報告）で、終了には数えない。
-終了条件に届く前に止めるときは、達否、gap が残る項目の数、次の周の最初の手を署名に書く。
 反例は無限に作れる。この条件が無いとループが終わらない。
 
 ## ワークフロー
@@ -379,7 +363,7 @@ id: D-014
 scope: {ref: "app/services/sync.rb:40-85", version: "b4c5d6e"}
 layer: 境界
 origin: deviation
-question: "なぜこの形: 隣接サービスに無い中間層はなぜ要るのか"
+question: なぜこの形
 current_answer: テスト時の差し替えのために中間層を置いている
 gap: 差し替えは現状どこからも利用されていない
 resolution: {action: remove_or_align, reason: 独立した責務が確認できず、維持の利点が弱い}
@@ -391,7 +375,7 @@ verification:
 grounding: [{existing_contract: "sync系サービスの呼び出し規約（直接呼び出し）"}]
 evidence: [{test: "spec/services/sync_spec.rb"}]
 final_answer: 隣接サービスと同じ直接呼び出しに揃えた。差し替えが必要になった時点で境界を切る
-admitted_limit: {limit: 差し替え需要を予測していない, revisit_condition: モック以外の実装が2つ目に現れたとき, kind: accepted, accepted_by: 担当開発者}
+admitted_limit: {limit: 差し替え需要を予測していない, revisit_condition: モック以外の実装が2つ目に現れたとき}
 ```
 
 三段階出力:

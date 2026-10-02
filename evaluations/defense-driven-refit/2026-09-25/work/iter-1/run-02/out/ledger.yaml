@@ -1,0 +1,298 @@
+# 弁明台帳 — PR #57 アカウント削除API（DELETE /v1/me, ACC-88）
+# 署名: scope=変更範囲（PR #57 全体） / granularity=手続き / strength=資料確認
+# version: excerpt@45f2fc84caf5
+#   リポジトリ抜粋の全ファイルの sha256 一覧（パス順）をさらに sha256 した先頭12桁。コミットIDが資料に無いため代用する
+# 第一周: コード変更なし・テスト実行なし。gap に書いた事実は資料を読んで確認した。
+#   resolution はすべて未実施で、verification.status: done は資料確認だけで閉じられる D-012・D-013 のみ
+# 抜粋外で未確認: ログイン／トークン更新処理, app/search, app/integrations/crm, app/storage, app/config,
+#   ops/restore.md, 問い合わせ経由の手動削除の手順
+# 外部一次資料（製品の保証の確認のみ。根拠の本体は要求・既存契約）:
+#   PostgreSQL 16 https://www.postgresql.org/docs/16/ddl-constraints.html
+#   psycopg 3   https://www.psycopg.org/psycopg3/docs/advanced/async.html , .../basic/transactions.html
+#   FastAPI     https://fastapi.tiangolo.com/async/
+# 「（暫定）」の resolution は、依存する上位層の項目（主に D-001）の確定後に確定する
+
+items:
+
+# 入口: 影響駆動（データの保存期間と削除／金銭に触れる記録）。退屈版（DELETE 1文）と一致するが影響領域内
+- id: D-001
+  scope: {ref: "app/routes/account.py:11 × migrations/0007_orders.sql:3", version: "excerpt@45f2fc84caf5"}
+  layer: 構造
+  origin: impact
+  question: どの前提
+  current_answer: users 行を物理削除し、関連行の扱いは各テーブルの外部キー定義に任せる
+  grounding:
+    - {requirement: "ACC-88 要求: 削除した利用者の個人情報は保持しない。法令上保持が必要なものは除く（対象と期間は法務確認中）"}
+    - {requirement: "ACC-88 未決: 注文履歴の扱い（法務 佐藤・経理 李）、削除の取り消し猶予期間（PM）"}
+  evidence: []
+  gap: orders は ON DELETE CASCADE のため、扱いが未決の注文履歴（total_yen を含む）を不可逆に消す。即時の物理削除では猶予期間も持てない。どちらも決定の根拠が無い
+  resolution: {action: investigate, reason: "方式を決める根拠は法務・経理・PMの未決事項にあり、資料からは決まらない。決定が記録されるまで現方式ではマージしない"}
+  verification: {status: pending, plan: "決定の記録後に方式（物理削除＋外部キー変更／行を残して個人情報列を消す）を選び、実DBの統合テストで orders・audit_logs・refresh_tokens の結果を確認する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "削除方式は未確定。現PRのままでは注文履歴が消え、猶予期間も持てない", revisit_condition: "ACC-88 の注文履歴・法定保持・猶予期間の決定が記録されたとき"}
+  depends_on: [D-016]
+
+# 入口: 影響駆動（個人情報の経路／外部サービスへの副作用）。索引の deletion propagation を手掛かりに jobs・config・ops を調べた
+- id: D-002
+  scope: {ref: "app/routes/account.py:11 × jobs/user_indexer.py × jobs/crm_sync.py × jobs/export_analytics.py × ops/backup.md", version: "excerpt@45f2fc84caf5"}
+  layer: 構造
+  origin: impact
+  question: どの前提
+  current_answer: （PR に記載なし）個人情報は users 行にだけあり、行を消せば保持しなくなる
+  grounding:
+    - {requirement: "ACC-88 要求: 削除した利用者の個人情報は保持しない（法令上の保持対象を除く）"}
+    - {existing_contract: "users の個人情報の複製先は OpenSearch users-v3（config/search.yaml:4-5）、Acme CRM（jobs/crm_sync.py:1,9）、s3://acme-dwh の日次スナップショット（jobs/export_analytics.py:10-11）、RDS スナップショット35日・PITR 7日（ops/backup.md:3-4）"}
+  evidence: []
+  gap: 4つの複製先のどれにも削除が届かない。隣接APIと同じ素直な形だが、要求は users 行に限定されていない
+  resolution: {action: change, reason: "削除の到達範囲を複製先まで広げる。複製先ごとの方法と、範囲に含めるか（法定保持・バックアップの扱い）は D-005〜D-008 で決める"}
+  verification: {status: pending, plan: "D-005〜D-008 がすべて done か、見直し条件付きの admitted_limit になったことを確認する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "本PR単独では4つの複製先に削除済み利用者の個人情報が残る", revisit_condition: "D-005〜D-008 の解消時"}
+  depends_on: [D-016]
+
+# 入口: 影響駆動（認可・認証の前提／session revocation）。要求「削除後はログインできない」と auth.py の突き合わせ
+- id: D-003
+  scope: {ref: "app/auth.py:9,19-27 × migrations/0004_refresh_tokens.sql:3", version: "excerpt@45f2fc84caf5"}
+  layer: 境界
+  origin: impact
+  question: どの前提
+  current_answer: （PR に記載なし）行を消せば、その利用者はログインできなくなる
+  grounding:
+    - {requirement: "ACC-88 要求: 削除後、その利用者はログインできない"}
+    - {existing_contract: "current_user は JWT の署名だけを検証し users を参照しない。アクセストークンの有効期間は24時間。refresh_tokens は users 削除で CASCADE"}
+  evidence: []
+  gap: 既発行のアクセストークンは削除後も最長24時間通る。要求が既発行トークンの失効まで含むかは資料に無い。ログイン・トークン更新の処理は抜粋外で、削除済み利用者を拒否するか未確認
+  resolution: {action: investigate, reason: "要求の範囲をPMに、ログイン・更新処理の実装を確認する。即時失効が要るなら current_user を変える全APIの認証契約の変更になるため、範囲を分けて判断する"}
+  verification: {status: pending, plan: "ログイン・更新処理を読み、削除済み利用者で拒否されることを統合テストで確認する。PM の回答を ACC-88 に記録する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "削除後最長24時間、既発行トークンでAPIを呼べる。現PRでは GET /v1/orders は空配列、POST /v1/orders と PATCH /v1/me/profile は外部キー違反で500", revisit_condition: "PM が即時失効を要求と判断したとき／トークン有効期間を変えるとき"}
+  depends_on: []
+
+# 入口: 影響駆動（障害時・部分失敗時の挙動）。migrations の外部キー定義と隣接API profile.py の書き込みから
+- id: D-004
+  scope: {ref: "app/routes/account.py:11 × migrations/0012_audit_logs.sql:3 × app/routes/profile.py:15", version: "excerpt@45f2fc84caf5"}
+  layer: 手続き
+  origin: impact
+  question: どの前提
+  current_answer: （PR に記載なし）関連行は外部キーの CASCADE で一緒に消える
+  grounding:
+    - {existing_contract: "audit_logs.user_id は NOT NULL REFERENCES users(id) で ON DELETE 指定なし。PostgreSQL 16 の既定は NO ACTION で、参照行が残っていれば削除はエラーになる（公式文書 ddl-constraints）"}
+    - {existing_contract: "PATCH /v1/me/profile は更新のたびに audit.record で audit_logs へ記録する"}
+  evidence: []
+  gap: プロフィールを一度でも更新した利用者は audit_logs 行を持つため、DELETE が外部キー違反になり500を返して削除できない。例外処理も無い
+  resolution: {action: change, reason: "（暫定）行を残す方式なら外部キーは満たされる。物理削除なら audit_logs の外部キーを変える移行が要る。監査記録を残す期間は D-001 の法務判断に従う"}
+  verification: {status: pending, plan: "マイグレーション適用済みの実 PostgreSQL で、audit_logs 行を持つ利用者の削除が成功し、選んだ監査記録の扱いになることを統合テストで確認する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "現PRは audit_logs 行を持つ利用者を削除できない", revisit_condition: "D-001 の方式決定時"}
+  depends_on: [D-001]
+
+# 入口: 影響駆動（deletion propagation → 検索索引）
+- id: D-005
+  scope: {ref: "jobs/user_indexer.py:6-15 × config/search.yaml:1-5", version: "excerpt@45f2fc84caf5"}
+  layer: 手続き
+  origin: impact
+  question: どの前提
+  current_answer: （PR に記載なし）検索索引は users の差分同期で追随する
+  grounding:
+    - {requirement: "ACC-88 要求: 削除した利用者の個人情報は保持しない"}
+    - {existing_contract: "user_indexer は updated_at がカーソルより新しい行を bulk_upsert するだけで削除を扱わない。索引項目は email・display_name・phone・address。用途は管理画面の利用者検索"}
+  evidence: []
+  gap: 削除された行は差分に現れないため、管理画面の利用者検索に削除済み利用者の email・電話・住所が残り続ける。削除時に文書を消すだけだと、削除前に行を読んだ実行中の indexer が後から文書を書き戻し得る
+  resolution: {action: change, reason: "（暫定）削除時に users-v3 の該当文書を消し、indexer との競合で書き戻されない手順にする。行を残す方式では bulk_upsert が文書の置換か部分更新かで結果が変わる（app/search は抜粋外）"}
+  verification: {status: pending, plan: "app/search の削除手段と bulk_upsert の意味を確認し、削除直後と次回 indexer 実行後に該当IDが検索で返らないことをテストで確認する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "検索索引上の削除済み利用者の個人情報は未対処", revisit_condition: "app/search の仕様を確認したとき"}
+  depends_on: [D-001, D-002]
+
+# 入口: 影響駆動（外部サービスへの副作用／並行実行）。ambiguous outcome を手掛かりに順序を問う
+- id: D-006
+  scope: {ref: "jobs/crm_sync.py:6-10 × migrations/0015_users_crm.sql:1", version: "excerpt@45f2fc84caf5"}
+  layer: 手続き
+  origin: impact
+  question: どの前提
+  current_answer: （PR に記載なし）CRM 連携は削除と関係しない
+  grounding:
+    - {requirement: "ACC-88 要求: 削除した利用者の個人情報は保持しない"}
+    - {existing_contract: "crm_sync は crm_contact_id が NULL の利用者の email・表示名で CRM 連絡先を作るだけ（MKT-31、1時間ごと）。CRM 側の ID は users.crm_contact_id にしかない"}
+  evidence: []
+  gap: 削除で crm_contact_id ごと行が消え、CRM に連絡先が残るうえ特定する鍵も失う。crm_sync の実行中（読み取りと更新の間）に未連携の利用者が削除されると、削除済み利用者の連絡先が新たに作られる
+  resolution: {action: change, reason: "（暫定）鍵を失う前に CRM 連絡先を削除し、呼び出しの失敗・結果不明時は鍵を残して再試行できる順序にする。CRM 側の削除手段は確認が要る（app/integrations/crm は抜粋外）"}
+  verification: {status: pending, plan: "CRM クライアントの削除手段を確認し、CRM 呼び出しの失敗・タイムアウト時に鍵が残ることと、crm_sync 実行中の削除の扱いをテストで確認する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "CRM に残る削除済み利用者の email・表示名は未対処", revisit_condition: "CRM の削除手段が確認できたとき"}
+  depends_on: [D-001, D-002]
+
+# 入口: 影響駆動（retention → 分析基盤）
+- id: D-007
+  scope: {ref: "jobs/export_analytics.py:8-13 × ops/backup.md:6", version: "excerpt@45f2fc84caf5"}
+  layer: 手続き
+  origin: impact
+  question: どの前提
+  current_answer: （PR に記載なし）分析基盤への出力は削除と関係しない
+  grounding:
+    - {requirement: "ACC-88 要求: 削除した利用者の個人情報は保持しない（法令上の保持対象を除く）"}
+    - {existing_contract: "毎日 users の email・phone・address を s3://acme-dwh/raw/users/dt=日付/ に全件出力する（DATA-12）。acme-dwh はライフサイクル設定なしで無期限保持"}
+  evidence: []
+  gap: 削除より前の日付のパーティションに個人情報が無期限に残る。削除後の出力には含まれない
+  resolution: {action: investigate, reason: "過去スナップショットが要求の「保持」に当たるかはプライバシー担当・法務の判断。当たるなら保持期間の設定か該当行の除去が要る"}
+  verification: {status: pending, plan: "判断を ACC-88 に記録し、必要なら除去方法を DATA-12 の担当と決めて確認手順を作る", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "削除済み利用者の email・phone・address が acme-dwh の過去パーティションに無期限に残る", revisit_condition: "プライバシー担当・法務の判断が記録されたとき"}
+  depends_on: [D-002]
+
+# 入口: 影響駆動（運用・復旧 → バックアップと restore）
+- id: D-008
+  scope: {ref: "ops/backup.md:3-5", version: "excerpt@45f2fc84caf5"}
+  layer: 手続き
+  origin: impact
+  question: どの前提
+  current_answer: （PR に記載なし）バックアップは削除と関係しない
+  grounding:
+    - {requirement: "ACC-88 要求: 個人情報は保持しない／削除後はログインできない"}
+    - {existing_contract: "本番DBの自動スナップショットを35日保持、PITR は7日、復元訓練は四半期ごと。復元手順 ops/restore.md は抜粋外"}
+  evidence: []
+  gap: 削除後も最長35日、スナップショットに個人情報が残る。復元すると削除済みの行が戻る。復元後に削除を再適用する手段があるかは未確認
+  resolution: {action: investigate, reason: "バックアップ内の残存が要求の「保持」に当たるかはプライバシー担当・法務の判断。復元時の削除再適用は ops/restore.md と合わせて確認する"}
+  verification: {status: pending, plan: "ops/restore.md を読み、復元時に削除済み利用者を再削除できるか確認する。判断を ACC-88 に記録する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "削除後最長35日はバックアップに個人情報が残り、復元で削除済み利用者が戻り得る", revisit_condition: "判断の記録時／復元手順の改訂時"}
+  depends_on: [D-002]
+
+# 入口: 逸脱駆動。退屈版（隣接API profile.py に倣う）との差分は audit.record の有無と 204 の返し方（D-014）
+- id: D-009
+  scope: {ref: "app/routes/account.py:9-12 ↔ app/routes/profile.py:9-16", version: "excerpt@45f2fc84caf5"}
+  layer: 手続き
+  origin: deviation
+  question: なぜこの形
+  current_answer: （PR に記載なし）削除だけを行い、監査記録を残さない
+  grounding:
+    - {existing_contract: "隣接API PATCH /v1/me/profile は利用者の状態を変えたら audit.record を呼ぶ"}
+  evidence: []
+  gap: 隣接APIとの差分。ただし退屈版（削除の後に audit.record）は外部キー違反で失敗し、前に置けば D-004 と同じく削除が失敗するので、現方式では揃えられない。削除記録を残す要求は資料に無い
+  resolution: {action: remove_or_align, reason: "（暫定）隣接APIに揃えて削除の記録を残す。行を残す方式なら audit.record をそのまま使える"}
+  verification: {status: pending, plan: "選んだ方式で記録が外部キーを満たすことを実DBテストで確認し、記録を残すことの可否をプライバシー担当に確認する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "削除記録を残す根拠は隣接APIとの整合だけで、要求には無い", revisit_condition: "プライバシー担当が削除記録の保持の可否を示したとき"}
+  depends_on: [D-001, D-004]
+
+# 入口: 反例駆動。「テスト全件成功」という説明に従ったまま壊れている実装が、現PRそのもの
+- id: D-010
+  scope: {ref: "tests/test_account.py:8-24", version: "excerpt@45f2fc84caf5"}
+  layer: 手続き
+  origin: counterexample
+  question: どう反証
+  current_answer: pytest tests/test_account.py が全件成功している（README）
+  grounding:
+    - {requirement: "ACC-88 要求: 削除後はログインできない／個人情報は保持しない（テストが確かめるべき性質）"}
+  evidence:
+    - {test: "tests/test_account.py::test_delete_me_removes_user — FakeDB で SQL 文字列の発行だけを確認する。現在値の主張であり根拠にはならない"}
+  gap: 現PRの実装そのものが、このテストに合格したまま audit_logs 行を持つ利用者で500になり、注文を消し、複製先に個人情報を残す。DB上の結果も削除後の認証も観測していない
+  resolution: {action: change, reason: "（暫定）マイグレーション適用済みの実DBで、削除後の users・orders・audit_logs・refresh_tokens の状態と認証の結果を確かめるテストに置き換える"}
+  verification: {status: pending, plan: "新しいテストが現PRの実装で落ちること（audit_logs 行を持つ利用者）を先に確認し、改修後に通ることを確認する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "現時点で削除の正しさを示す証拠は無い", revisit_condition: "実DBのテストが追加されたとき"}
+  depends_on: [D-001, D-004]
+
+# 入口: 反例駆動（境界）。D-001 の候補方式「行を残して個人情報列を消す」に従っているのに困る実装
+- id: D-011
+  scope: {ref: "D-001 の候補方式 × app/routes/profile.py:9-16 × app/routes/orders.py:14-19 × jobs/crm_sync.py:7", version: "excerpt@45f2fc84caf5"}
+  layer: 境界
+  origin: counterexample
+  question: どう反証
+  current_answer: （候補）users 行を残して個人情報列を消せば、外部キーを満たしたまま注文を保てる
+  grounding:
+    - {existing_contract: "current_user は users を参照しない。PATCH /v1/me/profile と POST /v1/orders は行があれば成功する。crm_sync は crm_contact_id が NULL の行を CRM に登録する。email は NOT NULL UNIQUE"}
+  evidence: []
+  gap: 反例1は、削除後24時間以内に既発行トークンの PATCH /v1/me/profile が表示名を書き戻し、updated_at の更新で検索索引にも再登録される（POST /v1/orders も通る）。反例2は、crm_contact_id まで消すと次の crm_sync が置き換え後の email で CRM 連絡先を作る。欠けていた条件は、削除済み状態をどこで拒否するかと、どの列を残すか
+  resolution: {action: investigate, reason: "D-001 でこの方式を採る場合の成立条件として保持する。採らなければ閉じる"}
+  verification: {status: pending, plan: "方式決定後、反例1・2を統合テストにして再現しないことを確認する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "候補方式の成立条件は未確定", revisit_condition: "D-001 の方式決定時"}
+  depends_on: [D-001, D-003]
+
+# 入口: 影響駆動（認可・認証 → BOLA/IDOR・CSRF）。対処済みを確認して閉じる
+- id: D-012
+  scope: {ref: "app/routes/account.py:9-11 × app/auth.py:1,19-27", version: "excerpt@45f2fc84caf5"}
+  layer: 境界
+  origin: impact
+  question: どの前提
+  current_answer: 削除対象はトークンの sub から決まり、認証は Authorization ヘッダの Bearer トークンだけ
+  grounding:
+    - {existing_contract: "auth.py は Authorization ヘッダの JWT を RS256 で検証し、Cookie は使わない。ルートはパスやボディで利用者IDを受け取らない"}
+  evidence: []
+  gap: null
+  resolution: null
+  verification: {status: done, plan: "auth.py と account.py を読んで確認する", result: "資料確認: 削除対象は current_user の id（sub）だけ。Cookie を使わないため、ブラウザが資格情報を自動送信しない", artifact_version: "excerpt@45f2fc84caf5"}
+  final_answer: 他人のアカウントを指定する経路が無く、Cookie 認証を使わないので CSRF の前提も無い。追加の対策は求めない
+  admitted_limit: null
+  depends_on: []
+
+# 入口: 影響駆動（冪等性・重複実行）。対処済みを確認して閉じる
+- id: D-013
+  scope: {ref: "app/routes/account.py:9-12 × app/db.py:21-23", version: "excerpt@45f2fc84caf5"}
+  layer: 境界
+  origin: impact
+  question: どう反証
+  current_answer: 同じ利用者で2回呼ぶと、2回目は0行の DELETE になり204を返す
+  grounding:
+    - {freedom: "再実行に204を返すか404を返すかは資料に指定が無く、許容範囲内の選択"}
+  evidence: []
+  gap: null
+  resolution: null
+  verification: {status: done, plan: "account.py と db.py を読んで確認する", result: "資料確認: db.execute は影響行数を見ず、ルートは常に204を返す。2回目にDB上の副作用は無い", artifact_version: "excerpt@45f2fc84caf5"}
+  final_answer: 再送・連打しても2回目は何も起きず204を返す。404にしないのは許容範囲内の選択で、それ以上の理由は主張しない
+  admitted_limit: {limit: "複製先への削除（D-005・D-006）を足した後の再実行は未確認", revisit_condition: "D-001・D-005・D-006 の改修時"}
+  depends_on: [D-001, D-005, D-006]
+
+# 入口: 逸脱駆動（細部）。隣接APIはデコレータの status_code だけ。今回のダイヤル（手続き）の外なので確定しない
+- id: D-014
+  scope: {ref: "app/routes/account.py:9,12", version: "excerpt@45f2fc84caf5"}
+  layer: 細部
+  origin: deviation
+  question: なぜこの形
+  current_answer: デコレータの status_code=204 に加えて Response(status_code=204) を明示的に返す
+  grounding:
+    - {freedom: "隣接API（orders.py:14-19）はデコレータ指定だけで値を返す。どちらの書き方も許容範囲内（FastAPI の版は抜粋外）"}
+  evidence: []
+  gap: null
+  resolution: null
+  verification: {status: pending, plan: "細部層は今回のダイヤル外。確定する周回で、本文なしの204になることを確かめ、隣接APIの書き方に寄せるか決める", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: null
+  depends_on: [D-001]
+
+# 入口: 影響駆動（障害時・部分失敗／並行実行）。改修で削除が複数段になるときの制約を db.py と製品文書から
+- id: D-015
+  scope: {ref: "app/db.py:6,21-23 × app/routes/account.py:11", version: "excerpt@45f2fc84caf5"}
+  layer: 手続き
+  origin: impact
+  question: どの前提
+  current_answer: 単一の DELETE 文なので、CASCADE を含めて文単位で成功か失敗かが決まる（autocommit）
+  grounding:
+    - {existing_contract: "db.py は autocommit の接続1本（_conn）をプロセス内で共有する。def のルートは FastAPI の外部スレッドプールで動く（公式文書 async）"}
+    - {existing_contract: "psycopg 3 では同じ接続のカーソルは同じトランザクションを共有し、1スレッドのエラーで他も失敗状態になる。autocommit でも transaction() で複数文を原子的にできる（公式文書 async・transactions）"}
+  evidence: []
+  gap: D-001・D-004・D-009 の改修で削除が複数文や外部呼び出しを含むと、autocommit では途中失敗で半端な状態が残る。共有の _conn で transaction() を張ると、並行する他の要求の文も同じトランザクションに入る
+  resolution: {action: change, reason: "（暫定）途中で失敗しても再実行で完了できる順序にするか、共有接続を使わずにトランザクションを張る"}
+  verification: {status: pending, plan: "各段の直後で失敗させるテストで、再実行により完了すること、並行する他の要求に影響しないことを確認する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "改修後の部分失敗時の挙動は未設計", revisit_condition: "D-001 の方式決定時"}
+  depends_on: [D-001, D-004, D-009]
+
+# 入口: 実問（想定問答。この PR を最も厳しく見るプライバシー担当を想定）
+#   「問い合わせ経由の手動削除では、どこまで消していたのか。自己削除と範囲がずれないか」
+- id: D-016
+  scope: {ref: "docs/tickets/ACC-88.md:3-5", version: "excerpt@45f2fc84caf5"}
+  layer: 構造
+  origin: asked
+  question: 誰の要求
+  current_answer: （PR に記載なし）
+  grounding:
+    - {requirement: "ACC-88 背景: 問い合わせ経由の手動削除が月200件を超えた"}
+  evidence: []
+  gap: 手動削除の手順は資料に無い。既存の運用が注文・検索索引・CRM・分析基盤をどう扱っていたかが分かれば、それが退屈版になり根拠を継承できる。分からないままだと自己削除と手動削除で消える範囲が食い違い得る
+  resolution: {action: investigate, reason: "手動削除の担当と手順書を確認し、D-001・D-002 の退屈版として使えるかを見る"}
+  verification: {status: pending, plan: "手順書または担当者の回答を ACC-88 に記録し、D-002 の複製先一覧と突き合わせる", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "既存の手動削除との差は不明", revisit_condition: "手動削除の手順が確認できたとき"}
+  depends_on: []

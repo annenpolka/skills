@@ -1,0 +1,28 @@
+endpoint: https://api.typesafe.ai/v1/systemone
+model: jev-latest
+state keys:
+  run24_unclear: string, 495 chars
+  run25_unclear: string, 430 chars
+  run26_unclear: string, 353 chars
+  run27_unclear: string, 483 chars
+questions:
+  any_web_docs_hash [noul]
+    instructions: Across `run24_unclear`, `run25_unclear`, `run26_unclear`, `run27_unclear`, does any unclear-point list raise uncertainty about whether external web documents belong in the version hash?
+    criteria: {"true":"At least one list raises it","false":"None of the lists raises it"}
+  any_counterparty_api [noul]
+    instructions: Across `run24_unclear`, `run25_unclear`, `run26_unclear`, `run27_unclear`, does any unclear-point list raise uncertainty about whether a counterparty API document belongs in existing_contract or inspection?
+    criteria: {"true":"At least one list raises it","false":"None of the lists raises it"}
+  any_who_accepts [noul]
+    instructions: Across `run24_unclear`, `run25_unclear`, `run26_unclear`, `run27_unclear`, does any unclear-point list raise uncertainty about who is allowed to mark a limit as accepted (authority to accept)?
+    criteria: {"true":"At least one list raises it","false":"None of the lists raises it"}
+  any_inherent_limit_split [noul]
+    instructions: Across `run24_unclear`, `run25_unclear`, `run26_unclear`, `run27_unclear`, does any unclear-point list raise uncertainty about whether a limit inherent to the chosen fix must be split into a separate item?
+    criteria: {"true":"At least one list raises it","false":"None of the lists raises it"}
+  any_simulated_scope [noul]
+    instructions: Across `run24_unclear`, `run25_unclear`, `run26_unclear`, `run27_unclear`, does any unclear-point list raise uncertainty about which origin entry the simulated flag modifies when origin lists several entries?
+    criteria: {"true":"At least one list raises it","false":"None of the lists raises it"}
+  any_blocking_definition [noul]
+    instructions: Across `run24_unclear`, `run25_unclear`, `run26_unclear`, `run27_unclear`, does any unclear-point list raise uncertainty about how to decide whether a gap counts as adoption-blocking?
+    criteria: {"true":"At least one list raises it","false":"None of the lists raises it"}
+no credential-like patterns found (this scan does not replace your own review)
+recorded inspection of request.json for this endpoint; read the summary above, then send in a separate step

@@ -1,0 +1,256 @@
+{
+  "run-16": {
+    "scenario": "D",
+    "items": {
+      "D1": {
+        "verdict": "○",
+        "evidence": "D-005: キー members:page={page} に org_id も role も含まれない（members.py:19）。失敗経路1＝組織A管理者のメール付き一覧が60秒内に組織Bの利用者へ返る、失敗経路2＝管理者の後に一般メンバーがメール付き一覧を受け取る。grounding に docs/spec/members.md:3-4",
+        "reason": "キーから抜けている部分（組織・権限）を、具体的な露出経路（他組織の一覧、admin 向けメールの一般メンバーへの返却）と仕様 members.md との矛盾に結び付けている"
+      },
+      "D2": {
+        "verdict": "○",
+        "evidence": "D-006: org_settings.py:15-16 は https:// 始まりしか検査しない。logo.py:7 はリダイレクトを既定で追う（requests 文書）。失敗経路＝内部アドレスへリダイレクトするURL、または内部に解決されるホスト名を登録すると、API Pod から内部の宛先へリクエストが出る",
+        "reason": "サーバ側での取得が内部の宛先・リダイレクト先に届く経路を特定している。一般的な『URL を検証せよ』にとどまっていない"
+      },
+      "D3": {
+        "verdict": "○",
+        "evidence": "D-002: pre-deploy Job で RENAME を適用した後、新Podの準備が終わるまでと新旧並存中、旧Podの users.name 参照が失敗する（失敗経路1）。イメージタグを戻すと旧コードが改名済みの列に当たって失敗する（失敗経路2）。deploy/README.md:4-5、api.yaml:6-9 を引用",
+        "reason": "旧Pod の経路とロールバックの経路が、両方とも配備資料に基づいて具体化されている"
+      },
+      "D4": {
+        "verdict": "○",
+        "evidence": "D-003: fetch_logo と mailer.send_invitation が with db.transaction() の内側にある（invitations.py:34-35）。失敗経路1＝メール送信後にコミットが失敗すると、存在しない token のメールが届く。失敗経路2＝配信サービスが受け付けた後の例外でロールバックされ、メールだけが届く。失敗経路3＝外部を待つ間、コネクションとトランザクションを握り続ける（プール10、一括招待200件を逐次）",
+        "reason": "ロールバックされた招待にメールが送られる経路が具体的で、判定文言の『either concrete』を満たす"
+      },
+      "D5": {
+        "verdict": "○",
+        "evidence": "D-007: 既定の Read Committed（PostgreSQL 16 文書 13.2.1）のもとで、ロックなしに count してから INSERT している。使用数が上限の1つ手前のとき、同時に届いた2件が両方とも通り、上限を1超える",
+        "reason": "check-then-act による seat_limit 超過が具体化されている"
+      },
+      "D6": {
+        "verdict": "○",
+        "evidence": "D-006 の grounding は OWASP SSRF Prevention Cheat Sheet を Case・節と記述つきで引いている。D-003/D-006/D-007/D-018 の evidence は requests 公式文書と PostgreSQL 16 文書を、節と記述つきで引いている。signature.impact_areas_checked で時刻・TZ は『該当の変更なし』",
+        "reason": "無関係分野（金銭・TZ・ジョブキュー）への変更要求がない。根拠のない新しい抽象化もない。ライブラリの挙動には出典がある。名前だけを置いた grounding もない"
+      },
+      "D7": {
+        "verdict": "○",
+        "evidence": "全21項目に origin がある。pending の19項目はすべて final_answer: null（done は D-010/D-021 だけ）。signature.dial に scope/granularity/strength がある。explanation.md は『1. その場の回答／2. 深掘りされたときの根拠／3. 認める限界と見直す条件』の三段階",
+        "reason": "origin・pending の null・ダイヤル付き署名・三段階の出力、の4条件をすべて満たす"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 14,
+      "impact_items": ["D-002", "D-003", "D-005", "D-006", "D-007", "D-008", "D-009", "D-010", "D-014", "D-015", "D-016", "D-018", "D-020", "D-021"],
+      "over_application": [],
+      "over_application_borderline": "該当なしと判定した。境界事例は3つ。D-016（管理者向けのメールアドレスが Redis に載る。Redis の永続化・アクセス制御の確認を求める investigate）、D-020（plans.seat_limit が NULL を取りうるかの investigate）、D-015（Redis 障害時の挙動の investigate）。いずれも変更要求ではなく、このPRで入ったキャッシュ・席数判定に根拠を置いている。signature.impact_areas_checked は席数の項目を『金銭・課金に触れる計算』に分類しているが、金銭計算への要求はない",
+      "anchors_in_grounding_evidence": [
+        "D-006 grounding(convention): OWASP Server-Side Request Forgery Prevention Cheat Sheet『Case 2』> Available protections > Application layer（解決先が公開アドレスかを確かめる）と、同『Case 1』> Application layer > URL（リダイレクト追従を無効にする）。文書名・節・該当記述の要約つき。Case 1 の類推適用である旨も明記",
+        "D-003 / D-018 evidence(inspection): requests 公式文書 Quickstart『Timeouts』の注記（timeout は全体の上限ではない）。文書名・節・記述つき",
+        "D-006 evidence(inspection): requests 公式文書 Quickstart『Redirection and History』（HEAD 以外はリダイレクトを既定で追う）。文書名・節・記述つき",
+        "D-007 evidence(inspection): PostgreSQL 16 文書 13.2.1 Read Committed Isolation Level。節番号・記述つき。verification.plan では 13.3.2 Row-Level Locks も同様に引いている",
+        "人名・書名・概念名だけを grounding/evidence に置いた箇所はない。概念名は resolution.reason（D-002 の expand-contract）と admitted_limit（D-006 の DNS rebinding）にだけ現れる"
+      ],
+      "explanation_first_section": {
+        "adoption_answer_present": true,
+        "adoption_answer_sentence_count": 3,
+        "adoption_answer_within_3_sentences": true,
+        "structure_and_boundary_items_answered": "構造4件（D-001〜D-004）と境界7件（D-005〜D-011）すべてに一段目の答えがある",
+        "blocking_findings_at_top_regardless_of_layer": "冒頭に入っている。D-005（境界）、D-006（境界）、D-002（構造）を『直すまで採用を止める』と明記し、D-007・D-003 にも触れている。採用を止める所見はこのrunでは構造・境界層にしかなく、下位層で漏れているものはない"
+      }
+    }
+  },
+  "run-17": {
+    "scenario": "B",
+    "items": {
+      "B1": {
+        "verdict": "○",
+        "evidence": "D-013（user_indexer.py:8-15 は updated_at の差分を upsert するだけで削除を検出しない。OpenSearch users-v3）、D-015（export_analytics.py が毎日全件を出力し、acme-dwh はライフサイクル設定なし）、D-014（crm_sync.py、外部 CRM）。3件とも origin: impact で pending。D-004 は『PR の削除はどれにも届かない』を gap にしている",
+        "reason": "3系統すべてを資料から特定して impact 項目にしている。PR にコードの痕跡がないことを理由に非該当とはしていない"
+      },
+      "B2": {
+        "verdict": "○",
+        "evidence": "D-001（猶予期間は PM 判断待ち、investigate、final_answer null）、D-002（注文履歴は法務・経理待ち、investigate）、D-003（監査ログの保持は法務待ち）、D-015/D-016（プライバシー担当・法務の判断待ち）。explanation.md:113『法令上の保持義務については、資料にある「法務に確認中」以上のことを述べていない』",
+        "reason": "保持期間の日数・年数や法令名を要求として置いていない。注文履歴と猶予期間も決めていない。未知の事項は pending と admitted_limit（担当者・見直し条件つき）で明示されている"
+      },
+      "B3": {
+        "verdict": "○",
+        "evidence": "D-009: ACCESS_TOKEN_TTL_SECONDS=24h（auth.py:9）。current_user は DB を見ずにクレームから User を作る（auth.py:19-27）。grounding に ACC-88 要求2『削除後、その利用者はログインできない』を置き、削除後最長24時間は認証が通る点を gap として記録",
+        "reason": "既存の24時間トークンが削除後も有効な点を、要求2に照らした gap として記録している"
+      },
+      "B4": {
+        "verdict": "○",
+        "evidence": "D-002: orders.user_id の ON DELETE CASCADE で、扱いが未決の注文履歴が全件消える。D-011: audit_logs の FK は ON DELETE 未指定（NO ACTION）なので、監査ログを持つ利用者の削除は外部キー違反で 500 になる",
+        "reason": "2つの経路がどちらも具体的（判定文言は≥1）"
+      },
+      "B5": {
+        "verdict": "○",
+        "evidence": "D-016: ops/backup.md:3-5 のスナップショット35日・PITR 7日に個人情報が残る。本番を復元すると、削除済み利用者の行（password_hash を含む）が戻る",
+        "reason": "バックアップでの保持と、復元による復活の両方を記載している"
+      },
+      "B6": {
+        "verdict": "○",
+        "evidence": "D-006（本人以外を削除する経路はないとして done、追加対策なし）。D-007（Bearer 認証で Cookie を使わないので自動送信による削除はないとし、『追加の対策は要らない』で done）。D-017 は手段を指定しておらず、分散ロックやキューを要求していない",
+        "reason": "BOLA/IDOR の修正、CSRF 対策、決済・キュー・分散ロック・キャッシュの変更、のいずれも要求していない"
+      },
+      "B7": {
+        "verdict": "○",
+        "evidence": "jobs/・ops/・migrations/・auth.py を調べたうえで、判断待ちの事項だけを担当者に回している（D-001〜D-003, D-009, D-015, D-016）。全19項目に origin がある。pending の15項目は final_answer null。meta.dials に scope/granularity/strength がある。explanation.md は三段階＋署名",
+        "reason": "調べる前に質問を丸投げしていない。台帳の規則と出力の条件もすべて満たしている"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 14,
+      "impact_items": ["D-001", "D-002", "D-003", "D-004", "D-006", "D-007", "D-008", "D-009", "D-011", "D-013", "D-014", "D-015", "D-016", "D-019"],
+      "over_application": [],
+      "over_application_borderline": "該当なしと判定した。境界事例は2つ。D-010（204 と 202 の使い分けを RFC 9110 に照らし、説明を narrow する候補）と D-012（削除の監査記録を narrow）。どちらも変更要求ではなく説明の限定なので、過剰適用には数えなかった。D-006/D-007 は認可・CSRF を確認して閉じているだけで、対策は求めていない",
+      "anchors_in_grounding_evidence": [
+        "D-010 grounding(convention): RFC 9110 §9.3.5 DELETE。204/202 の条件を原文引用つきで置いている。同 evidence にも §9.3.5 を記述つきで置いている",
+        "D-019 grounding(convention): RFC 9110 §9.2.2 Idempotent Methods。原文引用つき",
+        "D-002 / D-011 evidence(inspection): PostgreSQL 16 文書 §5.4.5 Foreign Keys。CASCADE・NO ACTION の原文引用つき。D-008 evidence では『§5.4.5 Foreign Keys（CASCADE の定義）』と文書・節だけを示し、記述は要約の見出し程度",
+        "D-011 evidence(inspection): psycopg 3 文書『Transactions management』（autocommit では BEGIN を発行しない）と PostgreSQL 16 文書 §3.4（引用つき）",
+        "D-009 / D-011 evidence(inspection): Starlette 文書『Exceptions』（ServerErrorMiddleware が 500 を返す）。文書名・節・記述つき",
+        "人名『佐藤』『李』は D-002 evidence に ACC-88.md:15 の引用（担当者）として現れるだけで、根拠を名前で代用するアンカーではない。概念名・書名だけの grounding/evidence はない"
+      ],
+      "explanation_first_section": {
+        "adoption_answer_present": true,
+        "adoption_answer_sentence_count": "コードレビュアー向け3文、プライバシー担当向け3文（相手別に2版）",
+        "adoption_answer_within_3_sentences": true,
+        "structure_and_boundary_items_answered": "構造の表（D-001〜D-005）と境界の表（D-006〜D-010）で全項目に答えている。D-005 はプライバシー担当向けを『技術的な配置の問いのため省略』としている",
+        "blocking_findings_at_top_regardless_of_layer": "冒頭に入っている。手続き層の D-011（audit_logs の FK で削除が 500）、構造層の D-002（注文の CASCADE）、構造層 D-004 と手続き層 D-013〜D-016（複製先への未伝播）を冒頭で採用不可の理由にしている"
+      }
+    }
+  },
+  "run-18": {
+    "scenario": "C",
+    "items": {
+      "C1": {
+        "verdict": "○",
+        "evidence": "I-02: payco_charge_id だけを条件にした無条件の UPDATE（webhooks.py:54-57）。順序保証がないため、または初回配送が失敗して再送に回るため、charge.succeeded が refunded の後に届くと、event_id が別なので重複排除を通って paid に戻る。grounding に PAY-140 要求4、gap に『発送画面は返金済みと出さず、要求4が破れる』",
+        "reason": "再送を含む遅着による refunded→paid の上書きを、要求4（誤発送防止）に結び付けている"
+      },
+      "C2": {
+        "verdict": "○",
+        "evidence": "I-01（processed_events に ON CONFLICT DO NOTHING RETURNING で記録し、同一トランザクションで更新。done）。C-02（HMAC が t と body を含み、許容差300秒の外は拒否、内は重複で停止。done）。A-02（300秒は PayCo 推奨値。done）。explanation.md:11『署名の方式と重複排除は資料と照らして成り立っています』。saga/outbox/queue/再設計の要求なし",
+        "reason": "署名検証と重複排除を、どちらも資料で確認済みとして閉じている。不要な方式も要求していない。C-01（非ASCII の v1 で 500）と I-08（空の鍵の確認）は、署名検証そのものへの難癖ではないと判断した（迷った項目として別記）"
+      },
+      "C3": {
+        "verdict": "○",
+        "evidence": "該当する項目なし。D-01（async 関数内の同期 DB 呼び出し）は webhook 自身の10秒応答条件（PayCo 抜粋:8）に紐づく investigate で、外向きの決済呼び出し・分散ロック・キャッシュ・BOLA のいずれにも触れていない",
+        "reason": "無関係分野への過剰適用はない"
+      },
+      "C4": {
+        "verdict": "○",
+        "evidence": "grounding の convention は D-01 の FastAPI docs『Concurrency and async / await』In a hurry? と C-01 の Python docs『hmac』compare_digest で、どちらも節と記述つき。PayCo 抜粋にない事項は未確認のまま扱っている（I-03/I-07『推測で足すと相手仕様の発明になる』、I-02・A-02 の admitted_limit）",
+        "reason": "名前だけのアンカーがない。資料外の PayCo 仕様を事実として書いていない"
+      },
+      "C5": {
+        "verdict": "○",
+        "evidence": "未検証の改修 I-02（change）と C-01（change）は pending で final_answer null。全14項目に origin がある。signature.dials に scope/granularity/strength がある。explanation.md は三段階＋署名",
+        "reason": "全条件を満たす"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 9,
+      "impact_items": ["I-01", "I-05", "I-09", "I-04", "I-06", "I-02", "I-03", "I-07", "I-08"],
+      "over_application": [],
+      "over_application_borderline": "該当なしと判定した。境界事例は4つ。C-01（署名ヘッダが非ASCII のとき compare_digest の TypeError で 400 ではなく 500 になる。一行の change。CPython・Starlette のソースに根拠があり、要求2は保たれると明記している）、I-08（app/config.py が抜粋にないため、空の鍵を拒否しているかを確認する investigate）、D-01（async 関数内の同期 DB 呼び出し。慣行の確認次第で、スレッドプールで実行する change に進む investigate）、I-09（processed_events の保持を narrow で閉じ、削除処理は求めていない）",
+      "anchors_in_grounding_evidence": [
+        "D-01 grounding(convention) と boring_version: FastAPI docs『Concurrency and async / await』In a hurry?（await 非対応ライブラリは def で宣言する）。文書名・節・記述つき",
+        "C-01 grounding(convention): Python docs『hmac』compare_digest（str は ASCII のみ）。文書名・関数・記述つき",
+        "C-01 evidence(inspection): CPython Modules/_operator.c の _compare_digest（エラーメッセージを原文引用）と、Starlette starlette/datastructures.py の Headers.__getitem__（latin-1 で復号）。ソースファイル・関数・記述つき",
+        "I-01 evidence(inspection): psycopg 3 docs『Transactions management』、PostgreSQL docs『INSERT』（RETURNING）、PostgreSQL docs『13.2.1 Read Committed』。文書名・節・記述つき",
+        "上記の URL は meta.external_references に一覧で置かれている。人名・書名・概念名だけの grounding/evidence はない"
+      ],
+      "explanation_first_section": {
+        "adoption_answer_present": true,
+        "adoption_answer_sentence_count": 3,
+        "adoption_answer_within_3_sentences": true,
+        "structure_and_boundary_items_answered": "構造3件（I-01, I-05, I-09）と境界3件（I-04, I-06, C-02）すべてに一段目の答えがある",
+        "blocking_findings_at_top_regardless_of_layer": "冒頭に入っている。手続き層の I-02（遅着で refunded→paid）を採用を止める主因として冒頭に置き、境界層の I-04・I-06 も採用判断の前に片付ける事項として挙げている"
+      }
+    }
+  },
+  "run-19": {
+    "scenario": "A",
+    "items": {
+      "A1": {
+        "verdict": "○",
+        "evidence": "D-02（origin: impact）: deploy/scheduler.yaml:1,7 の replicas: 2 の各レプリカが、app/scheduler.py:10 で同じジョブを登録する。renewal_worker.py:17-21,28-42 には行の確保（ロック・条件付き更新）がない。その結果、2つのレプリカが同じ期日到来行を同時に抽出し、同じ購読に二重課金しうる",
+        "reason": "配備資料の引用と、二重課金経路の具体化が両方ある"
+      },
+      "A2": {
+        "verdict": "○",
+        "evidence": "D-05: PayCo 側で課金成立→応答は 5xx→PaymentError→failure_count+1→3日後に新しい要求→同じ期間に2回目の課金（payco-api-v2-excerpt.md:10）。D-04: 冪等キーを『購読IDと請求期間の起点（D-09 で保つ renews_at）』から作る。D-09 は失敗時に renews_at が上書きされて期間の起点が失われることを gap にしている。D-04 の admitted_limit は SUP-4411 でキー保持期間が不明と明記。D-04/D-05 とも pending で final_answer null",
+        "reason": "経路・キーの導出（期間ごとに安定させる）と保持期間が不明であること・pending/null の三要件を満たす"
+      },
+      "A3": {
+        "verdict": "○",
+        "evidence": "(a) D-12: 毎月1日の約40万件を fetch_all で一度にメモリへ載せる（renewal_worker.py:17-21）。D-19: 購読ごとに customers を別クエリで取る（N+1、約40万往復）。(b) D-04 evidence: deploy/scheduler.yaml:12 terminationGracePeriodSeconds: 30 と停止シグナル処理の欠如から、ローリング更新時に処理途中で止まりうる。(c) D-17: requests.post に timeout がない（payments_client.py:27-31）",
+        "reason": "3領域すべてが具体的な資料に紐づいている（判定文言は≥2）"
+      },
+      "A4": {
+        "verdict": "○",
+        "evidence": "D-16（2/29 の replace(year+1) で ValueError。課金後・UPDATE 前に起きる）、D-15（TZ=Asia/Tokyo の naive な datetime.now() と timestamptz）、D-13（round(…,2)、Decimal×float の TypeError、最小単位の整数・money.py との不一致）、D-09（失敗時の renews_at 上書きで更新日がずれる）",
+        "reason": "判定文言の4種すべてを具体化している（≥1）"
+      },
+      "A5": {
+        "verdict": "○",
+        "evidence": "grounding の convention は D-17 の Requests docs Advanced Usage『Timeouts』（原文引用）と D-18 の OWASP Logging Cheat Sheet『Data to exclude』（原文引用）。evidence の外部文書もすべて節と記述つき。D-04 はキー保持期間を SUP-4411 で不明と明記している。利用規約§4.2 は資料（BILL-212）内の記述",
+        "reason": "名前だけのアンカーがない。保持期間・提供者の仕様・法令・社内要件の発明もない"
+      },
+      "A6": {
+        "verdict": "○",
+        "evidence": "D-02 は既存の月額ジョブと同じ CronJob・Forbid への整列で、汎用の分散ロック基盤は要求していない。D-08 は 0042 を加算のみの変更として安全と判断して done にし、ACCESS EXCLUSIVE ロックは admitted_limit に置いた。署名では認可・認証とデータ保存期間を『該当なし』と明記",
+        "reason": "無関係分野への変更要求も、不要な抽象化もない。0042 に expand-contract を強制していない"
+      },
+      "A7": {
+        "verdict": "○",
+        "evidence": "全23項目に origin がある。pending の19項目はすべて final_answer null。全項目に grounding がある（D-21 は freedom）。meta.dials と explanation.md の署名に scope/granularity/strength がある。explanation.md は三段階",
+        "reason": "全条件を満たす"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 15,
+      "impact_items": ["D-02", "D-04", "D-07", "D-08", "D-03", "D-09", "D-11", "D-12", "D-13", "D-14", "D-15", "D-16", "D-17", "D-18", "D-22"],
+      "over_application": [],
+      "over_application_borderline": "該当なしと判定した。境界事例は3つ。D-18（成功ログに顧客の全列を出している。既存月額の sub_id だけのログへの整列で、コード上の具体的な出力に根拠がある）、D-14（TAX_RATE が2か所にある。investigate）、D-19（N+1 を JOIN に整列）。いずれもこの PR のコードに根拠があり、判定文言が挙げる無関係分野（認可・API 互換・キャッシュ・汎用分散ロック）には当たらない",
+      "anchors_in_grounding_evidence": [
+        "D-17 grounding(convention): Requests docs, Advanced Usage『Timeouts』。原文引用つき",
+        "D-18 grounding(convention): OWASP Logging Cheat Sheet『Data to exclude』。原文引用つき",
+        "D-08 evidence(inspection): PostgreSQL 16 docs, ALTER TABLE『Notes』（non-volatile な DEFAULT なら表を書き換えない）。記述つき",
+        "D-11 evidence(inspection): schedule のドキュメント『Exception Handling』。原文引用つき",
+        "D-13 evidence(inspection): psycopg 3 docs『Adapting basic Python types — Numbers adaptation』と Python docs decimal『Decimal objects』。記述つき",
+        "D-15 evidence(inspection): psycopg 3 docs『Date/time types adaptation』と PostgreSQL 16 docs §8.5.1.3。記述つき",
+        "D-16 evidence(inspection): Python docs datetime『datetime Objects』と PostgreSQL 16 docs §9.9。記述つき",
+        "D-17 evidence(inspection): Kubernetes docs, CronJob『Concurrency policy』。記述つき",
+        "admitted_limit（grounding/evidence の外）: D-02 は Kubernetes docs CronJob『Job creation』を原文引用、D-08 は ALTER TABLE『Description』を引いている",
+        "URL は explanation.md の署名『参照した公開文書』に一覧で置かれている（PostgreSQL・OWASP は URL なし）。人名・書名・概念名だけの grounding/evidence はない"
+      ],
+      "explanation_first_section": {
+        "adoption_answer_present": true,
+        "adoption_answer_sentence_count": 3,
+        "adoption_answer_within_3_sentences": true,
+        "adoption_answer_remark": "1文目『今の形では採用できません』と3文目『そこが分かるまで採用の可否は確定しません』がやや緊張関係にあるが、採用可否への答えはある。2文目は括弧書きを含む長文",
+        "structure_and_boundary_items_answered": "構造2件（D-01, D-02）と境界5件（D-04〜D-08）すべてに一段目の答えがある",
+        "blocking_findings_at_top_regardless_of_layer": "冒頭に入っている。構造層 D-02・境界層 D-04/D-05/D-07 の二重課金に加え、細部層 D-13（本番の Decimal 型で金額計算が例外になり課金に届かない）、手続き層 D-11（既存のセッション削除ジョブも止まる）と D-03（CS 手動請求からの切替）を冒頭に置いている。細部層の D-16（2/29 で課金後に例外→再課金）と D-15（TZ ずれ）は冒頭で個別には触れていない"
+      }
+    }
+  },
+  "grader_notes": {
+    "hesitations": [
+      "run-18 C2: C-01（非ASCII の署名ヘッダで compare_digest が TypeError を出し、400 ではなく 500 になる。verify_signature への一行の change）と I-08（空の鍵で起動できるかの investigate）を、判定文言の『one nitpick』と読めば partial になり、C2 は critical なので run-18 は不成功になる。○ と判定した理由: C-01 は一次資料（CPython・Starlette のソース）に基づく具体的な欠陥で、要求2（偽の webhook で状態を変えられない）は保たれると明記したうえで細部層に置いており、採用を止める理由にもしていない。署名検証が対処済みであること自体は認めている。I-08 は抜粋にない app/config.py の確認で、変更は要求していない",
+      "run-19 A3(b): graceful shutdown の指摘は独立の項目ではなく、D-04 の evidence 行に置かれている。判定文言は『tied to concrete material』だけを求めており、(a)(c) だけでも ≥2 なので判定は変わらない",
+      "run-16 D4: 接続の枯渇は『握り続ける』までで、枯渇としては明示されていない。一方、ロールバックされた招待にメールが送られる経路が具体的なので、either の条件で ○",
+      "run-17 B3: D-009 の gap は『要求2が発行済みトークンの即時失効を含むかは資料から決まらない。含むなら…』という条件付きの書き方。それでも要求2に照らした gap として台帳に記録されているので ○",
+      "run-17 B7: 署名が signature キーではなく meta にある（dials: scope/granularity/strength）。explanation.md の署名にもダイヤルがあるので ○"
+    ]
+  }
+}

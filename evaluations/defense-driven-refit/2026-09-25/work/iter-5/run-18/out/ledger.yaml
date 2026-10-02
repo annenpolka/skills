@@ -1,0 +1,457 @@
+# 弁明台帳: PR #402 PayCo webhook で注文の支払状態を更新する（PAY-140）
+# 第一周。コードは変更せず、テストも実行していない。改修は resolution と verification.plan に記録する。
+
+meta:
+  artifact: "PR #402（app/webhooks.py, migrations/0051_processed_events.sql, tests/test_webhooks.py）"
+  round: 1
+  dials:
+    scope: "変更範囲（PR #402 全体）"
+    granularity: "細部"
+    strength: "資料確認"
+  version: "sha256:aafdced4d7af"
+  version_method: >-
+    版管理の外なので、対象資料一式の内容ハッシュを一つ作った。
+    repo/ 直下で `find . -type f -print0 | LC_ALL=C sort -z | xargs -0 shasum -a 256 | shasum -a 256`
+    を実行した値 aafdced4d7af7a47c44e33b439b732676f940415c9109502235172e3f135a702 の先頭12桁。
+  materials:
+    - README.md
+    - app/webhooks.py
+    - app/db.py
+    - migrations/0020_orders.sql
+    - migrations/0051_processed_events.sql
+    - tests/test_webhooks.py
+    - docs/tickets/PAY-140.md
+    - docs/vendor/payco-webhooks-excerpt.md
+  not_in_materials:
+    - "app/config.py（PAYCO_WEBHOOK_SECRET の読み込み）"
+    - "テストのフィクスチャ定義（client_with_db, post_signed, fake_db）"
+    - "注文作成と payco_charge_id の書き込み箇所"
+    - "発送画面"
+    - "他の API エンドポイント（プロジェクトの慣行の比較先）"
+    - "PayCo の全文仕様（抜粋のみ）"
+  external_references:
+    - "Python docs『hmac — Keyed-Hashing for Message Authentication』compare_digest: https://docs.python.org/3/library/hmac.html"
+    - "CPython Modules/_operator.c _compare_digest: https://github.com/python/cpython/blob/main/Modules/_operator.c"
+    - "Starlette starlette/datastructures.py Headers.__getitem__: https://github.com/encode/starlette/blob/master/starlette/datastructures.py"
+    - "PostgreSQL docs『INSERT』(RETURNING, ON CONFLICT): https://www.postgresql.org/docs/current/sql-insert.html"
+    - "PostgreSQL docs『13.2 Transaction Isolation』13.2.1 Read Committed: https://www.postgresql.org/docs/current/transaction-iso.html"
+    - "psycopg 3 docs『Transactions management』: https://www.psycopg.org/psycopg3/docs/basic/transactions.html"
+    - "FastAPI docs『Concurrency and async / await』In a hurry?: https://fastapi.tiangolo.com/async/"
+  impact_areas_used:
+    - "初期一覧から: 認可・認証の前提 / データの保存期間と削除 / 障害時・部分失敗時の挙動 / 冪等性・重複実行 / 金銭・課金に触れる計算 / 個人情報の経路 / 外部サービスへの副作用 / 並行実行 / 移行・後方互換"
+    - "案件固有: 誤発送防止（PAY-140 要求4）/ PayCo の配送契約（at-least-once・順序保証なし・10秒・3日再送）"
+    - "非該当として項目を作らなかったもの: 時刻・タイムゾーン（受信側は UNIX 秒の差だけを使い、暦時刻を扱わない）"
+
+items:
+
+  # ───────────── 構造 ─────────────
+
+  - id: I-01
+    scope: {ref: "app/webhooks.py:46-57; migrations/0051_processed_events.sql:1-4", version: "sha256:aafdced4d7af"}
+    layer: 構造
+    origin: impact
+    impact_area: "冪等性・重複実行 / 並行実行"
+    question: "無いと何が壊れる: 処理済みイベント表（processed_events）と、状態更新と同じトランザクションでの記録は何を守っているか"
+    current_answer: "event_id を主キーとする processed_events に ON CONFLICT DO NOTHING で挿入し、挿入できたときだけ同じトランザクションで orders を更新する。挿入できなければ重複として更新しない"
+    grounding:
+      - requirement: "PAY-140 要求3: 同じイベントが複数回届いても結果が変わらないこと"
+      - existing_contract: "PayCo 抜粋（docs/vendor/payco-webhooks-excerpt.md:3）: 配送は at-least-once。同じイベントが複数回届くことがある。各イベントは一意の id を持つ"
+    evidence:
+      - inspection: "app/webhooks.py:46-53 — 挿入の RETURNING が行を返さなければ UPDATE の前に return する"
+      - inspection: "app/db.py:11-15 — 1接続で conn.transaction() を張る。psycopg 3 docs『Transactions management』: ブロックを抜けると commit、例外なら rollback"
+      - inspection: "migrations/0051_processed_events.sql:2 — event_id text PRIMARY KEY。同じ id の挿入が二つとも成功することはない"
+      - inspection: "PostgreSQL docs『INSERT』: RETURNING は実際に挿入・更新された行だけを返す（ON CONFLICT DO NOTHING で挿入されなかった行は返らない）"
+      - inspection: "PostgreSQL docs『13.2.1 Read Committed』: ON CONFLICT DO NOTHING は、スナップショットから見えない他トランザクションの結果によって挿入を行わないことがある"
+    gap: null
+    resolution: null
+    verification:
+      status: done
+      plan: "要求3・PayCo 抜粋・コード・スキーマ・DB とドライバの文書の照合（資料確認）"
+      result: "同じ event_id の2回目以降は更新の前に止まる。UPDATE が例外で失敗すると挿入も巻き戻り、再送で再処理できる。同時に届いても主キーにより挿入は一方だけ。テストでの確認は含まない（A-01）"
+      artifact_version: "sha256:aafdced4d7af"
+    final_answer: "PayCo は同じイベントを複数回送るので、イベント ID を主キーの表に記録し、記録できたときだけ同じトランザクションで状態を更新しています。2回目以降は更新の前に止まり、更新が失敗すれば記録も巻き戻るので、再送で拾えます。"
+    admitted_limit: null
+    depends_on: []
+
+  - id: I-05
+    scope: {ref: "migrations/0051_processed_events.sql:1-4", version: "sha256:aafdced4d7af"}
+    layer: 構造
+    origin: impact
+    impact_area: "移行・後方互換"
+    question: "どの前提を焼き込んでいる: 移行 0051 とコードの配布順が前後したら何が起きるか"
+    current_answer: "0051 は新しい表を作るだけで、既存の orders は変えない"
+    grounding:
+      - existing_contract: "migrations/0020_orders.sql — orders の定義。README.md:13 で『変更していないが関係するファイル』とされ、本 PR では変わらない"
+      - existing_contract: "PayCo 抜粋:8 — 10 秒以内に 2xx が返らなければ、最大3日間、間隔を空けて再送する"
+    evidence:
+      - inspection: "migrations/0051_processed_events.sql:1-4 — CREATE TABLE のみ"
+      - inspection: "app/webhooks.py:46-51 — 表が無ければ INSERT が例外になる。例外は捕まえていないので、トランザクションは巻き戻り 2xx は返らない"
+    gap: null
+    resolution: null
+    verification:
+      status: done
+      plan: "移行・コード・PayCo の再送条件の照合（資料確認）"
+      result: "既存表の変更なし。コードが先に出た間のイベントは失敗応答になり、再送条件に入る"
+      artifact_version: "sha256:aafdced4d7af"
+    final_answer: "移行は新しい表を足すだけで既存の表を変えないので、古いコードには影響しません。コードが先に出ても、その間のイベントは失敗応答になり PayCo が最大3日再送するので、移行後に反映されます。"
+    admitted_limit: null
+    depends_on: []
+
+  - id: I-09
+    scope: {ref: "migrations/0051_processed_events.sql:1-4", version: "sha256:aafdced4d7af"}
+    layer: 構造
+    origin: impact
+    impact_area: "データの保存期間と削除 / 個人情報の経路"
+    question: "どの前提を焼き込んでいる: processed_events をいつまで保持し、いつ消すのか"
+    current_answer: "削除の仕組みは無く、無期限に保持する。保存するのは event_id と受信時刻だけで、イベント本文や顧客の情報は保存しない"
+    grounding:
+      - existing_contract: "PayCo 抜粋:8 — 再送は最大3日間。重複排除にはこの期間以上の保持が要る"
+      - freedom: "3日以上であれば保持期間は任意。無期限はその条件を満たす選択の一つで、期限付きの削除を否定しない"
+    evidence:
+      - inspection: "migrations/0051_processed_events.sql:1-4 — 列は event_id と received_at のみ"
+      - inspection: "app/webhooks.py:47-51 — 保存するのは event['id'] だけ"
+    gap: "削除の仕組みが無く、表は支払イベントの数だけ増え続ける"
+    resolution:
+      action: narrow
+      reason: "正しさに要るのは3日以上の保持だけで、無期限保持はそれを満たす。増え方が運用上の問題になる規模かは資料に無いので、削除は今回足さず、足すときの条件だけを書く"
+      candidate: false
+    verification:
+      status: done
+      plan: "PayCo の再送期間と表の定義の照合（資料確認）"
+      result: "再送期間は最大3日。表に削除処理は無く、列は2つだけ"
+      artifact_version: "sha256:aafdced4d7af"
+    final_answer: "重複排除に要るのは PayCo の再送期間（最大3日）以上の保持で、今は消していないので満たしています。保存しているのはイベント ID と受信時刻だけです。削除を足すときは3日以上残す条件で足します。"
+    admitted_limit:
+      limit: "表は無期限に増える"
+      revisit_condition: "行数・容量が運用上の閾値に達したとき、または削除処理を足すとき（保持は3日以上にする）"
+    depends_on: []
+
+  # ───────────── 境界 ─────────────
+
+  - id: I-04
+    scope: {ref: "app/webhooks.py:46-58", version: "sha256:aafdced4d7af"}
+    layer: 境界
+    origin: impact
+    impact_area: "障害時・部分失敗時の挙動 / 外部サービスへの副作用（PayCo の再送契約）"
+    question: "どの前提を焼き込んでいる: 届いたイベントの charge id に対応する注文が必ず存在する前提で、処理済みにして200を返していないか"
+    current_answer: "UPDATE の更新件数を見ずに processed_events の記録を確定し、{ok: true} を200で返す"
+    grounding:
+      - requirement: "PAY-140 要求1: PayCo の webhook で注文の支払状態を反映する"
+      - existing_contract: "PayCo 抜粋:8 — 再送は『10 秒以内に 2xx を返さない場合』に限って書かれている。200 を返したイベントが再送される根拠は資料に無い"
+      - existing_contract: "migrations/0020_orders.sql:4 — payco_charge_id は NULL 可。注文行の作成と charge id の書き込みが別時点でありうる形"
+    evidence:
+      - inspection: "app/webhooks.py:54-58 — 更新件数を確認していない。0件でもコミットして200を返す"
+    gap: "注文行に payco_charge_id が入る前に webhook が届いた場合（または対応する注文の無い charge の場合）、UPDATE は0件だが event_id は処理済みとして確定し200を返す。PayCo は再送せず、再送されても重複として止まるので、その支払・返金は反映されないまま残り、記録も残らない。返金イベントなら要求4の誤発送につながる。payco_charge_id をどこでいつ書くかは抜粋に無い"
+    resolution:
+      action: investigate
+      reason: "0件を黙って処理済みにしないことは要るが、直し方が資料で決まらない。0件なら巻き戻して非2xxを返し PayCo の再送（最大3日）に委ねる形は、注文に紐づかない charge があると3日間の無駄な再送を生む。0件を記録して検知する形は自動では回復しない。どちらを採るかは注文作成側の実装と charge の使われ方で決まり、抜粋に無い"
+      candidate: false
+    verification:
+      status: pending
+      plan: "注文作成から charge 作成・payco_charge_id の書き込みまでのコードを読み、webhook が先着しうるか、注文に紐づかない charge があるかを確認する。結果に応じて change（巻き戻し＋非2xx、または0件の記録と警報）を選び、『対応する注文が後から現れる』『対応する注文が無い』の2通りをテストする"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "直すまでは、対応する注文の無いイベントは黙って失われ、後から見つける手段が無い"
+      revisit_condition: "注文作成側の調査結果が出たとき"
+    depends_on: []
+
+  - id: I-06
+    scope: {ref: "app/webhooks.py:17（発送画面との境界）", version: "sha256:aafdced4d7af"}
+    layer: 境界
+    origin: impact
+    impact_area: "案件固有: 誤発送防止（PAY-140 要求4）"
+    question: "誰の要求に遡れる: 要求4（返金済みの注文を発送画面で「返金済み」と表示する）は、この PR のどこで満たされるか"
+    current_answer: "PR は charge.refunded で orders.payment_status を 'refunded' にするところまでを行う。発送画面の変更は含まない"
+    grounding:
+      - requirement: "PAY-140 要求4: 返金済みの注文は、発送画面で「返金済み」と表示されなければならない（誤発送防止）"
+      - existing_contract: "migrations/0020_orders.sql:5-6 — payment_status の許容値に 'refunded' がある"
+    evidence:
+      - inspection: "app/webhooks.py:17 — charge.refunded → 'refunded'"
+      - inspection: "README.md:7-13 — 変更ファイルにも関係ファイルにも発送画面は挙がっていない"
+    gap: "発送画面が payment_status を読み、'refunded' を「返金済み」と表示するかは、発送画面のコードが抜粋に無く確かめられない。表示しないなら、状態が正しくても要求4は満たされない"
+    resolution:
+      action: investigate
+      reason: "要求4の充足は PR の外の既存画面に依存し、資料に無い"
+      candidate: false
+    verification:
+      status: pending
+      plan: "発送画面が参照する列と 'refunded' の表示文言を確認する。表示が無ければ、本 PR に含めるか別チケットにするかを依頼者（PAY-140）に確認する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "確認までは、要求4は DB の状態が refunded になるところまでしか示せない"
+      revisit_condition: "発送画面の確認結果が出たとき"
+    depends_on: []
+
+  - id: C-02
+    scope: {ref: "app/webhooks.py:21-53", version: "sha256:aafdced4d7af"}
+    layer: 境界
+    origin: counterexample
+    counterexample:
+      explanation: "偽の webhook で状態を変えられない（署名を検証している）"
+      counterexample: "正規の要求を傍受し、署名ヘッダごとそのまま送り直す"
+      missing_condition: "欠けていない。署名時刻の許容差と event_id の重複排除で止まる"
+    question: "どう反証: 正規の要求を送り直せば状態を動かせるか"
+    current_answer: "t の許容差300秒の外は署名で拒否する。内側は同じ event_id なので processed_events で重複として止まる。本文を書き換えれば署名が合わない"
+    grounding:
+      - requirement: "PAY-140 要求2（偽の webhook で状態を変えられない）、要求3（重複で結果が変わらない）"
+      - existing_contract: "PayCo 抜粋:6-7 — 署名は HMAC-SHA256(secret, '<t>.<raw body>')。受信側は t の許容差を検査する"
+    evidence:
+      - inspection: "app/webhooks.py:28-33 — t の許容差と、t と body を含む HMAC の照合"
+      - inspection: "app/webhooks.py:46-53 — 同じ event_id は更新の前に止まる（I-01）"
+    gap: null
+    resolution: null
+    verification:
+      status: done
+      plan: "署名方式・許容差・重複排除のコードと PayCo 抜粋の照合（資料確認）"
+      result: "送り直しは、許容差の外なら拒否、内なら重複として停止。元の要求が届かず送り直しだけが届いた場合は正規イベントの遅着と同じで、その扱いは I-02 に属する"
+      artifact_version: "sha256:aafdced4d7af"
+    final_answer: "署名は時刻と本文を含むので、5分を過ぎた送り直しは拒否され、5分以内の送り直しは同じイベント ID として重複扱いで止まります。本文を書き換えれば署名が合いません。"
+    admitted_limit: null
+    depends_on: []
+
+  # ───────────── 手続き ─────────────
+
+  - id: I-02
+    scope: {ref: "app/webhooks.py:54-57", version: "sha256:aafdced4d7af"}
+    layer: 手続き
+    origin: impact
+    impact_area: "外部サービスへの副作用（配送順序）/ 並行実行 / 案件固有: 誤発送防止（PAY-140 要求4）"
+    question: "どの前提を焼き込んでいる: イベントが発生順に届く前提で payment_status を無条件に上書きしていないか"
+    current_answer: "charge id が一致する注文の payment_status を、届いたイベントに対応する値で無条件に上書きする"
+    grounding:
+      - requirement: "PAY-140 要求4: 返金済みの注文は、発送画面で「返金済み」と表示されなければならない（誤発送防止）"
+      - existing_contract: "PayCo 抜粋:4 — イベントの配送順序は保証しない"
+      - existing_contract: "PayCo 抜粋:8 — 10 秒以内に 2xx が返らなければ、最大3日間、間隔を空けて再送する"
+    evidence:
+      - inspection: "app/webhooks.py:54-57 — UPDATE の条件は payco_charge_id だけで、現在の payment_status を見ない"
+      - inspection: "tests/test_webhooks.py:46-50 — 成功→返金の発生順だけを扱い、逆順の到着は扱っていない（読んだのみ、実行していない）"
+    gap: "charge.succeeded が charge.refunded より後に届くと（順序は保証されず、初回の配送が失敗して再送に回った場合も後になる）、event_id が別なので重複排除を通り抜け、refunded を paid に戻す。発送画面は返金済みと出さず、要求4が破れる。charge.failed が後に届いた場合も refunded が消える"
+    resolution:
+      action: change
+      reason: "要求4は返金済みの表示を求め、順序は PayCo が保証しない。資料の範囲には refunded から抜ける事象が現れないので、refunded を後着の succeeded/failed で上書きしない条件を UPDATE 文の WHERE に置く。created による順序判定でも成り立つが、orders に列を足す移行が要るうえ、created は秒単位で同じ秒の並びを決められないので、どちらを採っても refunded を守る条件は要る（I-03 の結果に依存しない）"
+      candidate: false
+    verification:
+      status: pending
+      plan: "(1) 返金→成功、返金→失敗の逆順到着で payment_status が refunded のまま残ることを確かめるテストを足して実行する。テストは要求4（返金済みが残ること）を符号化し、現在の上書き結果を写さない。現行の fake_db は UPDATE の引数を記録するだけに見えるので、行の状態を観測できる形（実 PostgreSQL か、WHERE を評価する fake）で書く（A-01 の調査結果に従う）。(2) 条件は同じ UPDATE 文に置き、先に SELECT で読んでから書く形にしない。PostgreSQL docs『13.2.1 Read Committed』では、後の UPDATE は先の確定を待って WHERE を更新後の行で再評価するので、同時に届いても条件が効く。app/db.py は分離レベルを指定していないため、接続先の既定が Read Committed であることを設定で確認する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "PayCo に返金の取り消しなど refunded から戻る事象があるかは抜粋に書かれていない。あれば、この条件が正しい遷移も止める"
+      revisit_condition: "PayCo の全文仕様で返金後の状態遷移を確認したとき、または refunded の注文に succeeded/failed が届いた記録が出たとき"
+    depends_on: []
+
+  - id: I-03
+    scope: {ref: "app/webhooks.py:14-18, 54-57", version: "sha256:aafdced4d7af"}
+    layer: 手続き
+    origin: impact
+    impact_area: "外部サービスへの副作用（配送順序）"
+    question: "どの前提を焼き込んでいる: 同じ charge に charge.succeeded と charge.failed の両方が届くことは無い、という前提か"
+    current_answer: "後に届いた方で上書きする。paid と failed の間の順序は判定していない"
+    grounding:
+      - existing_contract: "PayCo 抜粋:4 — イベントの配送順序は保証しない"
+      - existing_contract: "PayCo 抜粋:5 — 各イベントは created（UNIX秒）と送信時点の data.object（status と refunded を含む）を持つ"
+    evidence:
+      - inspection: "app/webhooks.py:54-57 — 現在の状態もイベントの created も見ない"
+    gap: "同じ charge で failed と succeeded が両方発生しうるかは抜粋に書かれていない。発生して逆順に届けば、支払済みの注文が failed のまま残る（またはその逆）。data.object の『送信時点』が初回送信か再送時点かも抜粋からは決まらず、順序判定に使えるか分からない"
+    resolution:
+      action: investigate
+      reason: "PayCo の charge の状態遷移と、再送時の data.object・created の意味は相手仕様で、資料に無い。推測で遷移規則を足すと相手仕様の発明になる"
+      candidate: false
+    verification:
+      status: pending
+      plan: "PayCo の全文仕様（または窓口）で、同一 charge の failed→succeeded の有無と、再送時の data.object が初回送信時点か再送時点かを確認する。ありうるなら created か data.object.status による判定を change として起票し、無いなら現状の上書きで足りる理由として閉じる"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "確認までは、paid と failed の逆順到着に対する挙動は保証しない"
+      revisit_condition: "PayCo 仕様の確認結果が出たとき、または同一 charge に succeeded と failed の両方が届いた記録が出たとき"
+    depends_on: []
+
+  - id: D-01
+    scope: {ref: "app/webhooks.py:36-58", version: "sha256:aafdced4d7af"}
+    layer: 手続き
+    origin: deviation
+    boring_version: "FastAPI docs『Concurrency and async / await』In a hurry?: await 非対応のライブラリ（多くの DB ライブラリ）を使う path operation は def で宣言する。def はスレッドプールで実行される"
+    question: "なぜこの形: await 非対応の DB 呼び出しを async def の中で直接行うのはなぜか"
+    current_answer: "生の body を読むために async def にし（await request.body()）、DB は既存の db.transaction()（同期の psycopg、要求ごとに新しい接続）をそのまま呼ぶ"
+    grounding:
+      - existing_contract: "app/db.py:11-15 — 既存の DB ヘルパ（同期 API）"
+      - convention: "FastAPI docs『Concurrency and async / await』In a hurry?: await 非対応のライブラリは def で宣言する"
+      - existing_contract: "PayCo 抜粋:8 — 10 秒以内に 2xx が返らなければ再送する"
+    evidence:
+      - inspection: "app/webhooks.py:37, 46-57; app/db.py:13 — async 関数の中で同期の psycopg.connect と execute を呼ぶ"
+    gap: "接続の確立と問い合わせの間、イベントループが止まり、同じプロセスの他の要求も待つ。重複排除があるので正しさは崩れないが、応答が10秒を超えると再送が増える。既存の async エンドポイントが同じ呼び方をしているか（プロジェクトの慣行か）は抜粋に無い"
+    resolution:
+      action: investigate
+      reason: "既存の慣行があればそれに揃えて根拠を継承できる（remove_or_align）。無ければ DB 部分をスレッドプールで実行する change が要る。抜粋に他のエンドポイントが無く、どちらか決まらない"
+      candidate: false
+    verification:
+      status: pending
+      plan: "既存の async エンドポイントでの db.transaction() の呼び方を確認し、慣行に揃えるか、DB 部分をスレッドプールで実行する形に変える。変える場合は負荷時の応答時間を計測で確かめる"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "応答時間とイベントループへの影響は計測していない（strength=資料確認）"
+      revisit_condition: "慣行の確認結果が出たとき、または webhook の応答時間が10秒に近づいた記録が出たとき"
+    depends_on: []
+
+  # ───────────── 細部 ─────────────
+
+  - id: I-07
+    scope: {ref: "app/webhooks.py:14-18", version: "sha256:aafdced4d7af"}
+    layer: 細部
+    origin: impact
+    impact_area: "金銭・課金に触れる計算"
+    question: "どの前提を焼き込んでいる: charge.refunded は全額返金のときだけ届く、という前提か"
+    current_answer: "charge.refunded を受けると、data.object を見ずに 'refunded' にする"
+    grounding:
+      - requirement: "PAY-140 要求1（対象イベントに charge.refunded）。対象外: 返金操作そのもの、部分返金"
+      - existing_contract: "PayCo 抜粋:5 — data.object は status と refunded を含む"
+    evidence:
+      - inspection: "app/webhooks.py:14-18, 42 — イベント種別だけで状態を決める"
+    gap: "部分返金で charge.refunded が届くか、data.object.refunded が全額返金を表すかは抜粋に書かれていない。部分返金で届くなら、部分返金の注文も「返金済み」になり、発送が止まる。『対象外: 部分返金』が『部分返金は起きない』のか『起きても今回は扱わない』のかも資料から決まらない"
+    resolution:
+      action: investigate
+      reason: "相手仕様と要求の範囲の確認で、どちらも資料に無い。推測で data.object.refunded を見る変更を入れると相手仕様の発明になる"
+      candidate: false
+    verification:
+      status: pending
+      plan: "PayCo の全文仕様で部分返金時の charge.refunded の有無と data.object.refunded の意味を確認し、部分返金が起きうるなら扱いを依頼者（PAY-140）に確認する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "確認までは、部分返金が起きた注文の表示は保証しない"
+      revisit_condition: "PayCo 仕様か依頼者の回答が出たとき、または部分返金が発生したとき"
+    depends_on: []
+
+  - id: I-08
+    scope: {ref: "app/webhooks.py:9, 30-32", version: "sha256:aafdced4d7af"}
+    layer: 細部
+    origin: impact
+    impact_area: "認可・認証の前提 / 秘密"
+    question: "どの前提を焼き込んでいる: PAYCO_WEBHOOK_SECRET が空でない正しい値で設定されている前提か"
+    current_answer: "app.config から読んだ値をそのまま HMAC の鍵に使う。空や未設定の扱いはこのファイルに無い"
+    grounding:
+      - requirement: "PAY-140 要求2: 偽の webhook で状態を変えられないこと"
+    evidence:
+      - inspection: "app/webhooks.py:9, 30-32"
+    gap: "app/config.py は抜粋に無く、未設定・空文字で起動できるか分からない。空文字の鍵で動くなら、鍵を知らない者でも正しい署名を作れ、要求2が崩れる"
+    resolution:
+      action: investigate
+      reason: "設定の読み込みは PR の外で、資料に無い"
+      candidate: false
+    verification:
+      status: pending
+      plan: "app/config.py の読み込みで、未設定・空を起動時に拒否しているかを確認する。拒否していなければ、起動時に拒否する change を起票する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "確認までは、要求2の充足は『正しい鍵が設定されていれば』の条件付き"
+      revisit_condition: "設定の確認結果が出たとき"
+    depends_on: []
+
+  - id: C-01
+    scope: {ref: "app/webhooks.py:21-33", version: "sha256:aafdced4d7af"}
+    layer: 細部
+    origin: counterexample
+    counterexample:
+      explanation: "署名が合わない要求は、形式不正も含めて False として 400 で拒否する"
+      counterexample: "PayCo-Signature の v1 に 0x80 以上のバイトを入れた偽の要求。ヘッダは latin-1 で文字列になり、hmac.compare_digest は非 ASCII の str に TypeError を出す。verify_signature は KeyError/ValueError しか捕まえないので、400 ではなく 500 になる"
+      missing_condition: "比較に渡す値が ASCII であること（または比較時の型エラーを拒否として扱うこと）"
+    question: "どう反証: 偽の要求が 400 以外で終わる入力はあるか"
+    current_answer: "形式不正は KeyError/ValueError を捕まえて False にしている"
+    grounding:
+      - requirement: "PAY-140 要求2: 偽の webhook で状態を変えられないこと"
+      - convention: "Python docs『hmac』compare_digest: a と b は同じ型で、str なら ASCII のみ（HMAC.hexdigest() の戻り値など）"
+    evidence:
+      - inspection: "app/webhooks.py:22-27, 33 — 捕まえる例外は KeyError と ValueError だけ"
+      - inspection: "CPython Modules/_operator.c _compare_digest — 非 ASCII の str に TypeError『comparing strings with non-ASCII characters is not supported』"
+      - inspection: "Starlette starlette/datastructures.py Headers.__getitem__ — ヘッダ値を latin-1 で復号する"
+    gap: "偽の要求で状態は変わらない（要求2は保たれる）が、応答が 500 になり、認証失敗がサーバ障害として記録される。影響は監視上の誤検知にとどまる"
+    resolution:
+      action: change
+      reason: "26行で形式不正を False に落としている扱いに揃える。比較をバイト列で行うか、比較時の TypeError も拒否に含める一行の変更で足り、新しい抽象は要らない"
+      candidate: false
+    verification:
+      status: pending
+      plan: "非 ASCII の v1 を持つヘッダで verify_signature が False を返し、エンドポイントが 400 を返すことを確かめるテストを足して実行する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "実行環境の Python の版と、0x80 以上のバイトを含むヘッダを ASGI サーバが通すかは抜粋に無い。500 が実際に起きるかは実行で確かめていない"
+      revisit_condition: "テストを実行したとき"
+    depends_on: []
+
+  - id: A-01
+    scope: {ref: "tests/test_webhooks.py:38-50", version: "sha256:aafdced4d7af"}
+    layer: 細部
+    origin: asked
+    simulated: true
+    question: "どう反証: 重複・返金のテストは、本物の DB での挙動（ON CONFLICT、UPDATE の条件）を確かめているのか"
+    current_answer: "README は `pytest tests/test_webhooks.py` 全件成功と書く。重複・返金のテストは client_with_db フィクスチャの fake_db.updates を見ている"
+    grounding:
+      - requirement: "PAY-140 要求3・要求4 — これらのテストが証拠として受け持つ要求"
+    evidence:
+      - inspection: "tests/test_webhooks.py:38-50 — client_with_db / post_signed / fake_db はこのファイルに定義が無い"
+      - inspection: "README.md:15-17 — 全件成功の記載（今回は実行していない）"
+    gap: "フィクスチャの定義が抜粋に無く、fake_db が ON CONFLICT の結果をどう再現しているか分からない。fake_db.updates は (状態, charge id) の組で UPDATE の引数の記録に見え、行の最終状態や WHERE 条件の効果は確かめていない可能性がある。README の『全件成功』は今回実行しておらず確認していない"
+    resolution:
+      action: investigate
+      reason: "テストの証拠力はフィクスチャの実装で決まり、資料に無い。I-02・I-04 の改修を確かめるテストの形もこれで決まる"
+      candidate: false
+    verification:
+      status: pending
+      plan: "フィクスチャの定義を読み、fake が再現する範囲を記録する。行の状態を観測できないなら、I-02・I-04 のテストは実 PostgreSQL（または条件を評価する fake）で書く。そのうえでテストを実行し、結果をこの項目に記録する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "今回、テストは読んだだけで実行していない。重複排除の正しさはコードと文書の照合（I-01）に依っている"
+      revisit_condition: "フィクスチャを確認し、テストを実行したとき"
+    depends_on: []
+
+  - id: A-02
+    scope: {ref: "app/webhooks.py:13, 28-29", version: "sha256:aafdced4d7af"}
+    layer: 細部
+    origin: asked
+    simulated: true
+    question: "なぜこの形: 署名時刻の許容差はなぜ300秒か"
+    current_answer: "TOLERANCE_SECONDS = 300 で、現在時刻との差の絶対値が300秒を超える署名を拒否する"
+    grounding:
+      - convention: "PayCo Webhooks 抜粋（docs/vendor/payco-webhooks-excerpt.md:6-7）: 受信側は t の許容差（推奨 300 秒）を検査すること"
+    evidence:
+      - inspection: "app/webhooks.py:13, 28-29"
+      - inspection: "tests/test_webhooks.py:31-35 — 301秒前の署名を拒否することを主張している（読んだのみ、実行していない）"
+    gap: null
+    resolution: null
+    verification:
+      status: done
+      plan: "PayCo 抜粋の推奨値とコードの照合（資料確認）"
+      result: "推奨値 300 秒と一致"
+      artifact_version: "sha256:aafdced4d7af"
+    final_answer: "PayCo が推奨する300秒に合わせています。他の値を否定する根拠は持っていません。"
+    admitted_limit:
+      limit: "再送のたびに t が送信時刻で付け直される前提に立っている。抜粋はこれを明記しておらず、推奨300秒と最大3日の再送が併記されていることから読み取れるだけ。付け直されないなら、5分を過ぎた再送はすべて400で拒否される"
+      revisit_condition: "PayCo の全文仕様で t の意味を確認したとき、または再送が署名時刻で拒否された記録が出たとき"
+    depends_on: []
+
+signature:
+  dials: {scope: "変更範囲（PR #402 全体）", granularity: "細部", strength: "資料確認"}
+  version: "sha256:aafdced4d7af（作り方は meta.version_method）"
+  termination: "未達"
+  items_total: 14
+  by_origin: {impact: 9, deviation: 1, counterexample: 2, asked_simulated: 2}
+  by_status: {done: 5, pending: 9}
+  gap_items_open: 9   # I-02, I-03, I-04, I-06, I-07, I-08, D-01, C-01, A-01
+  next_first_step: "A-01 のフィクスチャ定義を読んでテストの形を決め、I-02 の UPDATE 条件を変えて逆順到着のテストを足す"
+  not_done_this_round: "コード変更、テスト実行、依頼者・PayCo への確認"

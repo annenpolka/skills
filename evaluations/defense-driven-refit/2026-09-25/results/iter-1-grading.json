@@ -1,0 +1,233 @@
+{
+  "run-01": {
+    "scenario": "A",
+    "items": {
+      "A1": {
+        "verdict": "○",
+        "evidence": "D-02: scope 'deploy/scheduler.yaml:7 × app/renewal_worker.py:15-43', origin: impact, grounding 'deploy/scheduler.yaml: replicas: 2（INFRA-77）', current_answer '排他は無い'",
+        "reason": "deploy資料（replicas: 2）を排他の欠如に結び、gap「両レプリカの取得結果に同じ購読が入り、他方が課金・更新済みの行も再び課金する」で二重課金の経路を具体化している。origin: impact。"
+      },
+      "A2": {
+        "verdict": "○",
+        "evidence": "D-05（impact）gap「課金成功の後・UPDATE の前に止まると…次の実行で同じ購読を再び課金する」、D-04 gap「キー無しの再送は二重課金の経路」、D-05 admitted_limit「キーの保持期間が不明（SUP-4411 で問い合わせ中）」、D-05 status: pending / final_answer: null",
+        "reason": "経路（5xx・接続断の再送、課金後・更新前の停止）があり、冪等キーの提案に保持期間不明（SUP-4411）を付けている。キーの材料（購読ID・その時点の renews_at・試行回数）も D-07 で詰めている。pending・final_answer null。"
+      },
+      "A3": {
+        "verdict": "○",
+        "evidence": "(a) D-11「月初の約40万件…1プロセスで全件取得し逐次に課金」、D-17「顧客の取得も40万回の個別クエリ」／(b) D-05 gap「RollingUpdate の停止猶予30秒」で課金後・UPDATE前に停止／(c) D-11「requests に timeout を指定していない」（payments_client.py:27-31）",
+        "reason": "(a)(b)(c) の3つがいずれも資料（BILL-212の件数、deploy/scheduler.yaml の猶予30秒、payments_client.py の行）に結びついている。2つ以上なので ○。"
+      },
+      "A4": {
+        "verdict": "○",
+        "evidence": "D-15（2/29 の replace が ValueError）、D-14（tz無し datetime.now() と TZ=Asia/Tokyo・timestamptz）、D-12（Decimal×float の TypeError、USD が整数セントにならない）、D-16（失敗時の renews_at 上書きで更新日がずれる）",
+        "reason": "判定文言の4例すべてを具体化している。1つ以上なので ○。"
+      },
+      "A5": {
+        "verdict": "○",
+        "evidence": "全項目の grounding は要求・既存契約・freedom・[W1]〜[W9] の出典付き記述で、人名・概念名・書名だけの項目は無い。PayCo の未記載事項は D-02・D-05・D-06・D-07 の admitted_limit で「抜粋に無い」としている",
+        "reason": "アンカー名を根拠にした箇所は無く、PayCo の仕様（保持期間、同時送信、拒否の再生）を作っていない。外部ライブラリ・PostgreSQL・Kubernetes の挙動は URL 付きの一次資料として引いており、作った仕様にはあたらない。"
+      },
+      "A6": {
+        "verdict": "○",
+        "evidence": "meta.not_applied で認可・認証と保存期間・削除を理由付きで対象外にしている。D-02 resolution「DB 側の排他は D-05 の限界が判明した場合に限って検討する」。D-08 は 0042 を PG16 文書と deploy/README で確認して done にしている",
+        "reason": "無関係な分野（認証・API互換・キャッシュ）への変更要求や、汎用の分散ロック基盤の要求は無い。0042 に expand-contract を強いていない。"
+      },
+      "A7": {
+        "verdict": "○",
+        "evidence": "D-01〜D-19 のすべてに origin がある。pending 17件はすべて final_answer: null。全項目に grounding がある。explanation.md の署名に scope・granularity・strength があり、1. その場の回答／2. 深掘りされたときの根拠／3. 認める限界の3段がある",
+        "reason": "判定文言の条件をすべて満たしている。"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 12,
+      "impact_item_ids": ["D-02", "D-03", "D-04", "D-05", "D-08", "D-09", "D-10", "D-11", "D-13", "D-15", "D-16", "D-17"],
+      "areas_outside_10": [
+        {"id": "D-11", "area": "性能・資源（40万件の逐次処理と所要時間）、タイムアウト（requests に timeout が無い）"},
+        {"id": "D-17", "area": "性能（顧客のN+1クエリ）※主題は個人情報の経路。副次的に扱う"},
+        {"id": "D-01", "area": "運用・デプロイ構成（ジョブを scheduler に置く形。例外で同居ジョブも止まる）"},
+        {"id": "D-05", "area": "運用・停止・デプロイ（RollingUpdate の停止猶予30秒を停止の経路に挙げる）※主題は冪等性。副次的に扱う"},
+        {"id": "D-19", "area": "テストの妥当性（テストが何を検出できるか）"}
+      ],
+      "over_application": [],
+      "anchor_only_grounding_or_evidence": []
+    }
+  },
+  "run-02": {
+    "scenario": "B",
+    "items": {
+      "B1": {
+        "verdict": "○",
+        "evidence": "D-005（impact）: jobs/user_indexer.py / OpenSearch users-v3「差分に現れない」。D-006（impact）: jobs/crm_sync.py / Acme CRM。D-007（impact）: jobs/export_analytics.py / s3://acme-dwh、日次・ライフサイクル無し。D-002 で4つの複製先をまとめている",
+        "reason": "3つの複製先すべてを impact 項目にしている。PRのコードに痕跡が無いことを理由に対象外にしていない。2つ以上なので ○。"
+      },
+      "B2": {
+        "verdict": "○",
+        "evidence": "D-001 resolution: investigate（注文履歴・猶予期間は法務・経理・PM の未決）、final_answer: null、revisit_condition あり。D-007・D-008 は「保持」に当たるかを法務・プライバシー担当の判断待ちにしている。保持期間は資料の35日・7日を事実として引くだけ",
+        "reason": "保持期間や法令名を要求として作らず、注文履歴と猶予期間を決めていない。未知の事項は pending・final_answer null で、判断者と見直し条件を付けている。"
+      },
+      "B3": {
+        "verdict": "○",
+        "evidence": "D-003: grounding「ACC-88 要求: 削除後、その利用者はログインできない」「current_user は JWT の署名だけを検証し users を参照しない。アクセストークンの有効期間は24時間」、gap「既発行のアクセストークンは削除後も最長24時間通る」",
+        "reason": "24時間のアクセストークンが削除後も有効に残ることを、要求の「ログインできない」に照らして gap として記録している。"
+      },
+      "B4": {
+        "verdict": "○",
+        "evidence": "D-004: audit_logs.user_id に ON DELETE が無く、削除が外部キー違反で500。D-001: orders の ON DELETE CASCADE が未決の注文履歴を消す",
+        "reason": "判定文言の2つをどちらも具体化している。"
+      },
+      "B5": {
+        "verdict": "○",
+        "evidence": "D-008: 「削除後も最長35日、スナップショットに個人情報が残る。復元すると削除済みの行が戻る」（ops/backup.md:3-5、PITR 7日）",
+        "reason": "バックアップに残ることと、復元で削除済みの行が戻ることの両方を記録している。"
+      },
+      "B6": {
+        "verdict": "○",
+        "evidence": "D-012: BOLA/IDOR と CSRF を確認し「追加の対策は求めない」で done。決済・キュー・分散ロック・キャッシュへの変更要求は無い",
+        "reason": "BOLA・CSRF は確認したうえで閉じており、変更を求めていない。判定文言に挙がった他の分野への要求も無い。"
+      },
+      "B7": {
+        "verdict": "○",
+        "evidence": "explanation.md 署名「第一周の制約: コード変更なし・テスト未実行・依頼者への質問なし」。全16項目に origin がある。pending 14件はすべて final_answer: null。署名にダイヤル（scope・granularity・strength）がある。1／2／3 の3段がある",
+        "reason": "資料を調べる前に質問を依頼者へ丸投げしていない。台帳の規則と3段の出力を満たしている。"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 11,
+      "impact_item_ids": ["D-001", "D-002", "D-003", "D-004", "D-005", "D-006", "D-007", "D-008", "D-012", "D-013", "D-015"],
+      "areas_outside_10": [
+        {"id": "D-009", "area": "監査記録（隣接APIとの慣行の整合）"},
+        {"id": "D-010", "area": "テストの妥当性"},
+        {"id": "D-014", "area": "APIレスポンスの書き方（コード様式・204の二重指定）"},
+        {"id": "D-016", "area": "既存運用との整合（問い合わせ経由の手動削除手順）"},
+        {"id": "D-008", "area": "運用・復旧（リストアで行が戻る）※主題はデータの保存期間と削除。副次的に扱う"}
+      ],
+      "over_application": [],
+      "over_application_borderline_not_counted": [
+        {"id": "D-009", "note": "要求に無い削除の監査記録を、隣接APIとの整合だけを根拠に（暫定で）求める。本人も admitted_limit で根拠が隣接APIとの整合だけと認めている"},
+        {"id": "D-015", "note": "改修後に削除が複数の文になった場合を想定し、トランザクションの張り方を（暫定で）変えるよう求める。削除の部分失敗という関係する分野の話で、B6 に挙がった分野ではない"}
+      ],
+      "anchor_only_grounding_or_evidence": [],
+      "anchor_note": "grounding と evidence には無い。YAML のコメント（入口の注記）に 'deletion propagation'・'session revocation'・'ambiguous outcome'・'BOLA/IDOR・CSRF' という概念名があるが、根拠の欄には置いていない"
+    }
+  },
+  "run-03": {
+    "scenario": "A",
+    "items": {
+      "A1": {
+        "verdict": "○",
+        "evidence": "D-001（deviation）grounding「deploy/scheduler.yaml replicas: 2・RollingUpdate（INFRA-77）」、gap「同じ期日到来購読を2プロセスが同時に取得して課金しうる」。D-007（impact）: 入口の注記「資料: deploy/scheduler.yaml（2レプリカ・RollingUpdate）」、current_answer「課金直前に行の状態を読み直さない」、gap「別の実行が同じ行を課金・更新しても…手元の古い行で課金する」。D-002（impact）gap「多重起動（D-001, D-007）…次の送信が新しい課金として作られる」",
+        "reason": "deploy の事実（replicas: 2）を排他・確保の欠如に結び、二重課金の経路を impact 項目 D-007・D-002 に記録している。deploy との対応付けがいちばんはっきりしているのは deviation の D-001 だが、D-007 は入口の注記で同じ deploy 資料を挙げ、D-001 に依存している。"
+      },
+      "A2": {
+        "verdict": "○",
+        "evidence": "D-008（impact）gap「課金成功後・DB 更新前に止まると…次の実行で同じ期間を再課金する」。D-004 の反例（5xx・送信後の切断 → キー無しで再送）。D-002 resolution でキーの材料を「購読 ID・請求期間の起点（D-006）・拒否が確定した回数」とし、D-006 で「renews_at が請求期間の起点と次の試行時刻を兼ねる…キーの材料が無くなる」と導出。D-002 admitted_limit「保持期間は転記元に記載なし（SUP-4411）」。pending / final_answer: null",
+        "reason": "経路があり、キーを請求期間ごとに安定させる導出（renews_at が失敗で動く点）と、保持期間不明（SUP-4411）の両方を示している。pending・null。"
+      },
+      "A3": {
+        "verdict": "○",
+        "evidence": "(a) D-010「毎月1日に約40万件」「購読ごとに顧客を1件ずつ引き…DB 往復を件数分増やす」／(b) D-008「更新配布時の SIGTERM（Python は既定で即終了する。既有知識）」で課金後・DB 更新前に停止（入口の注記: deploy/scheduler.yaml の RollingUpdate）／(c) D-016「requests.post に timeout を渡さない」（payments_client.py:27-31）",
+        "reason": "(a)(b)(c) の3つがいずれも資料に結びついている。2つ以上なので ○。"
+      },
+      "A4": {
+        "verdict": "○",
+        "evidence": "D-014（2/29 の ValueError）、D-013（tz無し now と TZ=Asia/Tokyo・セッションの TimeZone）、D-011（Decimal×float の TypeError、USD の最小単位）、D-006（再試行で更新日がずれる）",
+        "reason": "4例すべてを具体化している。"
+      },
+      "A5": {
+        "verdict": "○",
+        "evidence": "grounding は要求・既存契約・freedom と、出典（公式文書・ソース）付きの挙動の記述だけ。PayCo の未記載事項は D-002・D-004・D-009・D-021 の admitted_limit で「転記に無い／明記が無い」としている",
+        "reason": "アンカー名を根拠にした箇所は無く、PayCo の仕様・法令・社内規程を作っていない（D-015「社内のログ規程は資料に無く」）。D-008 の SIGTERM の挙動は「既有知識」と明示して gap に置いており、grounding ではない。"
+      },
+      "A6": {
+        "verdict": "○",
+        "evidence": "meta.not_applicable で認可・認証、保存期間・削除、キャッシュ・分散協調を理由付きで対象外にしている。D-010「計測値が無いまま並列化などの方式を足さない」。D-019 で 0042 を narrow し、資料確認で done にしている",
+        "reason": "無関係な分野への要求や汎用の分散ロックの要求は無い。D-007 の行の確保は二重実行への具体的な対策の範囲に収まる。0042 に expand-contract を強いていない。"
+      },
+      "A7": {
+        "verdict": "○",
+        "evidence": "21項目すべてに origin がある。pending 19件はすべて final_answer: null。全項目に grounding がある。explanation.md の署名に scope・granularity・strength があり、1／2／3 の3段がある",
+        "reason": "判定文言の条件をすべて満たしている。"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 13,
+      "impact_item_ids": ["D-002", "D-003", "D-005", "D-006", "D-007", "D-008", "D-010", "D-011", "D-013", "D-014", "D-015", "D-016", "D-019"],
+      "areas_outside_10": [
+        {"id": "D-010", "area": "性能・資源（40万件の所要時間、N+1の顧客取得、レート制限）"},
+        {"id": "D-016", "area": "タイムアウト（requests.post に timeout が無い）"},
+        {"id": "D-008", "area": "運用・停止・デプロイ（更新配布時の SIGTERM）※主題は部分失敗。副次的に扱う"},
+        {"id": "D-001", "area": "運用・デプロイ構成（2レプリカのスケジューラに置く形）"},
+        {"id": "D-018", "area": "実行頻度・スケジュール間隔"},
+        {"id": "D-020", "area": "テストの妥当性"}
+      ],
+      "over_application": [],
+      "over_application_borderline_not_counted": [
+        {"id": "D-006", "note": "期間の起点と次の試行時刻を別の列に分けるよう求める（スキーマの追加）。要求2・5と冪等キーの材料から導いており、関係する分野なので過剰とは見ない"}
+      ],
+      "anchor_only_grounding_or_evidence": []
+    }
+  },
+  "run-04": {
+    "scenario": "B",
+    "items": {
+      "B1": {
+        "verdict": "○",
+        "evidence": "P-03（impact）: jobs/user_indexer.py / users-v3「物理削除された行は同期の SELECT に二度と現れない」。P-04（impact）: jobs/export_analytics.py / s3://acme-dwh、日次・無期限。P-05（impact）: jobs/crm_sync.py / Acme CRM。S-03 で複製の一覧にまとめている",
+        "reason": "3つの複製先すべてを impact 項目にしており、対象外にしていない。"
+      },
+      "B2": {
+        "verdict": "○",
+        "evidence": "S-01・S-02・P-04・P-06 は resolution: investigate / final_answer: null。open_questions Q-1〜Q-7 に判断者（法務 佐藤・経理 李、PM、プライバシー担当など）がある。保持期間は資料の35日・7日・無期限を引くだけ",
+        "reason": "保持期間・法令名・注文履歴の扱い・猶予期間のどれも決めていない。未知の事項は判断者と見直し条件付きで残している。"
+      },
+      "B3": {
+        "verdict": "○",
+        "evidence": "B-01: grounding「ACC-88 要求2: 削除後、その利用者はログインできない」「app/auth.py: RS256 の JWT 検証のみで users を照会しない, 24h」、current_answer「発行済みアクセストークンは…削除後も最大24時間は認証を通る」",
+        "reason": "24時間のトークンが削除後も有効に残ることを、要求の「ログインできない」に照らして gap・admitted_limit として記録している。"
+      },
+      "B4": {
+        "verdict": "○",
+        "evidence": "P-01: audit_logs に ON DELETE が無く、削除が外部キー違反で500。S-01: orders の ON DELETE CASCADE が未決の注文履歴を消す",
+        "reason": "判定文言の2つをどちらも具体化している。"
+      },
+      "B5": {
+        "verdict": "○",
+        "evidence": "P-06: 「スナップショットに最大35日残る。スナップショットから本番を復元すると、削除済み利用者の users 行と…が戻る」",
+        "reason": "バックアップに残ることと、復元で戻ることの両方を記録している。"
+      },
+      "B6": {
+        "verdict": "○",
+        "evidence": "BOLA/IDOR・CSRF・決済・キュー・分散ロック・キャッシュへの変更要求は台帳にも説明にも無い。B-01「current_user で利用者の存在を確かめる…後者は全エンドポイントに効くので PR #57 の外で扱う」",
+        "reason": "判定文言に挙がった分野への要求は無い。"
+      },
+      "B7": {
+        "verdict": "○",
+        "evidence": "open_questions「今回は依頼者に質問できないため、資料で分からないことを残す」（資料を調べた後に残した問い）。12項目すべてに origin がある。pending 11件は final_answer: null。署名にダイヤルがある。1／2／3 の3段がある",
+        "reason": "調べる前に質問を丸投げしていない。台帳の規則と3段の出力を満たしている。"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 9,
+      "impact_item_ids": ["S-01", "S-02", "S-03", "B-01", "P-01", "P-03", "P-04", "P-05", "P-06"],
+      "areas_outside_10": [
+        {"id": "P-02", "area": "監査記録（隣接APIとの慣行の整合）"},
+        {"id": "P-07", "area": "テストの妥当性"},
+        {"id": "B-02", "area": "PR説明の正確さ（説明文の範囲の限定）"},
+        {"id": "P-06", "area": "運用・復旧（リストアで行が戻る）※主題はデータの保存期間と削除。副次的に扱う"}
+      ],
+      "over_application": [],
+      "over_application_borderline_not_counted": [
+        {"id": "P-02", "note": "要求に無い削除の監査記録を、隣の慣行だけを根拠に（暫定で）求める。admitted_limit で本人も認めている"}
+      ],
+      "anchor_only_grounding_or_evidence": []
+    }
+  }
+}

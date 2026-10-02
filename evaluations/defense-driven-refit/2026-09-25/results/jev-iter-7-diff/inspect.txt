@@ -1,0 +1,25 @@
+endpoint: https://api.typesafe.ai/v1/systemone
+model: jev-latest
+state keys:
+  diff: string, 4218 chars
+questions:
+  blocking_broad [noul]
+    instructions: Does `diff` define an adoption-blocking gap as a path that violates a requirement, contract, existing specification or a norm placed under convention, reachable with inputs the artifact accepts, and say uncertain cases are included with a one-sentence reason?
+    criteria: {"true":"All of these are stated","false":"Any is missing"}
+  accepted_by [noul]
+    instructions: Does `diff` add an accepted_by field to admitted_limit, require it for accepted limits in the end condition, and say a limit goes to unverified when the subject lacks authority?
+    criteria: {"true":"All three are stated","false":"Any is missing"}
+  web_docs [noul]
+    instructions: Does `diff` say external web documents are excluded from the version hash and recorded with document name, section, URL and access date in the signature?
+    criteria: {"true":"Stated","false":"Not stated"}
+  counterparty_contract [noul]
+    instructions: Does `diff` say product behaviour used to check the artifact goes to inspection, while a counterparty API's promise used as a reason for a choice goes to existing_contract?
+    criteria: {"true":"Both are stated","false":"Either is missing"}
+  inherent_limit [noul]
+    instructions: Does `diff` say limits inherent to the chosen response stay in the same item's admitted_limit, and items are split only when responses need separate decisions?
+    criteria: {"true":"Both are stated","false":"Either is missing"}
+  simulated_scope [noul]
+    instructions: Does `diff` place simulated in the item-shape example and say it modifies only the asked entry among the origins?
+    criteria: {"true":"Both are stated","false":"Either is missing"}
+no credential-like patterns found (this scan does not replace your own review)
+recorded inspection of request.json for this endpoint; read the summary above, then send in a separate step

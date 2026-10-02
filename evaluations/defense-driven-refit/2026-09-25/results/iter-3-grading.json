@@ -1,0 +1,171 @@
+{
+  "run-09": {
+    "scenario": "B",
+    "items": {
+      "B1": {
+        "verdict": "○",
+        "evidence": "D-009 / D-010 / D-011 (origin: impact)",
+        "reason": "D-009 は jobs/user_indexer.py:8-15 について『updated_at が cursor より新しい行を upsert するだけ。削除した行は選ばれず』と書き、D-011 は export_analytics の毎日全件出力と acme-dwh のライフサイクル設定なし（無期限保持）、D-010 は外部CRMを挙げている。3つとも impact 項目で gap を持つ。PRのコードに痕跡が無いことを理由に非該当にしていない（判定文言は2つ以上）"
+      },
+      "B2": {
+        "verdict": "○",
+        "evidence": "D-001 / D-011 / D-012 / explanation.md:105",
+        "reason": "保持期間・法令名を要件として置いていない（explanation.md:105『法令上の保持義務の有無については…何も主張しない』）。注文履歴と猶予は D-001 で resolution=investigate・final_answer null のまま、見直し条件付きの admitted_limit と、判断する人の表（法務 佐藤・経理 李・PM）に残している。35日は ops/backup.md の値でしかない"
+      },
+      "B3": {
+        "verdict": "○",
+        "evidence": "D-008",
+        "reason": "grounding は ACC-88.md:10『削除後、その利用者はログインできない』。evidence は auth.py:9,19-27（24時間、署名だけで検証し利用者の存在を確認しない）。gap は『削除後も発行済みトークンで最大24時間…認証が通る』で、要求に対するギャップとして書いている"
+      },
+      "B4": {
+        "verdict": "○",
+        "evidence": "D-006 / D-001",
+        "reason": "D-006 は audit_logs.user_id に ON DELETE 指定が無い（0012:3）ため、プロフィールを更新したことのある利用者は外部キー違反で削除できないとする。D-001 は orders の ON DELETE CASCADE が、未決の注文履歴を消すとする。どちらも具体的"
+      },
+      "B5": {
+        "verdict": "○",
+        "evidence": "D-012",
+        "reason": "ops/backup.md:3-5（スナップショット35日、PITR 7日）を示し、『最大35日はバックアップに残る』『削除より前の時点へ復元すると利用者行が戻り、再びログインできる』と書いている。残存と復活の両方を扱っている"
+      },
+      "B6": {
+        "verdict": "○",
+        "evidence": "D-003 / D-005 / meta.impact_areas",
+        "reason": "BOLA/IDOR と CSRF は D-003 で『問題なし』として閉じ（done、resolution null）、修正を求めていない。D-005 は『要求にない再認証はこの PR で足さない』と書いている。決済・キュー・分散ロック・キャッシュの変更要求は無い。索引ジョブや CRM 同期との競合（D-009・D-010）は、具体的な削除経路についての話にとどまっている"
+      },
+      "B7": {
+        "verdict": "○",
+        "evidence": "ledger 全13項目 / meta.dials / explanation.md 1〜3章・署名",
+        "reason": "資料を調べてから、未決の判断だけを持ち主に振り分けている。13項目すべてに origin がある。pending の12項目はすべて final_answer が null。署名には scope/granularity/strength がある。その場の回答・深掘りの根拠・認める限界の3段がそろっている"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 9,
+      "impact_item_ids": ["D-001", "D-002", "D-003", "D-006", "D-008", "D-009", "D-010", "D-011", "D-012"],
+      "over_application": [],
+      "over_application_comment": "該当なし。境界例: D-004（RFC 9110 の 204/202 の使い分け）は、応答コードの意味を説明に書くという narrow で、新しい方式は求めていない。D-005 は再認証を足さないと明記している",
+      "anchors_in_grounding_or_evidence": [
+        {"id": "D-004", "field": "grounding.convention", "text": "RFC 9110 §9.3.5 DELETE: 実施済みなら 204、受け付けたが未実施なら 202", "placement": "外部規格の RFC 番号と節番号、その内容の要約。URL は meta.external_primary_sources にある。プロジェクトが採用している規約ではなく外部の推奨を convention 欄に置いている。これだけに頼ってはおらず、requirement ACC-88:11 と account.py:11-12 の inspection が付いている"},
+        {"id": "D-006", "field": "evidence.inspection", "text": "PostgreSQL 16 文書 §5.4.5: ON DELETE 未指定は NO ACTION…", "placement": "プロジェクトが使う DB（ops/backup.md:3 の PostgreSQL 16）の一次文書。節番号・具体的な記述・URL（meta）が付き、migrations/0012:3 の existing_contract と組み合わせている"},
+        {"id": "D-008", "field": "evidence.inspection", "text": "PyJWT は exp が無いトークンの期限を検証しない（PyJWT API Reference）", "placement": "プロジェクトが import しているライブラリの一次文書。具体的な記述と URL（meta）が付き、auth.py:9,19-27 の inspection と組み合わせている"},
+        {"id": "D-003", "field": "evidence.inspection", "text": "…別サイトから削除要求を送らせる経路（CSRF）が成立しない", "placement": "概念名 CSRF を、auth.py:1（Cookie 不使用）を具体的に確かめた記述の括弧書きラベルとして使っている。概念名だけを根拠にしてはいない"}
+      ],
+      "anchors_outside_grounding_evidence": "YAML の入口コメントに BOLA/IDOR・CSRF・session revocation・deletion propagation・restore の概念名がある。grounding/evidence 欄ではない。人名・書名は無い"
+    }
+  },
+  "run-10": {
+    "scenario": "D",
+    "items": {
+      "D1": {
+        "verdict": "○",
+        "evidence": "D-002",
+        "reason": "『キーは members:page={page} だけ。一方で結果は org_id と role で変わる』と、キーに組織と役割が無いことを示している。gap は『組織Aの管理者が1ページ目を開いてから60秒以内に組織Bの一般メンバーが…開くと、Aのメンバー一覧がメール付きで返る』で、docs/spec/members.md:3-4 との矛盾まで具体的な漏えい経路に結び付けている"
+      },
+      "D2": {
+        "verdict": "○",
+        "evidence": "D-006",
+        "reason": "org_settings.py:15-16 の検査は https 接頭辞だけだと示し、requests.get が既定でリダイレクトを追うことを挙げ、『社内向けの https エンドポイント（またはそこへリダイレクトするURL）を登録…APIサーバから届く内部リソースの応答本文が自分のメールに届く』と書いている。サーバ側の取得が内部の宛先に届く経路を特定している"
+      },
+      "D3": {
+        "verdict": "○",
+        "evidence": "D-015",
+        "reason": "gap (1) は、適用から RollingUpdate 完了までの数分間、旧Podの users.name のクエリが失敗するとする。gap (2) は、イメージタグを戻すと旧コードが name を読んで壊れるとする。deploy/README.md:4-5 と api.yaml:7-9 に基づき、2経路とも具体的"
+      },
+      "D4": {
+        "verdict": "○",
+        "evidence": "D-008",
+        "reason": "invitations.py:34-35 が with db.transaction() の内側にあること、db.py:21-25（プール接続とトランザクションを保持）、DB_POOL_SIZE=10 を示している。gap (1)『送信に成功したあとコミットが失敗すると、DBに無いトークンのメールが届く』は、判定文言の『後でロールバックされる招待のメール』に当たる。gap (3) では接続の保持も挙げている。200件の一括招待での接続枯渇は明示していないが、判定文言は either なので満たす"
+      },
+      "D5": {
+        "verdict": "○",
+        "evidence": "D-009",
+        "reason": "deploy/README.md:3（既定の分離レベル）と PostgreSQL 文書（Read Committed）を示し、invitations.py:22-33 には行ロックも制約も無いとする。gap は『両方が used=上限-1 を読んでどちらも挿入し、上限を超える』で、数えてから挿入する形の競合として具体的"
+      },
+      "D6": {
+        "verdict": "○",
+        "evidence": "ledger 全項目 / meta.external_primary_sources",
+        "reason": "金銭・タイムゾーン・ジョブキューへの要求は無い。expand-contract（D-015）は deploy 資料に基づいている。ライブラリの挙動（requests のリダイレクトと timeout、PG の分離レベル）には出典が付いている。OWASP は『根拠には使わない』と明記され、grounding/evidence には無い。人名・概念名だけを置いた grounding は無い"
+      },
+      "D7": {
+        "verdict": "○",
+        "evidence": "ledger 全17項目 / meta.dial / explanation.md 1〜3章・署名",
+        "reason": "17項目すべてに origin がある。pending の14項目は final_answer が null。署名とダイヤルに scope・granularity・strength がある。3段の出力がそろっている"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "discrimination_D1_D5_circle_count": 5,
+    "notes": {
+      "impact_item_count": 12,
+      "impact_item_ids": ["D-002", "D-003", "D-004", "D-006", "D-008", "D-009", "D-011", "D-012", "D-013", "D-014", "D-015", "D-016"],
+      "over_application": [],
+      "over_application_comment": "該当なし。境界例: D-001（p50/p95 とヒット率の計測を要求）は要求1の『速くした』という主張を narrow するためのもので、関係しない分野への要求ではない。D-015 の expand-contract は、改名と混在版の資料に基づく方式要求。D-016（API の応答キー）は改名から派生した investigate",
+      "anchors_in_grounding_or_evidence": [
+        {"id": "D-006", "field": "evidence.inspection", "text": "requests.get は既定でリダイレクトを追う（Requests Quickstart「Redirection and History」）", "placement": "プロジェクトが使うライブラリの一次文書。節名・具体的な記述・URL（meta）が付き、logo.py:7 の inspection と組み合わせている"},
+        {"id": "D-007", "field": "evidence.inspection", "text": "Requests Quickstart「Timeouts」によれば、timeout は応答全体のダウンロード時間の上限ではない", "placement": "同じくライブラリの一次文書。具体的な記述と URL（meta）があり、logo.py:12 の inspection も併記している"},
+        {"id": "D-009", "field": "evidence.inspection", "text": "PostgreSQL 16 文書 transaction-iso: 既定は Read Committed…", "placement": "一次文書。URL（meta）付き。grounding の deploy/README.md:3（PG16 で既定の分離レベルのまま）という、プロジェクトの事実と組み合わせている"}
+      ],
+      "anchors_outside_grounding_evidence": "OWASP SSRF Prevention Cheat Sheet は meta.external_primary_sources と署名にだけあり、『改修案の参考。根拠には使わない』と明記している（外部の推奨）。概念名 SSRF は D-006 の gap に、expand-contract は D-015 の resolution にある。いずれも grounding/evidence 欄ではない。人名・書名は無い"
+    }
+  },
+  "run-11": {
+    "scenario": "A",
+    "items": {
+      "A1": {
+        "verdict": "○",
+        "evidence": "S-02 (origin: impact)",
+        "reason": "evidence『deploy/scheduler.yaml:7 の2プロセスがそれぞれ app/scheduler.py:10 で同じジョブを登録。app/renewal_worker.py:17-42 に行の確保もキーも無い』と gap『一方が処理中の行をもう一方も取得すると同じ購読に2回課金する』で、deploy 資料と具体的な経路の両方がある"
+      },
+      "A2": {
+        "verdict": "○",
+        "evidence": "B-01 / P-01 / B-05 / S-02",
+        "reason": "B-01 は『成立済みの課金に 5xx が返ると再送で2回目の課金』、P-01 は『課金成功の後・更新の前にプロセスが止まると次の実行で再課金』と、成否不定と課金後停止の経路を具体化している。キーの提案は B-05 にある。反例3『キーに renews_at を使う→再試行で renews_at が動き…重複排除されない』と gap『キーは請求期間を含み…成否不定の後は同じキーを使い続ける』で、期間ごとに固定する導出を示している。SUP-4411 の保持期間不明は S-02・B-05 の admitted_limit にある。いずれも pending で final_answer は null"
+      },
+      "A3": {
+        "verdict": "○",
+        "evidence": "P-03 / P-04 / D-12",
+        "reason": "(a) P-03 は1件ずつの customers 取得（N+1）を『毎月1日の約40万件では同じ数の追加問い合わせ』とし、P-04 は件数上限の無い fetch_all と180万件・40万件、所要時間とメモリが未計測であることを挙げている。(c) D-12 は payments_client.py:27-31 に timeout が無いことを挙げている。2つ以上なので満たす。(b) の RollingUpdate / terminationGracePeriodSeconds は資料に結び付けて挙げていない（P-01 の『停止』は一般論）"
+      },
+      "A4": {
+        "verdict": "○",
+        "evidence": "D-02 / D-01 / B-03 / D-03 / P-02",
+        "reason": "D-02 は2月29日の replace(year+1) が ValueError になる件、D-01 は naive な now() と TZ=Asia/Tokyo・timestamptz の件、B-03 は JPY を小数2桁に丸めることと PayCo の整数最小単位との不一致、D-03 は Decimal×float の TypeError、P-02 は失敗経路で renews_at が動いて更新日がずれる件。1つ以上を大きく上回る"
+      },
+      "A5": {
+        "verdict": "○",
+        "evidence": "S-02 grounding / B-01 evidence / D-12 grounding / B-05 evidence",
+        "reason": "grounding/evidence に人名・概念名・書名は無い。外部文書（PostgreSQL 16 文書、psycopg、schedule、requests、Kubernetes）は、文書名・節名と具体的な記述をセットで置いている。PayCo のキー保持期間は『不明（SUP-4411）』のままで、利用規約 §4.2 は『規約本文は未確認』と明記している。資料に無い提供元の仕様・法令・社内要件を事実として書いた箇所は見当たらない"
+      },
+      "A6": {
+        "verdict": "○",
+        "evidence": "meta.impact_areas.not_applicable / S-02 resolution / B-04 / explanation.md:120-125",
+        "reason": "認可・認証、キャッシュ、公開 API は非該当として閉じている。『分散ロックやリーダー選出は足さない』と明記し、二重実行への対処は単独の CronJob への寄せと冪等キーという具体策に限っている。0042 は B-04 で done として閉じ、expand-contract を強制していない"
+      },
+      "A7": {
+        "verdict": "○",
+        "evidence": "ledger 全24項目 / meta.signature / explanation.md 1〜3章・署名",
+        "reason": "24項目すべてに origin と grounding がある（D-07・D-08 は freedom）。pending の22項目は final_answer が null。署名に scope・granularity・strength がある。3段の出力がそろっている"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 12,
+      "impact_item_ids": ["S-02", "B-01", "B-02", "B-04", "P-04", "P-05", "D-01", "D-02", "D-03", "D-05", "D-09", "D-12"],
+      "over_application": [],
+      "over_application_comment": "該当なし。境界例: S-01（CronJob への移設）は既存の月額方式に寄せる remove_or_align で、二重実行への具体的な対処。P-02 の案 (a)（再試行時刻の列を追加）は要求2に基づく候補で、案 (b) の列を足さない形も並べている。D-05（ログの個人情報）は PR のコード行（renewal_worker.py:43）に基づく",
+      "anchors_in_grounding_or_evidence": [
+        {"id": "D-12", "field": "grounding.convention", "text": "requests 文書 Timeouts: 既定ではタイムアウトしない。外部への要求にはタイムアウトを付けるべき", "placement": "ライブラリ文書の推奨を convention 欄に置いている。プロジェクトが採用した規約ではなく外部の推奨（meta.boring_version は、明示規約が抜粋に無いとしている）。requirement BILL-212:9 と payments_client.py:27-31 の inspection を伴い、これだけに頼ってはいない。URL は無い"},
+        {"id": "B-01", "field": "evidence.inspection", "text": "requests は送信後の切断も ConnectionError として送出する（requests の公開 issue で確認。一次文書の該当箇所は未確認）", "placement": "出典は番号も URL も無い『公開 issue』で、一次資料ではないと自分で明記している。ライブラリの挙動を事実の形で書いているため、出典としては最も弱い。gap の結論（接続エラーにも成否不定が含まれる）はこの記述に依存している"},
+        {"id": "B-04", "field": "evidence.inspection", "text": "PostgreSQL 16 文書 ALTER TABLE Notes: 非 volatile な DEFAULT 付きの ADD COLUMN は表の書き換えを要しない", "placement": "プロジェクトが使う DB（deploy/README.md:3）の一次文書。節名と具体的な記述がある。URL は無い"},
+        {"id": "P-05", "field": "evidence.inspection", "text": "schedule は実行中の例外を捕まえない（schedule 文書 Exception Handling）", "placement": "プロジェクトが import しているライブラリの文書。節名と具体的な記述がある。URL は無い"},
+        {"id": "D-01", "field": "evidence.inspection", "text": "psycopg 文書 Adapting basic Python types / PostgreSQL 16 文書 8.5.1.3", "placement": "一次文書の節名と具体的な記述。scheduler.yaml:18-19 と 0031:8 の inspection を併記している。URL は無い"},
+        {"id": "D-02", "field": "grounding.existing_contract", "text": "PostgreSQL は存在しない日を月末に寄せる（PostgreSQL 16 文書 9.9）", "placement": "外部文書の記述を existing_contract 欄に monthly_worker.py:36 と並べて置いている。節番号と具体的な記述がある"},
+        {"id": "D-03", "field": "grounding.existing_contract / evidence.inspection", "text": "psycopg は numeric を Decimal で返す（psycopg 文書 Data adaptation configuration） / Decimal と float の算術は TypeError（Python decimal 文書）", "placement": "一次文書名と具体的な記述。0031:6 と config.py:3 のプロジェクト資料と組み合わせている"}
+      ],
+      "anchors_outside_grounding_evidence": "S-02 の gap と D-12 の evidence に『Kubernetes 文書 CronJob limitations / Forbid』がある（一次文書名と節名。URL は無い）。人名・書名・設計パターン名・OWASP などの指針名は grounding/evidence に無い。run-09・10 と違い、外部文書の URL 一覧（meta.external_primary_sources）が無い",
+      "a5_borderline": "B-05 の反例1『キー＝購読IDのみ → 翌年の更新に前年の結果が返り』は、PayCo のキー保持が1年以上あることを暗に前提している。ただし反例（ありうる悪い実装）として書かれ、保持期間そのものは S-02・B-05 で不明（SUP-4411）と明記しているので、事実として書いたものとは扱わなかった"
+    }
+  }
+}

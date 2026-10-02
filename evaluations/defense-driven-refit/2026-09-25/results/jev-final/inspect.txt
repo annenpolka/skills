@@ -1,0 +1,48 @@
+endpoint: https://api.typesafe.ai/v1/systemone
+model: jev-latest
+state keys:
+  skill_diff: string, 2627 chars
+  run12_items: string, 3286 chars
+  key_C: string, 538 chars
+questions:
+  t1_inspection [noul]
+    instructions: Does `skill_diff` add an evidence type for facts confirmed by reading documents or code, and say that strength=資料確認 results are recorded there?
+    criteria: {"true":"Both are added","false":"Either is missing"}
+  t1_gapless [noul]
+    instructions: Does `skill_diff` add a rule for recording a question that was checked and found to have no problem (gap and resolution null, references in grounding/evidence, verification done)?
+    criteria: {"true":"Such a rule is added with those elements","false":"Missing or lacking those elements"}
+  t1_settled_def [noul]
+    instructions: Does `skill_diff` define what it means for a resolution to be settled (確定)?
+    criteria: {"true":"A definition is added","false":"No definition is added"}
+  t2_depends_order [noul]
+    instructions: Does `skill_diff` state the layer ordering in terms of depends_on (the lower item lists the upper item) and say that overlapping line ranges alone do not make a dependency?
+    criteria: {"true":"Both statements are present","false":"Either is missing"}
+  t2_direction [noul]
+    instructions: Does `skill_diff` specify that when an item's resolution changes, the items that contain that item in depends_on are followed transitively and set back to pending?
+    criteria: {"true":"That direction and transitivity are stated","false":"Direction or transitivity is missing"}
+  t2_version [noul]
+    instructions: Does `skill_diff` add a rule that the version is the commit ID, or the content hash of the target file outside version control, with the method stated in the signature?
+    criteria: {"true":"All three parts are present","false":"Any part is missing"}
+  t3_candidate [noul]
+    instructions: Does `skill_diff` require a marker `candidate: true` on a lower-layer resolution that stays a candidate until the upper resolution is settled?
+    criteria: {"true":"The marker requirement is present","false":"It is absent"}
+  t3_simulated [noul]
+    instructions: Does `skill_diff` require items from simulated (mock) questioning to be marked `simulated: true` while keeping `origin: asked`?
+    criteria: {"true":"Both parts are present","false":"Either is missing"}
+  t3_end_condition [noul]
+    instructions: Does `skill_diff` change the end condition so that an admitted_limit counts only when the limit is accepted and not being fixed this round, and state that limits written on items scheduled for fixing do not count?
+    criteria: {"true":"Both parts are present","false":"Either is missing"}
+  c1_p01 [noul]
+    instructions: Using `key_C`, does item P-01 in `run12_items` meet the ○ condition of C1 (a late or redelivered charge.succeeded overwrites refunded back to paid, tied to requirement 4)?
+    criteria: {"true":"P-01 meets C1 ○","false":"P-01 does not meet C1 ○"}
+  c2_closed [noul]
+    instructions: In `run12_items`, are B-03 (signature verification) and S-02 (deduplication) both recorded as confirmed (verification done) with no change requested?
+    criteria: {"true":"Both are done with no change requested","false":"Either is not done or requests a change"}
+  x04_no_change [noul]
+    instructions: In `run12_items`, does X-04 resolve its gap by weakening the claim (narrow) rather than requesting a code change?
+    criteria: {"true":"X-04 uses narrow and requests no code change","false":"X-04 requests a code change or does not use narrow"}
+  c_suff [noul]
+    instructions: Does `run12_items` show each item's verification status and resolution fields directly, so that 'done' and 'no change requested' can be read without other files?
+    criteria: {"true":"The fields are shown directly","false":"They are missing or referenced elsewhere"}
+no credential-like patterns found (this scan does not replace your own review)
+recorded inspection of request.json for this endpoint; read the summary above, then send in a separate step

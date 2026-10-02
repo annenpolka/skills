@@ -1,0 +1,6 @@
+import os
+
+TAX_RATE = 0.10
+PAYMENTS_API_URL = os.environ["PAYMENTS_API_URL"]
+PAYMENTS_API_KEY = os.environ["PAYMENTS_API_KEY"]
+DATABASE_URL = os.environ["DATABASE_URL"]

@@ -1,0 +1,213 @@
+{
+ "iter-1": {
+  "run-04": {
+   "tool_uses": 15,
+   "duration_ms": 648722,
+   "subagent_tokens": 126405,
+   "retries_self_reported": 2
+  },
+  "run-02": {
+   "tool_uses": 20,
+   "duration_ms": 797807,
+   "subagent_tokens": 145406,
+   "retries_self_reported": 2
+  },
+  "run-01": {
+   "tool_uses": 32,
+   "duration_ms": 1052602,
+   "subagent_tokens": 187494,
+   "retries_self_reported": 3
+  },
+  "run-03": {
+   "tool_uses": 31,
+   "duration_ms": 1094352,
+   "subagent_tokens": 201335,
+   "retries_self_reported": 3
+  },
+  "grader": {
+   "tool_uses": 16,
+   "duration_ms": 253514,
+   "subagent_tokens": 166837
+  }
+ },
+ "iter-2": {
+  "run-08": {
+   "tool_uses": 31,
+   "duration_ms": 743356,
+   "subagent_tokens": 141107,
+   "retries_self_reported": 3
+  },
+  "run-05": {
+   "tool_uses": 17,
+   "duration_ms": 887155,
+   "subagent_tokens": 155086,
+   "retries_self_reported": 2
+  },
+  "run-07": {
+   "tool_uses": 24,
+   "duration_ms": 1044130,
+   "subagent_tokens": 165469,
+   "retries_self_reported": 4
+  },
+  "run-06": {
+   "tool_uses": 41,
+   "duration_ms": 1120025,
+   "subagent_tokens": 189629,
+   "retries_self_reported": 3
+  },
+  "grader": {
+   "tool_uses": 25,
+   "duration_ms": 429042,
+   "subagent_tokens": 196619
+  }
+ },
+ "iter-3": {
+  "run-10": {
+   "tool_uses": 16,
+   "duration_ms": 679213,
+   "subagent_tokens": 137355,
+   "retries_self_reported": 2
+  },
+  "run-09": {
+   "tool_uses": 36,
+   "duration_ms": 789615,
+   "subagent_tokens": 145559,
+   "retries_self_reported": 1
+  },
+  "run-11": {
+   "tool_uses": 49,
+   "duration_ms": 1206623,
+   "subagent_tokens": 211691,
+   "retries_self_reported": 4
+  },
+  "grader": {
+   "tool_uses": 17,
+   "duration_ms": 288612,
+   "subagent_tokens": 147786
+  }
+ },
+ "iter-4": {
+  "run-15": {
+   "tool_uses": 39,
+   "duration_ms": 768866,
+   "subagent_tokens": 141301,
+   "retries_self_reported": 2
+  },
+  "run-12": {
+   "tool_uses": 26,
+   "duration_ms": 820219,
+   "subagent_tokens": 149055,
+   "retries_self_reported": 1
+  },
+  "run-14": {
+   "tool_uses": 20,
+   "duration_ms": 831798,
+   "subagent_tokens": 152740,
+   "retries_self_reported": 3
+  },
+  "run-13": {
+   "tool_uses": 29,
+   "duration_ms": 1065740,
+   "subagent_tokens": 179059,
+   "retries_self_reported": 4
+  },
+  "grader": {
+   "tool_uses": 21,
+   "duration_ms": 310241,
+   "subagent_tokens": 173209
+  }
+ },
+ "iter-5": {
+  "run-17": {
+   "tool_uses": 31,
+   "duration_ms": 739499,
+   "subagent_tokens": 138780,
+   "retries_self_reported": 1
+  },
+  "run-18": {
+   "tool_uses": 28,
+   "duration_ms": 853519,
+   "subagent_tokens": 151551,
+   "retries_self_reported": 1
+  },
+  "run-16": {
+   "tool_uses": 45,
+   "duration_ms": 940474,
+   "subagent_tokens": 169228,
+   "retries_self_reported": 2
+  },
+  "run-19": {
+   "tool_uses": 42,
+   "duration_ms": 1002205,
+   "subagent_tokens": 185666,
+   "retries_self_reported": 4
+  },
+  "grader": {
+   "tool_uses": 20,
+   "duration_ms": 425512,
+   "subagent_tokens": 209083
+  }
+ },
+ "iter-6": {
+  "run-23": {
+   "tool_uses": 32,
+   "duration_ms": 919699,
+   "subagent_tokens": 158289,
+   "retries_self_reported": 1
+  },
+  "run-22": {
+   "tool_uses": 24,
+   "duration_ms": 961121,
+   "subagent_tokens": 172400,
+   "retries_self_reported": 1
+  },
+  "run-20": {
+   "tool_uses": 38,
+   "duration_ms": 980263,
+   "subagent_tokens": 168828,
+   "retries_self_reported": 3
+  },
+  "run-21": {
+   "tool_uses": 35,
+   "duration_ms": 1097091,
+   "subagent_tokens": 200985,
+   "retries_self_reported": 5
+  },
+  "grader": {
+   "tool_uses": 21,
+   "duration_ms": 290647,
+   "subagent_tokens": 188595
+  }
+ },
+ "iter-7": {
+  "run-24": {
+   "tool_uses": 25,
+   "duration_ms": 794916,
+   "subagent_tokens": 142638,
+   "retries_self_reported": 1
+  },
+  "run-27": {
+   "tool_uses": 41,
+   "duration_ms": 839539,
+   "subagent_tokens": 153120,
+   "retries_self_reported": 1
+  },
+  "run-25": {
+   "tool_uses": 24,
+   "duration_ms": 1045541,
+   "subagent_tokens": 201639,
+   "retries_self_reported": 1
+  },
+  "run-26": {
+   "tool_uses": 41,
+   "duration_ms": 1131343,
+   "subagent_tokens": 204812,
+   "retries_self_reported": 3
+  },
+  "grader": {
+   "tool_uses": 19,
+   "duration_ms": 319588,
+   "subagent_tokens": 201272
+  }
+ }
+}

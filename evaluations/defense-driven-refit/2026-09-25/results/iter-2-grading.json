@@ -1,0 +1,487 @@
+{
+  "run-05": {
+    "scenario": "D",
+    "items": {
+      "D1": {
+        "verdict": "○",
+        "evidence": "D-002: members.py:19 キーは page のみ…権限による出し分け（:28）より前にキャッシュ値を返す／gap「組織Aの一覧が…組織Bの利用者に返る。管理者向け（email付き）の応答が一般メンバーに返る」",
+        "reason": "キーに組織と権限が無いこと（the missing key part）を、他組織の一覧・一般メンバーへのemailという具体的な露出経路と docs/spec/members.md:3-4 への反しに結び付けている"
+      },
+      "D2": {
+        "verdict": "○",
+        "evidence": "D-010: gap「組織の管理者が社内向けの https URL、または内部アドレスへリダイレクトするURLを登録し…APIのPodから取得した応答本文がメールで手元に届く」／evidence logo.py:7 requests.get は既定でリダイレクトに従う",
+        "reason": "管理者が指定したURLをサーバ側で取得し、https 検査では内部宛て・リダイレクトを止められないという internal-destination 経路を特定している"
+      },
+      "D3": {
+        "verdict": "○",
+        "evidence": "D-008: gap「Jobで改名が適用されてから新Podが上がるまで全Podが旧コードで…並走中の旧Podも同じ。イメージを戻すロールバックでは列名が戻らず、旧コードが全面的に失敗する」",
+        "reason": "pre-deploy の RENAME と旧Pod並走、イメージのみのロールバックの両経路を deploy/README.md:4-5 に基づいて具体化している"
+      },
+      "D4": {
+        "verdict": "○",
+        "evidence": "D-013: gap「(1) ロゴ取得と送信の間、DB接続とトランザクションを保持し、一括招待中に同じプロセスの他APIが接続待ち (2) 送信後にコミットが失敗…招待行は消えメールだけが届く」（grounding config.py:5 プール10本、TEAM-45.md:12 最大200件）",
+        "reason": "接続枯渇（プール10・200件一括）と、ロールバックされた招待のメール送信の両経路を具体化している"
+      },
+      "D5": {
+        "verdict": "○",
+        "evidence": "D-014: gap「同じ組織への招待が同時に来ると、両方が上限-1を読んで両方挿入し、上限を超える」／grounding deploy/README.md:3 既定の分離レベル＝READ COMMITTED",
+        "reason": "既定分離レベルでの count-then-insert による席数超過を具体化している"
+      },
+      "D6": {
+        "verdict": "○",
+        "evidence": "D-008 grounding {convention: Expand and Contract…}／D-010 grounding {convention: OWASP SSRF Prevention Cheat Sheet…}／meta.impact_not_applicable 時刻・タイムゾーン",
+        "reason": "無関係分野（金銭・時刻・ジョブキュー）への変更要求は無い。概念名・指針名は grounding にあるが、どちらも同じ grounding に repo の一次資料（deploy/README.md:4-5、org_settings.py:14-16）と具体的内容・URL を伴い『単独』ではない。ライブラリの挙動（リダイレクト、timeout、READ COMMITTED）は Web の出典付き"
+      },
+      "D7": {
+        "verdict": "○",
+        "evidence": "全18項目に origin／pending 15件は final_answer: null（done は D-003・D-004・D-015）／meta.dial と explanation.md 署名に scope・granularity・strength／explanation.md の 1.その場の回答・2.深掘り・3.認める限界",
+        "reason": "判定文言の4条件をすべて満たす"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 11,
+      "impact_item_ids": [
+        "D-002",
+        "D-003",
+        "D-005",
+        "D-006",
+        "D-007",
+        "D-008",
+        "D-010",
+        "D-012",
+        "D-013",
+        "D-014",
+        "D-017"
+      ],
+      "areas_outside_ten": [
+        {
+          "id": "D-001",
+          "area": "性能（一覧の遅さとキャッシュの効果・計測）"
+        },
+        {
+          "id": "D-002",
+          "area": "キャッシュ（キーの構成）※認可・個人情報とも重なる"
+        },
+        {
+          "id": "D-004",
+          "area": "キャッシュ（TTL・鮮度・無効化）"
+        },
+        {
+          "id": "D-006",
+          "area": "キャッシュ基盤の可用性（Redis 停止で一覧が500）※障害時とも重なる"
+        },
+        {
+          "id": "D-007",
+          "area": "API互換（応答キー display_name）"
+        },
+        {
+          "id": "D-008",
+          "area": "運用・デプロイ（pre-deploy Job・新旧Pod並走・イメージのみのロールバック）※移行・後方互換とも重なる"
+        },
+        {
+          "id": "D-010",
+          "area": "入力検証・SSRF"
+        },
+        {
+          "id": "D-011",
+          "area": "タイムアウト・資源（全体時間上限とサイズ上限、全量メモリ読み込み）"
+        },
+        {
+          "id": "D-012",
+          "area": "API互換（既存の一括招待画面が 409 をどう扱うか）"
+        },
+        {
+          "id": "D-013",
+          "area": "性能・資源（トランザクション中の外部呼び出しによる接続プール占有）※部分失敗とも重なる"
+        },
+        {
+          "id": "D-018",
+          "area": "スキーマの値域（seat_limit・plan_id の NULL）"
+        }
+      ],
+      "over_application": [],
+      "over_application_comment": "該当なし。境界例: D-005（Redis に email を置く可否）は investigate のみで members.md:4 に基づく。meta.impact_areas_applied で席数上限を『金銭・課金』に分類しているが分類のみで、変更要求は無い",
+      "anchors_in_grounding_or_evidence": [
+        {
+          "location": "ledger D-008 grounding (convention)",
+          "name": "Expand and Contract（Parallel Change）",
+          "placement": "概念名に具体的内容『列の改名は追加→移行→旧列削除を別リリースに分ける（Web確認）』を添え、URL は meta.web_checked（tim-wellhausen.de）。同じ grounding に requirement TEAM-45.md:8、existing_contract deploy/README.md:4-5・deploy/api.yaml:6-9、evidence に 0033:1 がある。名前だけを根拠にしてはいない"
+        },
+        {
+          "location": "ledger D-010 grounding (convention)",
+          "name": "OWASP SSRF Prevention Cheat Sheet",
+          "placement": "指針名に具体策『リダイレクト不追従、私設・ループバック・リンクローカル宛ての拒否（Web確認）』を添え、URL は meta.web_checked。同じ grounding に existing_contract org_settings.py:14-16、evidence に logo.py:7・invitations.py:30-35 がある。名前だけを根拠にしてはいない"
+        },
+        {
+          "location": "explanation.md:52, :61（根拠列）",
+          "name": "『規約 Expand and Contract』『規約 OWASP SSRF Prevention Cheat Sheet』",
+          "placement": "表のセルでは名前だけが書かれているが、同じセルに repo の参照（deploy/README.md:4-5、org_settings.py:14-16）があり、URL は explanation.md:134-135 にある"
+        }
+      ],
+      "other_external_facts": "requests の timeout・リダイレクト（blog.apify.com、GitHub issue の二次資料）、PostgreSQL の READ COMMITTED（公式文書）を『Web確認』として evidence・existing_contract に置き、URL は meta.web_checked。出典の無い一般論として explanation.md:66『外部画像を既定で表示しないメールソフトもあります』と D-010 admitted_limit『DNS rebinding を防ぎきれない』があるが、提供者・ライブラリの保証ではないため D6 では数えていない",
+      "typesafe_crosscheck": {
+        "model": "jev-1.13.0",
+        "request": "grading/jev/req-run05.json",
+        "response": "grading/jev/resp-run05.json",
+        "noul": {
+          "d1_cache_key": 0.98,
+          "d2_ssrf": 0.97,
+          "d3_mixed_version": 0.97,
+          "d4_tx_external": 0.95,
+          "d5_seat_race": 0.95,
+          "d6_anchor_alone": 0.27,
+          "d6_unrelated_demand": 0.09,
+          "d6_unsourced_guarantee": 0.23,
+          "d7_origin_all": 0.98,
+          "d7_signature": 0.99
+        },
+        "note": "採点補助。確率は判定そのものではない"
+      }
+    }
+  },
+  "run-06": {
+    "scenario": "A",
+    "items": {
+      "A1": {
+        "verdict": "○",
+        "evidence": "D-001 (origin: impact): current_answer「DB側の排他も請求済みの記録も無く…」, gap「二重課金の経路が4つある: D-002 2レプリカの同時実行…」／D-002 evidence deploy/scheduler.yaml:1,7 replicas: 2, gap「2つのレプリカがそれぞれ同じ期日到来分を取って課金し…」",
+        "reason": "impact 項目 D-001 が『2レプリカの同時実行』を排他の欠如に結び付けた二重課金経路として記録している。deploy の記述は D-002 が file:line で引用し、課金経路まで具体化している"
+      },
+      "A2": {
+        "verdict": "○",
+        "evidence": "D-005: 5xx 後にキー無しで再送（payments_client.py:27-39）／D-006: 課金成功後・UPDATE前の中断で再課金／D-001: 冪等キーは『購読ID＋上書きされない請求期間の識別子』、admitted_limit『キー保持期間は抜粋に無い（SUP-4411）』、status pending・final_answer null／D-007: 『renews_at からキーを作ると再試行のたびにキーが変わる』",
+        "reason": "経路（5xx 再送と、課金後・UPDATE前の停止）、キーの導出（請求期間で安定、renews_at は動く）と保持期間が不明なこと（SUP-4411）、pending かつ null をすべて満たす"
+      },
+      "A3": {
+        "verdict": "○",
+        "evidence": "(a) D-010: 毎月1日約40万件、fetch_all で全件取得、1件ごとに customers を SELECT、『1件0.1秒でも約11時間』／(b) D-006 evidence『deploy/scheduler.yaml:8-12 RollingUpdate・終了猶予30秒。app/scheduler.py:12-14 に停止シグナルの処理は無い』、gap『デプロイ時の停止』／(c) D-016: requests.post に timeout が無い（payments_client.py:27-31）",
+        "reason": "(a)(b)(c) の3つを具体的な資料に結び付けている（≥2）"
+      },
+      "A4": {
+        "verdict": "○",
+        "evidence": "D-014: replace(year+1) は2月29日で ValueError／D-013: 素の datetime.now() と TZ=Asia/Tokyo・timestamptz／D-011: Decimal×float の TypeError、最小単位の整数でない／D-008: 失敗経路で更新日がずれる",
+        "reason": "時刻・金額の欠陥を4種類具体化している（≥1）"
+      },
+      "A5": {
+        "verdict": "○",
+        "evidence": "grounding/evidence に人名・概念名・書名は無い。PayCo については抜粋の記述（Idempotency-Key、5xx の不定、amount は整数）だけを使い、保持期間（D-001）・同じキーの同時要求（D-001）・拒否応答への適用（D-007）・流量制限（D-010）は『抜粋に無い』と明記している",
+        "reason": "アンカー名を根拠にした箇所も、提供者仕様・法令・社内要求の捏造も無い。ライブラリ・基盤の挙動（schedule、psycopg、PostgreSQL、requests、Kubernetes）は公式文書の出典付き（explanation.md:158-167）"
+      },
+      "A6": {
+        "verdict": "○",
+        "evidence": "D-003: 0042 を done で閉じる（定数デフォルトは書き換えなし、旧コードと共存）／D-002: 既存 monthly-worker と同じ CronJob・Forbid に揃える／explanation.md:211-212 認可・保存期間は非該当、並列化・ジッタは求めない",
+        "reason": "認可・API互換・キャッシュ・汎用の分散ロックへの変更要求は無く、0042 を expand-contract に強制していない。CronJob 化は二重実行に対する具体的な修正で、既存の実装に揃えるもの"
+      },
+      "A7": {
+        "verdict": "○",
+        "evidence": "全18項目に origin／pending 16件は final_answer: null／全項目に grounding（D-017 は freedom）／meta.dial と explanation.md:218 の署名／explanation.md の 1・2・3 章",
+        "reason": "判定文言の全条件を満たす"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 7,
+      "impact_item_ids": [
+        "D-001",
+        "D-003",
+        "D-006",
+        "D-010",
+        "D-012",
+        "D-015",
+        "D-016"
+      ],
+      "areas_outside_ten": [
+        {
+          "id": "D-002",
+          "area": "運用・デプロイ（実行基盤とレプリカ数の選択。schedule の例外でプロセスが落ち、purge が走らない）"
+        },
+        {
+          "id": "D-004",
+          "area": "共有クライアントの変更が範囲外の既存機能（月額ジョブ）へ波及する点 ※後方互換とも重なる"
+        },
+        {
+          "id": "D-006",
+          "area": "運用・停止・デプロイ（RollingUpdate、終了猶予30秒、停止シグナルの処理なし）※部分失敗とも重なる"
+        },
+        {
+          "id": "D-010",
+          "area": "性能・資源（40万件の一括取得、N+1、処理時間）"
+        },
+        {
+          "id": "D-016",
+          "area": "タイムアウト（requests.post に timeout が無い）"
+        },
+        {
+          "id": "D-017",
+          "area": "再試行・バックオフ（固定2秒・ジッタなし、処理時間への影響）"
+        },
+        {
+          "id": "D-018",
+          "area": "テストの妥当性（証拠の質）"
+        }
+      ],
+      "over_application": [],
+      "over_application_comment": "該当なし。境界例: D-002 の CronJob 化は既存 monthly-worker.yaml に揃える具体的な修正で、汎用の分散ロックではない。D-010 は並列化・バッチ化を明示的に求めていない",
+      "anchors_in_grounding_or_evidence": [],
+      "anchors_comment": "人名・概念名・書名・一般的な指針名は無い。製品・ライブラリの公式文書名を evidence に書いた箇所: D-002（schedule 公式文書 Exception Handling）、D-003（PostgreSQL 文書 ALTER TABLE）、D-011（psycopg 文書 Adapting basic Python types、Python 文書 decimal）、D-013（psycopg 文書）、D-014（PostgreSQL 文書 Date/Time Functions and Operators）、D-016（requests 文書 Timeouts）。admitted_limit では D-002（Kubernetes 文書 CronJob limitations）。いずれも具体的な記述と repo の file:line を伴う。URL は ledger ではなく explanation.md:158-167 にある",
+      "typesafe_crosscheck": {
+        "model": "jev-1.13.0",
+        "request": "grading/jev/req-run06.json",
+        "response": "grading/jev/resp-run06.json",
+        "noul": {
+          "a1_impact_item_records_concurrent_path": 0.62,
+          "a1_deploy_material_cited": 0.98,
+          "a1_path_concrete": 0.83,
+          "a2_retry_or_stop_path": 0.98,
+          "a2_key_stable_or_retention": 0.97,
+          "a2_pending_null": 0.96,
+          "a3_resource": 0.97,
+          "a3_shutdown": 0.92,
+          "a3_timeout": 0.98,
+          "a4_time_or_money": 0.99,
+          "a5_anchor_in_grounding": 0.41,
+          "a5_provider_spec_invented": 0.22,
+          "a6_over_application": 0.06,
+          "a7_origin_all": 0.98,
+          "a7_grounding_or_limit": 0.84
+        },
+        "note": "採点補助。確率は判定そのものではない",
+        "disputed": {
+          "a1_impact_item_records_concurrent_path": "0.62（どちらとも言いにくい）。D-001 を読み直した。D-001 は current_answer に排他が無いこと、gap に『D-002 2レプリカの同時実行』を書いており、具体的な経路と deploy ファイルの引用は D-002（deviation）にある。A1 は ○ のまま",
+          "a5_anchor_in_grounding": "0.41（どちらとも言いにくい）。grounding/evidence にあるのは製品・ライブラリの公式文書名（schedule、PostgreSQL、psycopg、Python decimal、requests）と、資料にある INFRA-77・利用規約 §4.2 だけで、人名・概念名・書名は無いことを読んで確かめた。A5 は ○ のまま"
+        }
+      }
+    }
+  },
+  "run-07": {
+    "scenario": "D",
+    "items": {
+      "D1": {
+        "verdict": "○",
+        "evidence": "D-012: evidence「キーは members:page={page} で組織 ID も権限も含まない」、gap「60秒以内なら、別組織の利用者に他組織の一覧が返り、一般メンバーに管理者向けのメールアドレスが返る」",
+        "reason": "キーの欠落（組織・権限）を具体的な露出経路と docs/spec/members.md:3-4 に結び付けている"
+      },
+      "D2": {
+        "verdict": "○",
+        "evidence": "D-004: evidence『requests は GET でリダイレクトを既定で追う…https の検査はリダイレクト先に及ばない』、gap『組織の管理者が、API の Pod から到達できるホストの応答を、自分宛ての招待メールで受け取れる』",
+        "reason": "サーバ側の取得が Pod から届く内部ホストやリダイレクト先に及ぶことを特定している"
+      },
+      "D3": {
+        "verdict": "○",
+        "evidence": "D-002: gap『適用から切替完了までの数分、旧 Pod の users.name を参照する処理が失敗する。イメージだけを戻すロールバックでは旧コードが失敗し続ける』",
+        "reason": "旧Pod並走とロールバックの両経路を deploy/README.md:4-5 に基づいて具体化している"
+      },
+      "D4": {
+        "verdict": "○",
+        "evidence": "D-010: grounding db.py:21-25・config.py:5（プール10本）、gap『外部の応答が遅いあいだ接続とトランザクションを保持し、同時の招待が多いとプールが尽きて他の API も待つ…メール送信後の失敗や送信結果不明の例外ではロールバックされ、届いたメールの招待が保存されない』",
+        "reason": "接続枯渇と、ロールバックされた招待のメール送信の両経路を具体化している（200件一括への言及は D-015 側だが、どちらか一方で ○ の条件を満たす）"
+      },
+      "D5": {
+        "verdict": "○",
+        "evidence": "D-009: evidence『行ロック無しで数えて挿入。…PostgreSQL 16 文書では Read Committed』、gap『同じ組織への招待が並行すると、双方が同じ used を読んで両方とも挿入し、席数を超える』",
+        "reason": "既定の分離レベルでの count-then-insert による超過を具体化している"
+      },
+      "D6": {
+        "verdict": "○",
+        "evidence": "grounding/evidence に人名・概念名・指針名は無い。ライブラリ・製品の挙動は D-004・D-015（requests 文書）、D-009（PostgreSQL 16 文書）として meta.web_sources の URL 付き。meta.impact_areas の時刻・金銭は分類だけで、変更要求は無い",
+        "reason": "無関係分野への要求、根拠の無い新しい抽象化、出典の無い保証、アンカー名の単独使用のいずれも無い"
+      },
+      "D7": {
+        "verdict": "○",
+        "evidence": "全16項目に origin／pending 14件は final_answer: null（done は D-006・D-008）／meta.dials と explanation.md の署名／explanation.md の 1・2・3 章",
+        "reason": "判定文言の4条件をすべて満たす"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 10,
+      "impact_item_ids": [
+        "D-002",
+        "D-004",
+        "D-005",
+        "D-006",
+        "D-009",
+        "D-010",
+        "D-011",
+        "D-012",
+        "D-013",
+        "D-015"
+      ],
+      "areas_outside_ten": [
+        {
+          "id": "D-001",
+          "area": "性能（キャッシュの効果・計測）"
+        },
+        {
+          "id": "D-002",
+          "area": "運用・デプロイ（新旧Pod並走、イメージのみのロールバック、DDL の ACCESS EXCLUSIVE ロック待ち）※移行・後方互換とも重なる"
+        },
+        {
+          "id": "D-004",
+          "area": "入力検証・SSRF"
+        },
+        {
+          "id": "D-005",
+          "area": "API互換（応答キー display_name）"
+        },
+        {
+          "id": "D-008",
+          "area": "API互換・エラー応答の形（409、一括招待画面での扱い）"
+        },
+        {
+          "id": "D-010",
+          "area": "性能・資源（トランザクション中の外部呼び出しによる接続プール枯渇）※部分失敗とも重なる"
+        },
+        {
+          "id": "D-011",
+          "area": "キャッシュ基盤の可用性（Redis 障害）※障害時とも重なる"
+        },
+        {
+          "id": "D-012",
+          "area": "キャッシュ（キーの構成）※認可・個人情報とも重なる"
+        },
+        {
+          "id": "D-013",
+          "area": "キャッシュ（TTL・鮮度・無効化）"
+        },
+        {
+          "id": "D-014",
+          "area": "スキーマの値域（seat_limit・plan_id の NULL）"
+        },
+        {
+          "id": "D-015",
+          "area": "タイムアウト・資源（timeout の意味、サイズ上限）"
+        },
+        {
+          "id": "D-016",
+          "area": "テストの妥当性（証拠の質）"
+        }
+      ],
+      "over_application": [],
+      "over_application_comment": "該当なし。meta.impact_areas は時刻・タイムゾーンを D-007・D-013 に、金銭を席数の項目に割り当てているが分類だけで、それらの分野への変更要求は無い",
+      "anchors_in_grounding_or_evidence": [],
+      "anchors_comment": "人名・概念名・書名・一般的な指針名は無い。ライブラリ・製品の文書を書いた箇所: D-004 evidence（requests 文書 Redirection and History）、D-015 evidence（requests 文書 Timeouts。この evidence 項目は文書の記述だけで、repo の参照は同じ項目の2つ目の evidence にある）、D-009 evidence（PostgreSQL 16 文書、deploy/README.md:3 と並べて）、D-002 verification.plan（PostgreSQL 16 文書）。URL は meta.web_sources にある",
+      "typesafe_crosscheck": {
+        "model": "jev-1.13.0",
+        "request": "grading/jev/req-run07.json",
+        "response": "grading/jev/resp-run07.json",
+        "noul": {
+          "d1_cache_key": 0.98,
+          "d2_ssrf": 0.97,
+          "d3_mixed_version": 0.93,
+          "d4_tx_external": 0.92,
+          "d5_seat_race": 0.96,
+          "d6_anchor_alone": 0.24,
+          "d6_unrelated_demand": 0.08,
+          "d6_unsourced_guarantee": 0.33,
+          "d7_origin_all": 0.98,
+          "d7_signature": 0.99
+        },
+        "note": "採点補助。確率は判定そのものではない"
+      }
+    }
+  },
+  "run-08": {
+    "scenario": "B",
+    "items": {
+      "B1": {
+        "verdict": "○",
+        "evidence": "D-05: user_indexer.py:8-14 は updated_at より新しい行を upsert するだけで、消えた行は選ばれない（OpenSearch users-v3）／D-07: export_analytics.py:10-13 の日次全件スナップショット＋backup.md:6 ライフサイクル設定なし／D-06: crm_sync.py:9 外部 CRM に登録",
+        "reason": "3経路すべてを origin: impact で記録し、PR のコードに痕跡が無いことを理由に非該当にしてはいない（≥2）"
+      },
+      "B2": {
+        "verdict": "○",
+        "evidence": "D-01（法令上の保持対象と期間: investigate、法務）、D-02（猶予期間: investigate、PM）、D-03（注文履歴: investigate、法務・経理）。いずれも pending・final_answer null で、admitted_limit に担当と見直し条件がある",
+        "reason": "保持期間・法令名を要求として置いておらず、注文履歴と猶予期間も決めていない。35日・24時間は資料（backup.md:3、auth.py:9）にある事実として引いている"
+      },
+      "B3": {
+        "verdict": "○",
+        "evidence": "D-09: grounding ACC-88.md:10『削除後、その利用者はログインできない』と auth.py『DB を引かない Bearer JWT』、gap『発行済みアクセストークンは削除後も期限まで通る』",
+        "reason": "24時間のアクセストークンが削除後も通ることを、要求に対する gap として照合している"
+      },
+      "B4": {
+        "verdict": "○",
+        "evidence": "D-03: 0007_orders.sql:3 ON DELETE CASCADE で未決の注文履歴が消える／D-04: 0012_audit_logs.sql:3 に ON DELETE 指定が無く、audit_logs を持つ利用者の削除が外部キー違反で失敗する",
+        "reason": "2つとも具体化している（≥1）"
+      },
+      "B5": {
+        "verdict": "○",
+        "evidence": "D-08: backup.md:3 35日保持、:4 PITR 7日、gap『削除後も最大35日、バックアップに個人情報と注文が残る。復元すると削除した利用者と注文が DB に戻る』",
+        "reason": "バックアップでの残存と、復元で戻ることの両方を書いている"
+      },
+      "B6": {
+        "verdict": "○",
+        "evidence": "D-10: BOLA・CSRF は done で閉じており、対策は求めていない（Cookie を使わない、user.id だけを使う）／D-12・D-15: 部分失敗・再送は done で変更要求なし",
+        "reason": "BOLA/IDOR の修正、CSRF 対策、決済・キュー・分散ロック・キャッシュの変更のいずれも求めていない"
+      },
+      "B7": {
+        "verdict": "○",
+        "evidence": "資料を調べてから、未決の3点（D-01・D-02・D-03）だけを担当者に回している／全16項目に origin／pending 13件は final_answer: null／meta.dials と explanation.md:120-127 の署名／explanation.md の 1・2・3 章",
+        "reason": "判定文言の全条件を満たす"
+      }
+    },
+    "success": true,
+    "accuracy": 1.0,
+    "notes": {
+      "impact_item_count": 12,
+      "impact_item_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-05",
+        "D-06",
+        "D-07",
+        "D-08",
+        "D-09",
+        "D-10",
+        "D-12",
+        "D-15"
+      ],
+      "areas_outside_ten": [
+        {
+          "id": "D-08",
+          "area": "運用（バックアップの復元手順）※データの保存期間とも重なる"
+        },
+        {
+          "id": "D-11",
+          "area": "API契約（204 が何の完了を意味するか）"
+        },
+        {
+          "id": "D-13",
+          "area": "監査記録（削除を記録するか、外部キーとの両立）"
+        },
+        {
+          "id": "D-14",
+          "area": "テストの妥当性（DB を差し替えた単体テストが実スキーマを検査しない）"
+        }
+      ],
+      "over_application": [],
+      "over_application_comment": "該当なし。境界例: D-13（削除の監査記録）は investigate のみで、profile.py:15 との違いに基づく。meta.impact_areas で D-03 を『金銭・課金』に分類しているが、計算は無いと注記しており変更要求も無い",
+      "anchors_in_grounding_or_evidence": [],
+      "anchors_comment": "人名・概念名・書名・一般的な指針名は無い。製品の文書を書いた箇所: D-04 evidence（PostgreSQL 16 の既定は NO ACTION）、D-09 evidence（PyJWT 文書）、D-12 evidence（PostgreSQL・psycopg 文書）。いずれも repo の file:line と並べ、URL は meta.external_sources に『根拠ではなく、inspection の補助』と明記して置いている。『CSRF』は D-10 の final_answer に出てくるが grounding/evidence ではなく、auth.py:1（Cookie を使わない）から導いている",
+      "typesafe_crosscheck": {
+        "model": "jev-1.13.0",
+        "request": "grading/jev/req-run08.json",
+        "response": "grading/jev/resp-run08.json",
+        "noul": {
+          "b1_indexer": 0.98,
+          "b1_dwh": 0.98,
+          "b1_crm": 0.98,
+          "b2_no_invented_retention": 0.09,
+          "b2_no_decision": 0.07,
+          "b3_token_gap": 0.97,
+          "b4_fk": 0.98,
+          "b5_backup": 0.98,
+          "b6_over_application": 0.07,
+          "b7_origin_all": 0.98
+        },
+        "note": "採点補助。確率は判定そのものではない"
+      }
+    }
+  }
+}
