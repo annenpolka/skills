@@ -1,0 +1,3 @@
+def send_invitation(to, org_name, token, logo):
+    """外部のメール配信サービス（SaaS）の API を同期で呼んで送信する（実装省略）。"""
+    ...

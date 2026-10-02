@@ -1,0 +1,40 @@
+endpoint: https://api.typesafe.ai/v1/systemone
+model: jev-latest
+state keys:
+  diff: string, 4920 chars
+questions:
+  origin_list [noul]
+    instructions: Does `diff` say that when one question is reached from several entries the item stays single and all reached entries are listed in origin (e.g. [deviation, impact])?
+    criteria: {"true":"Both are stated","false":"Either is missing"}
+  impact_rule_list [noul]
+    instructions: Does `diff` update the impact-coverage rule so that an item counts when its origin includes impact (rather than equals impact)?
+    criteria: {"true":"Updated to 'includes'","false":"Not updated"}
+  fix_counterexample [noul]
+    instructions: Does `diff` say counterexamples against a proposed fix also enter as counterexample items?
+    criteria: {"true":"Stated","false":"Not stated"}
+  cx_layer [noul]
+    instructions: Does `diff` say an item from a counterexample is placed in the layer of the target that must change, not the layer the counterexample was applied to?
+    criteria: {"true":"Stated","false":"Not stated"}
+  limit_kind [noul]
+    instructions: Does `diff` add a kind field to admitted_limit with values accepted and unverified, and use it in both the end condition and the third output level?
+    criteria: {"true":"Field added and used in both places","false":"Missing in any of these"}
+  blocking_def [noul]
+    instructions: Does `diff` define an adoption-blocking gap as a path that violates a requirement, contract or existing specification and is established by document check or verification, sending mere possibilities to the third level?
+    criteria: {"true":"Definition and routing are both stated","false":"Either is missing"}
+  pending_answer [noul]
+    instructions: Does `diff` say that a structure/boundary item whose answer is not settled is answered with the current state and what it is waiting for?
+    criteria: {"true":"Stated","false":"Not stated"}
+  version_set_list [noul]
+    instructions: Does `diff` define the version set as all items' scope.ref plus files referenced by grounding/evidence, and require keeping the method and a per-file hash list in the signature?
+    criteria: {"true":"Both are stated","false":"Either is missing"}
+  candidate_transitive [noul]
+    instructions: Does `diff` say an item is also a candidate when its dependency is a candidate?
+    criteria: {"true":"Stated","false":"Not stated"}
+  gapless_done_dep [noul]
+    instructions: Does `diff` say a gap-less done item stays done and returns to pending by the version rule when a dependency's fix lands and changes its target?
+    criteria: {"true":"Stated","false":"Not stated"}
+  normative_vs_behaviour [noul]
+    instructions: Does `diff` say only normative statements ('should') go in convention, while product behaviour ('works like') goes in inspection evidence?
+    criteria: {"true":"Stated","false":"Not stated"}
+no credential-like patterns found (this scan does not replace your own review)
+recorded inspection of request.json for this endpoint; read the summary above, then send in a separate step

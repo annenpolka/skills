@@ -1,0 +1,577 @@
+# 弁明台帳: PR #57 アカウント削除API（ACC-88）
+# 第一周。コードは変更せず、テストも実行していない。改修は resolution と verification.plan に記録する。
+
+meta:
+  artifact: "PR #57 DELETE /v1/me（変更: app/routes/account.py 新規, app/main.py ルーター登録, tests/test_account.py 新規）"
+  version: "sha256:45f2fc84caf51262"
+  version_method: >-
+    版管理の外にある抜粋のため、資料一式の内容ハッシュを版とする。
+    repo/ で `find . -type f | LC_ALL=C sort | xargs shasum -a 256 | shasum -a 256` を実行し、
+    得た値の先頭16桁（全体 45f2fc84caf51262dd7d483288d8598bb7c4f898c6d2a2cd317fd8df62251385）。
+  dials: {scope: "変更範囲（PR #57 全体）", granularity: 手続き, strength: 資料確認}
+  inputs:
+    requirement: docs/tickets/ACC-88.md
+    pr_description: README.md
+    conventions: "明示された規約文書（lint設定・CONTRIBUTING・設計ガイド）は抜粋に無い。退屈版は隣接実装（app/routes/profile.py, app/routes/orders.py）と採用フレームワークの標準形から取った"
+    impact_areas: >-
+      案件固有の一覧は無いため初期一覧から該当を拾った:
+      認可・認証の前提 / データの保存期間と削除 / 障害時・部分失敗時の挙動 / 冪等性・重複実行 /
+      金銭に触れる記録（注文） / 個人情報の経路 / 外部サービスへの副作用 / 並行実行（定期ジョブとの交差）。
+      案件固有として 検索インデックス・外部CRM・分析基盤・DBバックアップ への複製を足した。
+      該当しないと判断したもの: 時刻・タイムゾーン（期限や日付の計算が変更に無い）、移行・後方互換（PR はスキーマを変えない。改修でスキーマを変える場合はその周で扱う）。
+  not_in_excerpt: >-
+    ログイン・トークン更新の処理、app/config・app/search・app/integrations・app/storage、ops/restore.md、
+    番号の欠けているマイグレーション（0002, 0003, 0005, 0006, 0008-0011, 0013, 0014）。
+    これらに依存する結論は各項目の admitted_limit に書いた。
+
+items:
+
+# ───────────── 構造 ─────────────
+
+- id: D-001
+  scope: {ref: "app/routes/account.py:9-12; docs/tickets/ACC-88.md:16", version: "sha256:45f2fc84caf51262"}
+  layer: 構造
+  origin: impact            # データの保存期間と削除
+  question: "誰の要求に遡れる: 要求を受けた時点で取り消せない物理削除をする形は、ACC-88 で未決の『取り消し猶予期間』とどう両立するか"
+  current_answer: 要求を受けた時点で users 行を DELETE し、204 を返す
+  grounding:
+    - {requirement: "ACC-88 要求1『利用者は設定画面から自分のアカウントを削除できる』（ACC-88.md:9）"}
+  evidence:
+    - {inspection: "app/routes/account.py:11 要求の処理中に DELETE FROM users を実行する"}
+    - {inspection: "docs/tickets/ACC-88.md:16 削除の取り消し猶予期間を設けるかは PM 判断待ち"}
+    - {inspection: "ops/backup.md:3-5 資料にある戻し手段は DB 全体のスナップショット・PITR だけで、利用者単位の復元手段は資料に見当たらない（ops/restore.md は抜粋に無い）"}
+  gap: >-
+    猶予期間の有無が決まる前に、取り消せない形で確定させている。猶予期間を設ける判断になれば、
+    それまでに削除した利用者は戻せず、削除の形（削除待ちの状態と後段の消去）も作り直しになる。
+  resolution:
+    action: investigate
+    reason: 形を決める根拠（PM 判断）が未決。理由を発明せず判断を待つ
+    candidate: false
+  verification:
+    status: pending
+    plan: >-
+      PM の判断（猶予期間の有無と長さ）を ACC-88 に記録してもらう。猶予なしなら即時削除を要求に遡れる形として維持し、
+      猶予ありなら削除待ちの状態と期限後の消去を別の改修として設計する。どちらでも D-004 以下の伝播の時点をこれに合わせる。
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: 猶予期間の要否が未決のまま、取り消せない即時削除になっている
+    revisit_condition: PM の判断が ACC-88 に記録されたとき
+  depends_on: []
+
+- id: D-002
+  scope: {ref: "migrations/0007_orders.sql:3; app/routes/account.py:11", version: "sha256:45f2fc84caf51262"}
+  layer: 構造
+  origin: impact            # データの保存期間と削除 / 金銭に触れる記録
+  question: "誰の要求に遡れる: アカウント削除で注文履歴まで消えることは、どの要求に遡れるか"
+  current_answer: >-
+    PR 説明には書かれていないが、orders.user_id が ON DELETE CASCADE なので、users 行の削除と同時にその利用者の注文が全件消える
+  grounding: []
+  evidence:
+    - {inspection: "migrations/0007_orders.sql:3 user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE"}
+    - {inspection: "migrations/0007_orders.sql:6 total_yen（金額）を含む"}
+    - {inspection: "PostgreSQL 16 文書 §5.4.5 Foreign Keys『CASCADE specifies that when a referenced row is deleted, row(s) referencing it should be automatically deleted as well』"}
+    - {inspection: "docs/tickets/ACC-88.md:15 注文履歴の扱いは法務（佐藤）・経理（李）と確認中"}
+    - {inspection: "README.md:5-6 PR 説明は users 行の削除だけを述べ、注文の削除に触れていない"}
+    - {inspection: "jobs/export_analytics.py:12-13 注文は毎日全件が分析基盤へ出力されており、DB から消しても過去の出力には残る（D-015）"}
+  gap: >-
+    未決の『注文履歴の扱い』を、PR が『全件削除』で先取りしている。削除は取り消せない。PR 説明はこの副作用を書いていない。
+  resolution:
+    action: investigate
+    reason: 残すか消すかは法務・経理の判断で、コード側に根拠を置けない。決定前に消す形で出すと戻せない
+    candidate: false
+  verification:
+    status: pending
+    plan: >-
+      法務・経理の決定を ACC-88 に記録してもらう。消してよいなら要求に遡れる根拠としてこの項目を閉じ、PR 説明に明記する。
+      残すなら orders.user_id が NOT NULL の外部キーであるため users 行の物理削除とは両立せず、削除の形（利用者行の扱いと外部キー）を変える改修を起こす。
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: 注文履歴の扱いが決まるまで、この PR のままでは削除した利用者の注文が全件消える
+    revisit_condition: 法務・経理の決定が ACC-88 に記録されたとき
+  depends_on: []
+
+- id: D-003
+  scope: {ref: "migrations/0012_audit_logs.sql:1-6; app/audit.py:4-5", version: "sha256:45f2fc84caf51262"}
+  layer: 構造
+  origin: impact            # データの保存期間と削除
+  question: "どの前提を焼き込んでいる: 削除した利用者の監査ログ（audit_logs）は保持対象か削除対象か"
+  current_answer: PR は監査ログに触れていない
+  grounding:
+    - {requirement: "ACC-88 要求3 ただし書き『法令上保持が必要なものは除く（対象と期間は法務に確認中）』（ACC-88.md:11）"}
+  evidence:
+    - {inspection: "migrations/0012_audit_logs.sql:3 user_id bigint NOT NULL REFERENCES users(id)（ON DELETE の指定なし）"}
+    - {inspection: "app/routes/profile.py:15 プロフィール更新のたびに audit_logs へ記録する"}
+  gap: >-
+    監査ログが保持対象かどうかが決まっていない。保持なら、監査ログが users 行を参照し続ける形のままでは users 行を物理削除できない。
+    削除なら、削除手順に監査ログの削除が要る。どちらでも現 PR は対応していない（その帰結が D-011）。
+  resolution:
+    action: investigate
+    reason: 保持対象と期間の確定は法務の判断。要求側で確認中と明記されている
+    candidate: false
+  verification:
+    status: pending
+    plan: 法務に、監査ログが『法令上保持が必要なもの』に含まれるか、含まれるなら期間と、利用者と結び付けたまま残す必要があるかを確認してもらい ACC-88 に記録する
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: 監査ログの保持要否が不明で、削除手順での扱いを決められない
+    revisit_condition: 法務が保持対象と期間を確定したとき
+  depends_on: []
+
+- id: D-004
+  scope: {ref: "app/routes/account.py:11; jobs/user_indexer.py; jobs/crm_sync.py; jobs/export_analytics.py; ops/backup.md", version: "sha256:45f2fc84caf51262"}
+  layer: 構造
+  origin: impact            # 個人情報の経路 / データの保存期間と削除
+  question: "どの前提を焼き込んでいる: 個人情報は users 行を消せば消える、という前提"
+  current_answer: 削除は users 行の DELETE 一文で、関連表は外部キーの CASCADE に任せている
+  grounding:
+    - {requirement: "ACC-88 要求3『削除した利用者の個人情報は保持しない』（ACC-88.md:11）"}
+  evidence:
+    - {inspection: "jobs/user_indexer.py:1,9,14 と config/search.yaml:4-5 users の email・display_name・phone・address を検索インデックス users-v3 へ複製"}
+    - {inspection: "jobs/crm_sync.py:1,7-10 email・display_name を外部 SaaS の CRM へ複製"}
+    - {inspection: "jobs/export_analytics.py:1,10-11 と ops/backup.md:6 email・phone・address を毎日分析基盤 S3 へ出力し、無期限に保持"}
+    - {inspection: "ops/backup.md:3-4 DB スナップショット35日、PITR 7日"}
+    - {inspection: "README.md:14 PR 説明は jobs/・config/・ops/ を『関係するファイル』に挙げながら、変更していない"}
+  gap: >-
+    利用者の個人情報は検索インデックス・外部 CRM・分析基盤・DB バックアップの4か所に複製されており、PR の削除はどれにも届かない。
+    要求3に対して、削除が users 行で止まっている。
+  resolution:
+    action: change
+    reason: 複製先ごとの削除（または保持を例外とする合意）を削除処理の構成に含める。伝播をいつ行うか（即時か、猶予期間の後か）は D-001 で変わる
+    candidate: true
+  verification:
+    status: pending
+    plan: 複製先ごとの項目 D-013〜D-016 と反例 D-017 が、resolution 確定かつ done、または合意した限界として見直し条件付きで列挙された状態になったことを確認する
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: 現状、削除した利用者の個人情報は4か所に残る
+    revisit_condition: D-001 確定後に伝播の構成を決めたとき
+  depends_on: [D-001]
+
+- id: D-005
+  scope: {ref: "app/routes/account.py:1-6; app/main.py:3,8", version: "sha256:45f2fc84caf51262"}
+  layer: 構造
+  origin: deviation
+  question: "なぜこの形: ルーターを新しいファイルに置き main.py で登録する形は、隣と同じか"
+  current_answer: 既存の profile・orders と同じく APIRouter を1ファイルに置き、main.py で include_router する
+  grounding:
+    - {existing_contract: "app/main.py:3,6-7 と app/routes/profile.py:1-6, app/routes/orders.py:1-6 のルーター配置・登録形式"}
+  evidence:
+    - {inspection: "app/main.py:3,8 と app/routes/account.py:1-6 が既存の2ルーターと同じ形"}
+  gap: null
+  resolution: null
+  verification:
+    status: done
+    plan: 既存ルーターとの配置・登録形式の照合
+    result: 退屈版（既存の2ルーター）と一致。逸脱なし
+    artifact_version: "sha256:45f2fc84caf51262"
+  final_answer: 既存の profile・orders と同じ置き方と登録方法に揃えた。
+  admitted_limit: null
+  depends_on: []
+
+# ───────────── 境界 ─────────────
+
+- id: D-006
+  scope: {ref: "app/routes/account.py:9-11; app/auth.py:19-27", version: "sha256:45f2fc84caf51262"}
+  layer: 境界
+  origin: impact            # 認可・認証の前提
+  question: "どの前提を焼き込んでいる: 他人のアカウントを消せる経路は無いか"
+  current_answer: 削除対象は検証済みトークンの sub から得た user.id だけで、パスや本文から ID を受け取らない
+  grounding:
+    - {requirement: "ACC-88 要求1『自分のアカウントを削除できる』（ACC-88.md:9）"}
+    - {existing_contract: "既存の /v1/me/profile（app/routes/profile.py:9-13）と同じく、認証済み利用者自身を対象にする形"}
+  evidence:
+    - {inspection: "app/routes/account.py:9-11 パスは /v1/me、DELETE の条件は user.id だけ"}
+    - {inspection: "app/auth.py:19-27 RS256 で署名を検証し、sub から id を取る"}
+  gap: null
+  resolution: null
+  verification:
+    status: done
+    plan: 削除対象の決まり方と認証の読み取り
+    result: 対象 ID を外部入力から受け取る経路は無い
+    artifact_version: "sha256:45f2fc84caf51262"
+  final_answer: 消せるのは有効なトークンの本人のアカウントだけで、他人の ID を指定する手段は無い。
+  admitted_limit: null
+  depends_on: []
+
+- id: D-007
+  scope: {ref: "app/auth.py:1,19-22", version: "sha256:45f2fc84caf51262"}
+  layer: 境界
+  origin: impact            # 認可・認証の前提
+  question: "どの前提を焼き込んでいる: ブラウザが自動で送る資格情報で、本人の意図しない削除が走らないか"
+  current_answer: 認証は Authorization ヘッダの Bearer トークンだけで、Cookie を使わない
+  grounding:
+    - {existing_contract: "app/auth.py:1『Bearer トークン認証。Authorization ヘッダの JWT を検証する。Cookie は使わない。』"}
+  evidence:
+    - {inspection: "app/auth.py:19-22 Authorization ヘッダが無い・Bearer でない要求は 401"}
+  gap: null
+  resolution: null
+  verification:
+    status: done
+    plan: 認証方式の読み取り
+    result: 自動送信される資格情報を使わないため、別サイトからの自動送信で削除される経路は無い。追加の対策は要らない
+    artifact_version: "sha256:45f2fc84caf51262"
+  final_answer: Cookie を使わない Bearer 認証なので、別サイトから自動送信された要求で削除されることはない。認証方式を Cookie に変えるときは見直す。
+  admitted_limit: null
+  depends_on: []
+
+- id: D-008
+  scope: {ref: "migrations/0001_users.sql:7; migrations/0004_refresh_tokens.sql:3", version: "sha256:45f2fc84caf51262"}
+  layer: 境界
+  origin: impact            # 認可・認証の前提
+  question: "誰の要求に遡れる: ACC-88 要求2『削除後、その利用者はログインできない』を、この変更は満たしているか"
+  current_answer: users 行（password_hash を含む）が消え、refresh_tokens は CASCADE で消えるので、新規ログインとトークン更新はできなくなる
+  grounding:
+    - {requirement: "ACC-88 要求2（ACC-88.md:10）"}
+  evidence:
+    - {inspection: "migrations/0001_users.sql:7 password_hash は users 行にある"}
+    - {inspection: "migrations/0004_refresh_tokens.sql:3 user_id ... ON DELETE CASCADE"}
+    - {inspection: "PostgreSQL 16 文書 §5.4.5 Foreign Keys（CASCADE の定義）"}
+    - {inspection: "app/auth.py:9 のコメント『ログイン時に発行。更新は refresh_tokens で行う』"}
+  gap: >-
+    ログインとトークン更新の処理本体は抜粋に無く、それらが users と refresh_tokens だけを見ていることを確かめられない。
+    また、削除が外部キーで失敗する利用者（D-011）には、この結論自体が成り立たない。
+  resolution:
+    action: investigate
+    reason: 要求2の証拠が、ログイン・更新処理の確認を欠いている
+    candidate: false
+  verification:
+    status: pending
+    plan: ログイン・トークン更新の処理を読み、削除済み利用者で失敗する経路を確認する。テスト実行の周で、削除後にログインと更新が失敗することをテストにする
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: ログイン・トークン更新の処理を読んでいない。抜粋に無いマイグレーションが外部キーを変えていないことも未確認
+    revisit_condition: 次の周でそれらの処理とマイグレーション全体を確認したとき
+  depends_on: []
+
+- id: D-009
+  scope: {ref: "app/auth.py:9,19-27", version: "sha256:45f2fc84caf51262"}
+  layer: 境界
+  origin: impact            # 認可・認証の前提（発行済みセッションの失効）
+  question: "どう反証: 削除後も、発行済みのアクセストークンで API を呼べるのではないか"
+  current_answer: current_user は JWT の署名と期限だけを検証し、利用者が存在するかを DB で確かめない。アクセストークンは最長24時間有効
+  grounding:
+    - {requirement: "ACC-88 要求2『削除後、その利用者はログインできない』（ACC-88.md:10）"}
+  evidence:
+    - {inspection: "app/auth.py:9 ACCESS_TOKEN_TTL_SECONDS = 24 * 60 * 60"}
+    - {inspection: "app/auth.py:19-27 DB を参照せずクレームから User を作る"}
+    - {inspection: "削除後に同じトークンで PATCH /v1/me/profile を呼ぶと、UPDATE は0件で終わり、続く audit.record が存在しない user_id を挿入して外部キー違反になる（app/routes/profile.py:11-15, migrations/0012_audit_logs.sql:3）。未処理の例外は 500（Starlette 文書『Exceptions』: ServerErrorMiddleware が 500 を返す）"}
+    - {inspection: "POST /v1/orders は orders.user_id の外部キー違反で 500（app/routes/orders.py:16-19, migrations/0007_orders.sql:3）。GET /v1/orders は空配列（orders.py:11）"}
+  gap: >-
+    要求2の『ログインできない』が発行済みセッションの即時失効まで含むかは、資料から決まらない。
+    含むなら、削除後最長24時間は削除済み利用者として認証を通り、書き込み系の API は 500 になる。
+  resolution:
+    action: investigate
+    reason: 要求の解釈（即時失効が必要か）を PM とプライバシー担当に確認する。必要と分かれば change に進み、方式はそのとき選ぶ
+    candidate: false
+  verification:
+    status: pending
+    plan: 要求2の解釈を ACC-88 に記録してもらう。即時失効が必要なら、認証時に削除済みを拒否する改修を行い、削除直後の同じトークンが 401 になることをテストで確認する。不要なら24時間の限界を合意事項として PR 説明に書く
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: 削除後最長24時間、発行済みアクセストークンが認証を通る（書き込み系は 500）
+    revisit_condition: 要求2が即時失効を含むと確認されたとき、またはアクセストークンの有効期間を変えるとき
+  depends_on: []
+
+- id: D-010
+  scope: {ref: "app/routes/account.py:9,12", version: "sha256:45f2fc84caf51262"}
+  layer: 境界
+  origin: deviation         # 隣接に DELETE ルートが無く、HTTP の標準形と比べた
+  question: "なぜこの形: 204 No Content を返すのは何に基づくか"
+  current_answer: 削除を実施済みで、返す情報が無いときの標準の応答
+  grounding:
+    - {convention: "RFC 9110 §9.3.5 DELETE『a 204 (No Content) status code if the action has been enacted and no further information is to be supplied』。未実施なら『202 (Accepted) ... if the action will likely succeed but has not yet been enacted』"}
+  evidence:
+    - {inspection: "app/routes/account.py:9,12 DELETE の直後に 204 を返す"}
+    - {inspection: "RFC 9110 §9.3.5 は DELETE を URI の対応付けの削除と定め、関連する情報が消えることまでは表さない"}
+  gap: >-
+    204 は『応答時点で実施済み』を表す。D-004 の伝播を後段の処理にする、または D-001 で猶予期間を設けると、応答時点では未完了になり 202 の条件に当たる。
+    また 204 だけでは要求3（個人情報を保持しない）の証拠にならない。
+  resolution:
+    action: narrow
+    reason: 204 は『DB 上の削除を要求の中で同期に実施した』という現在の形に限って成立する、と説明を限定する
+    candidate: true
+  verification:
+    status: pending
+    plan: D-001・D-004 の確定後、応答時点で完了している範囲と状態コードが一致しているかを照合する
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit: null
+  depends_on: [D-001, D-004]
+
+# ───────────── 手続き ─────────────
+
+- id: D-011
+  scope: {ref: "app/routes/account.py:11; migrations/0012_audit_logs.sql:3", version: "sha256:45f2fc84caf51262"}
+  layer: 手続き
+  origin: impact            # 障害時・部分失敗時の挙動
+  question: "どう反証: 監査ログを持つ利用者を削除するとどうなるか"
+  current_answer: users 行を一文で削除し、204 を返す
+  grounding:
+    - {requirement: "ACC-88 要求1『自分のアカウントを削除できる』（ACC-88.md:9）"}
+  evidence:
+    - {inspection: "migrations/0012_audit_logs.sql:3 ON DELETE の指定なし"}
+    - {inspection: "PostgreSQL 16 文書 §5.4.5『NO ACTION means that if any referencing rows still exist when the constraint is checked, an error is raised; this is the default behavior if you do not specify anything』"}
+    - {inspection: "app/routes/profile.py:15 プロフィールを更新した利用者には audit_logs の行がある"}
+    - {inspection: "app/db.py:6 autocommit=True（psycopg 3 文書『Transactions management』: autocommit では BEGIN を発行しない）と PostgreSQL 16 文書 §3.4『each individual statement has an implicit BEGIN and (if successful) COMMIT』から、文全体が取り消され、orders・refresh_tokens の CASCADE も起きない"}
+    - {inspection: "未処理の例外は 500（Starlette 文書『Exceptions』: ServerErrorMiddleware）"}
+    - {inspection: "tests/test_account.py:8-24 偽の DB で SQL 文字列を比べるだけで、外部キーは実行されない"}
+  gap: >-
+    プロフィールを一度でも更新した利用者は、外部キー違反で削除に失敗し 500 になる（何も消えない）。
+    テストは偽の DB を使うため検出できず、README.md:18 の『全件成功』はこの経路について何も言っていない。
+  resolution:
+    action: change
+    reason: 監査ログを削除手順で扱わないと要求1を満たせない。消すか、残して外部キーと users 行の扱いを変えるかは D-003 の法務判断で決まる
+    candidate: true
+  verification:
+    status: pending
+    plan: D-003 確定後に監査ログの扱いを削除手順へ入れる。実 DB（PostgreSQL）で、audit_logs を持つ利用者の削除が意図した結果（削除成功と監査ログの削除または保持）になることをテストで確認する
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: 現状、監査ログを持つ利用者は削除できない。抜粋に無いマイグレーションで外部キーが変わっていないこと、監査ログを書く経路が profile 以外にあるかは未確認
+    revisit_condition: 改修後の検証で解消するまで。マイグレーション全体を確認したときにも見直す
+  depends_on: [D-003]
+
+- id: D-012
+  scope: {ref: "app/routes/account.py:9-12", version: "sha256:45f2fc84caf51262"}
+  layer: 手続き
+  origin: deviation
+  question: "なぜこの形: プロフィール更新は audit.record を呼ぶのに、削除は呼ばないのはなぜか"
+  current_answer: PR は削除の監査記録を書かない
+  grounding:
+    - {existing_contract: "監査記録は既存ルートで一律ではない。profile.py:15 は記録し、orders.py:14-19（注文作成）は記録しない"}
+  evidence:
+    - {inspection: "migrations/0012_audit_logs.sql:3 user_id は NOT NULL で users を参照するため、削除後には書けず、削除前に書けば D-011 の外部キー違反の原因を増やす"}
+  gap: >-
+    削除を記録する要求は資料に無い。記録すると決めても、現スキーマでは削除した利用者を指す記録を残せない。
+  resolution:
+    action: narrow
+    reason: 監査記録は既存でも一律ではなく要求にも無いので、『記録しない』は既存と矛盾しない、と説明を限定する。記録の要否は監査ログの扱い（D-003）と一緒に決める
+    candidate: true
+  verification:
+    status: pending
+    plan: D-003 確定後、削除の記録を求める要求が法務・プライバシー担当から出ていないかを確認し、PR 説明の記述を合わせる
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: 削除を実施したことを後から示す記録が無い
+    revisit_condition: 削除の記録を求める要求が出たとき、または D-003 で監査ログの形を変えるとき
+  depends_on: [D-003]
+
+- id: D-013
+  scope: {ref: "jobs/user_indexer.py:6-15; config/search.yaml:1-5", version: "sha256:45f2fc84caf51262"}
+  layer: 手続き
+  origin: impact            # 個人情報の経路（削除の伝播）
+  question: "どの前提を焼き込んでいる: 削除した利用者は管理画面の利用者検索から消えるか"
+  current_answer: PR は検索インデックスに触れない
+  grounding:
+    - {requirement: "ACC-88 要求3『削除した利用者の個人情報は保持しない』"}
+  evidence:
+    - {inspection: "jobs/user_indexer.py:8-15 updated_at が前回位置より新しい行を upsert するだけで、削除された行を検出しない"}
+    - {inspection: "config/search.yaml:1,4-5 管理画面の利用者検索用の users-v3 に email・display_name・phone・address を持つ"}
+  gap: >-
+    削除した行は差分の問い合わせに二度と現れないため、インデックスの文書は消えず、管理画面の検索に email・電話・住所が残り続ける。
+  resolution:
+    action: change
+    reason: 要求3に対し、インデックスからの削除を削除処理に含める。どの時点・どの処理で消すかは D-004 の構成に従う
+    candidate: true
+  verification:
+    status: pending
+    plan: 削除後に users-v3 に当該 id の文書が無いことを、テスト実行の周で確認する。定期ジョブとの交差は D-017 で扱う
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: 現状、削除した利用者の文書が検索インデックスに無期限に残る。app/search の実装は抜粋に無い
+    revisit_condition: D-004 の構成が決まったとき
+  depends_on: [D-004]
+
+- id: D-014
+  scope: {ref: "jobs/crm_sync.py:1-10; migrations/0015_users_crm.sql:1", version: "sha256:45f2fc84caf51262"}
+  layer: 手続き
+  origin: impact            # 外部サービスへの副作用 / 個人情報の経路
+  question: "どの前提を焼き込んでいる: 外部 CRM に連携済みの連絡先は、削除後どうなるか"
+  current_answer: PR は CRM に触れない
+  grounding:
+    - {requirement: "ACC-88 要求3『削除した利用者の個人情報は保持しない』"}
+  evidence:
+    - {inspection: "jobs/crm_sync.py:1,7-10 email・display_name で外部 SaaS に連絡先を作り、その ID を users.crm_contact_id に保存する"}
+    - {inspection: "migrations/0015_users_crm.sql:1 連絡先との対応は users 行の列だけにある"}
+  gap: >-
+    連絡先は外部に残る。さらに users 行を消すと crm_contact_id も消えるため、削除後はどの連絡先を消せばよいか社内から辿れなくなる。
+    CRM 側の削除を DB 削除の後に回すと、失敗したときの再試行の手掛かりも同時に失われる。
+  resolution:
+    action: change
+    reason: 削除前に連絡先 ID を確保し、CRM 側の削除を削除処理に含める。CRM が提供する削除の手段と、その削除が完全な消去かは資料に無く、ベンダーの一次資料で確かめる
+    candidate: true
+  verification:
+    status: pending
+    plan: >-
+      ベンダー文書で連絡先の削除 API とその意味（完全消去か、復元可能な状態か）を確認する（資料確認）。
+      改修後、DB から連絡先 ID が消える前に CRM 側の削除が完了するか、未完了として記録されることをテストで確認する
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: CRM の削除手段と削除の意味は未確認。app/integrations の実装は抜粋に無い
+    revisit_condition: ベンダー文書を確認したとき
+  depends_on: [D-004]
+
+- id: D-015
+  scope: {ref: "jobs/export_analytics.py:1-13; ops/backup.md:6", version: "sha256:45f2fc84caf51262"}
+  layer: 手続き
+  origin: impact            # データの保存期間と削除 / 個人情報の経路
+  question: "どの前提を焼き込んでいる: 分析基盤へ出力済みの個人情報は、削除後どうなるか"
+  current_answer: PR は分析基盤に触れない
+  grounding:
+    - {requirement: "ACC-88 要求3『削除した利用者の個人情報は保持しない』"}
+  evidence:
+    - {inspection: "jobs/export_analytics.py:1,9-13 毎日 users（email・phone・address）と orders の全件を日付ごとのパーティションへ出力する（DATA-12）"}
+    - {inspection: "ops/backup.md:6 acme-dwh バケットはライフサイクル設定なし（無期限保持）"}
+  gap: >-
+    削除の翌日以降の出力にはその利用者は含まれないが、過去の日付パーティションには個人情報が無期限に残る。
+  resolution:
+    action: investigate
+    reason: 過去分の扱い（削除・保持期間の設定・匿名化）は分析基盤の持ち主（DATA-12）との確認が要り、この PR だけでは決められない
+    candidate: true
+  verification:
+    status: pending
+    plan: DATA-12 の持ち主と、要求3の範囲に分析基盤の過去分を含めるかをプライバシー担当と確認し、決まった扱いを D-004 の構成に入れる
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: 削除した利用者の個人情報が分析基盤の過去分に無期限に残る。app/storage の実装と分析基盤側の下流の複製は未確認
+    revisit_condition: 分析基盤側の扱いが決まったとき
+  depends_on: [D-004]
+
+- id: D-016
+  scope: {ref: "ops/backup.md:3-5", version: "sha256:45f2fc84caf51262"}
+  layer: 手続き
+  origin: impact            # データの保存期間と削除 / 復旧
+  question: "どの前提を焼き込んでいる: バックアップに残る個人情報と、復元したときの削除済み利用者をどう扱うか"
+  current_answer: PR はバックアップに触れない
+  grounding:
+    - {requirement: "ACC-88 要求3『削除した利用者の個人情報は保持しない』"}
+  evidence:
+    - {inspection: "ops/backup.md:3-5 自動スナップショットを35日保持、PITR は7日、四半期ごとに復元訓練"}
+  gap: >-
+    削除した利用者の個人情報は最長35日バックアップに残る。本番を復元すると、復元点より後に削除した利用者の行（password_hash を含む）が戻り、
+    ログイン処理が users を参照する前提（D-008）ではログインできる状態に戻る。
+  resolution:
+    action: investigate
+    reason: バックアップ内の保持を要求3の例外として認めるか、復元後に削除を再適用する手段が要るかは、プライバシー担当・法務の判断
+    candidate: false
+  verification:
+    status: pending
+    plan: プライバシー担当・法務に、バックアップ内の保持期間の扱いと、復元時に削除を再適用する必要の有無を確認し ACC-88 に記録する
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: 最長35日バックアップに残る。復元すると削除済み利用者が戻る。ops/restore.md は抜粋に無い
+    revisit_condition: プライバシー担当・法務が扱いを判断したとき、または本番の復元を行うとき
+  depends_on: []
+
+- id: D-017
+  scope: {ref: "jobs/user_indexer.py:7-15; jobs/crm_sync.py:7-10", version: "sha256:45f2fc84caf51262"}
+  layer: 手続き
+  origin: counterexample
+  question: "どう反証: 削除時に各複製先からも消す実装が、実行中の定期ジョブと交差すると個人情報が書き戻されるのではないか"
+  current_answer: 現 PR には伝播が無い。伝播を足す改修（D-013・D-014）が満たすべき条件として問う
+  grounding:
+    - {requirement: "ACC-88 要求3『削除した利用者の個人情報は保持しない』"}
+  evidence:
+    - {inspection: "jobs/user_indexer.py:8-14 読み取りから書き込みまでの間に、行がまだ存在するかを確かめない。削除前に読んだ行を削除後に upsert すれば文書が戻る"}
+    - {inspection: "jobs/crm_sync.py:7-10 一覧を読んだ後に1件ずつ外部に作成し、UPDATE の件数を確かめない。一覧を読んだ後に利用者が削除されると、削除済み利用者の連絡先が作られ、その ID はどこにも記録されない（現 PR でも起こる）"}
+    - {inspection: "app/db.py:21-23 execute は更新件数を返さない"}
+  gap: >-
+    『削除時に各所から消す』という説明には従えても、定期ジョブが削除前に読んだ行を削除後に書き戻す・外部に作る経路が残る。
+    CRM の場合は作られた連絡先の ID が失われ、後から消す手掛かりも無い。
+  resolution:
+    action: change
+    reason: 伝播の改修に『削除が完了した後、定期ジョブが削除済み利用者を書き戻さない・外部に作らない』を条件として含める。手段は D-013・D-014 の設計で選ぶ
+    candidate: true
+  verification:
+    status: pending
+    plan: この条件を改修の受入基準に入れ、テスト実行の周で、ジョブの読み取りと削除を交差させたテストで確認する
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: 定期ジョブの起動間隔（5分・1時間・毎日）の間に削除が挟まる場合の書き戻しは、現状防がれていない
+    revisit_condition: D-013・D-014 の改修を設計したとき
+  depends_on: [D-013, D-014]
+
+- id: D-018
+  scope: {ref: "tests/test_account.py:8-24; README.md:16-18", version: "sha256:45f2fc84caf51262"}
+  layer: 手続き
+  origin: asked
+  simulated: true           # コードレビュアーを想定した模擬尋問
+  question: "どう反証: 『pytest 全件成功』は、削除が要求どおりに動くことの証拠になるか"
+  current_answer: test_account.py は偽の DB で、実行された SQL 文字列と 204 を確かめている
+  grounding:
+    - {requirement: "ACC-88 要求1〜3（テストが符号化すべき条件の出どころ）"}
+  evidence:
+    - {inspection: "tests/test_account.py:16-24 SQL 文字列と 204 だけを比べる。実行はしていない（README.md:18 の成功は依頼者の報告）"}
+  gap: >-
+    テストは SQL 文字列という現在値を固定しているだけで、要求（削除後にログインできない、個人情報を保持しない、監査ログを持つ利用者も削除できる）を一つも表していない。
+    外部キーや CASCADE を実行しないので D-011 の失敗を検出できない。
+  resolution:
+    action: change
+    reason: 要求を表すテストを実 DB で足す。何を期待値にするかは D-002（注文）・D-009（トークン）・D-011（監査ログ）の決定に従う
+    candidate: true
+  verification:
+    status: pending
+    plan: 決定後、実 PostgreSQL に対して、監査ログと注文を持つ利用者の削除、削除後のログイン・トークン更新、決定に応じたトークン失効をテストにし、テスト実行の周で走らせる
+    result: null
+    artifact_version: null
+  final_answer: null
+  admitted_limit:
+    limit: 現在のテストは要求への適合を示さない
+    revisit_condition: 改修後にテストを差し替えたとき
+  depends_on: [D-002, D-009, D-011]
+
+- id: D-019
+  scope: {ref: "app/routes/account.py:11-12; app/db.py:21-23", version: "sha256:45f2fc84caf51262"}
+  layer: 手続き
+  origin: impact            # 冪等性・重複実行
+  question: "どう反証: 二重送信や再試行で、困る副作用が出ないか"
+  current_answer: 2回目は消す行が無く0件で終わり、同じ 204 を返す
+  grounding:
+    - {convention: "RFC 9110 §9.2.2 Idempotent Methods『PUT, DELETE, and safe request methods are idempotent』"}
+  evidence:
+    - {inspection: "app/routes/account.py:11-12 と app/db.py:21-23 件数を見ず、0件でも例外にならない"}
+  gap: null
+  resolution: null
+  verification:
+    status: done
+    plan: 削除処理と DB 呼び出しの読み取り
+    result: 重複実行で二重の副作用は起きない（現 PR の範囲では DB の一文だけのため）
+    artifact_version: "sha256:45f2fc84caf51262"
+  final_answer: 同じ要求を繰り返しても2回目は何も消さず、同じ応答を返す。外部への削除を足す改修（D-014）では改めて確かめる。
+  admitted_limit: null
+  depends_on: []
+
+summary:
+  items: 19
+  by_origin: {impact: 14, deviation: 3, counterexample: 1, asked: 1}
+  by_layer: {構造: 5, 境界: 5, 手続き: 9}
+  gap_items: 15
+  closed_without_gap: [D-005, D-006, D-007, D-019]
+  termination: 未達（gap を持つ15項目のうち、終了条件を満たすものは0）

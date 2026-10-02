@@ -1,0 +1,4 @@
+{"iter-1": {"run-01": {"scenario": "A", "skill": "s2 (control, no index)"},
+            "run-02": {"scenario": "B", "skill": "s1 (index)"},
+            "run-03": {"scenario": "A", "skill": "s1 (index)"},
+            "run-04": {"scenario": "B", "skill": "s2 (control, no index)"}}}

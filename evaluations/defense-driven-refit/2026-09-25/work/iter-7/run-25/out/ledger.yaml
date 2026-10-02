@@ -1,0 +1,668 @@
+# 弁明台帳: PR #611 チーム機能の改善（TEAM-45）
+# 第1周。コードは変更せず、テストも実行していない。resolution と verification.plan は改修の予定。
+# 資料（抜粋リポジトリと外部の公開文書）を読んで確かめたことだけを verification.status: done にしている。
+# 版は版管理外の抜粋の内容ハッシュ（作り方とファイル別ハッシュは explanation.md の署名）。
+
+meta:
+  artifact: "PR #611 チーム機能の改善（TEAM-45）"
+  round: 1
+  dial: {scope: "PR #611 全体（変更範囲）", granularity: 細部, strength: 資料確認}
+  version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"
+  boring_version: >-
+    資料に明示された規約（lint設定・CONTRIBUTING・設計ガイド）は無い。同種の既存実装として
+    app/routes/org_settings.py と変更前から存在する app/cache.py・app/db.py・app/mailer.py を使い、
+    足りない箇所だけ最小案を置いた。席数判定（数えてから INSERT）と改名（単一の RENAME）は
+    退屈版と一致するが、影響領域内なので impact の項目で検査している。
+  item_count: 22
+
+items:
+
+  # ───────────── 構造 ─────────────
+
+  # 入口: 逸脱駆動。退屈版（最小案）は「遅い箇所を計測し、問い合わせ側を直す」。キャッシュ層の追加は差分。
+  - id: D-001
+    scope: {ref: "app/routes/members.py:17-30", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 構造
+    origin: deviation
+    question: "誰の要求に遡れる: 一覧APIにキャッシュ層を置くことは、TEAM-45 要求1「表示が遅いので速くする」に効くと言えるか"
+    current_answer: "要求1への対応として、既存の共有キャッシュで一覧の結果を60秒保持する（PR説明: 応答を速くした）"
+    grounding:
+      - requirement: "docs/tickets/TEAM-45.md:5 — メンバー一覧の表示が遅いという問い合わせが多い。速くする（目標値・方式の指定なし）"
+      - existing_contract: "app/cache.py:1 — API プロセス間で共有する Redis キャッシュが既存（README.md:20-21 で変更なしとされる）"
+    evidence:
+      - inspection: "app/routes/members.py:19-29 — 同じキーへの60秒以内の再要求だけがDB問い合わせを省く。初回表示と未取得のページはDB問い合わせのまま"
+      - inspection: "tests/test_members.py:26-33 — 2回目の呼び出しでDBを呼ばないことを期待するテスト。現在の挙動の確認で、速さの確認ではない（未実行）"
+    gap: "遅さの計測値・原因が資料に無く、キャッシュが問い合わせのあった『遅い』に効く根拠が無い。PR説明（README.md:7）の『応答を速くしました』は計測なしの主張"
+    resolution:
+      action: narrow
+      reason: "計測は本周の strength（資料確認）を超える。主張を『同じ組織・同じページを60秒以内に再表示する場合にDB問い合わせを省く』に限定すれば成立する"
+      candidate: false
+    verification:
+      status: pending
+      plan: "PR説明の該当文を限定した表現に書き換えたことを確認する。次周以降（strength=計測）で、問い合わせの多い組織の一覧応答時間をキャッシュの有無で比較する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "遅さの原因と改善量を計測していない。キャッシュが効かない初回表示が主因なら効果は小さい"
+      revisit_condition: "計測で初回表示（DB問い合わせ）が主因と分かったとき。問い合わせ側の対処に切り替える"
+      kind: unverified
+      accepted_by: null
+    depends_on: []
+
+  # 入口: 逸脱駆動（抜粋内で外向きHTTP取得はこのモジュールだけ）＋影響駆動（外部サービスへの副作用・認可の前提）。
+  - id: D-002
+    scope: {ref: "app/logo.py:1-12; app/routes/invitations.py:34-35", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 構造
+    origin: [deviation, impact]
+    question: "なぜこの形: 管理者が登録したロゴURLを、APIサーバーが取得してメールに埋め込む形にするのはなぜか（URLをメールに載せる形ではなく）"
+    current_answer: "組織にロゴURLがあれば fetch_logo で取得し、取得結果（bytes）を mailer.send_invitation の logo 引数に渡す。取得できなければロゴなしで送る"
+    grounding:
+      - requirement: "docs/tickets/TEAM-45.md:7 — 招待メールに組織のロゴを表示する。ロゴは組織設定で管理者が登録した画像URLを使う（埋め込みかURL参照かの指定なし）"
+      - existing_contract: "app/mailer.py:1 — send_invitation は logo 引数を持つ（README.md:20 で変更なしとされる既存の引数）。受け取る型（画像データかURLか）の記述は無く、実装は抜粋で省略されている"
+    evidence:
+      - inspection: "app/routes/invitations.py:34-35 — ロゴURLがあれば取得し、その結果を logo 引数に渡す"
+      - inspection: "app/logo.py:1-12 — requests による外向きHTTP取得を新設している"
+    gap: "サーバー側で取得する必要を支える根拠が無い（mailer の logo 引数が画像データを受け取る契約かを資料で確認できない）。一方、サーバー側取得は管理者入力のURLへの外向き通信を招待処理に新設し、D-012・D-014・D-016・D-017 の問題の前提になっている"
+    resolution:
+      action: investigate
+      reason: "mailer の logo 引数の契約が採否を決める。URLを受け取る契約なら取得処理を削ってURLを渡す形（remove_or_align）に寄せ、外向き通信をなくす。画像データの契約なら取得を残し、下位の項目の改修に進む"
+      candidate: false
+    verification:
+      status: pending
+      plan: "mailer.send_invitation の実装と、配信サービスへ渡している要求の形（添付・インライン画像・URL）を読む。結論に合わせて logo.py の削除または維持を決め、tests/test_invitations.py:14-20 を更新する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "mailer の logo 引数の契約が未確認のため、埋め込み方式の採否が未確定。URLをメールに載せる形は、外部画像の読み込みを止めるメールクライアントでは表示されない可能性がある（既有知識による見込みで、未確認）"
+      revisit_condition: "mailer の実装を確認したとき"
+      kind: unverified
+      accepted_by: null
+    depends_on: []
+
+  # ───────────── 境界 ─────────────
+
+  # 入口: 影響駆動（移行・後方互換）。単一の RENAME は退屈版と一致するが影響領域内。
+  - id: D-003
+    scope: {ref: "migrations/0033_rename_user_name.sql:1", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 境界
+    origin: impact
+    question: "どの前提を焼き込んでいる: 単一の RENAME は、改名後のスキーマの上で旧コードが動かない（＝新旧が同時に動かない）前提に立っていないか"
+    current_answer: "users.name を display_name に改名し、コードを追従させた（README.md:10）"
+    grounding:
+      - requirement: "docs/tickets/TEAM-45.md:8 — 表示名と本名を分ける準備として users.name を users.display_name に改名する"
+      - existing_contract: "deploy/README.md:4 — migrations/ は pre-deploy Job で適用し、成功後に Deployment を RollingUpdate する（新旧の Pod が数分間並ぶ）"
+      - existing_contract: "deploy/README.md:5 — ロールバックはイメージタグを戻す。マイグレーションは自動では戻さない"
+      - existing_contract: "deploy/api.yaml:6-9 — replicas 3、RollingUpdate（maxSurge 1, maxUnavailable 0）"
+    evidence:
+      - inspection: "migrations/0033_rename_user_name.sql:1 — 1文の RENAME COLUMN。旧列名を残す手当て（列の追加・同期）は無い"
+      - inspection: "README.md:10、app/routes/members.py:11,24 — 『コードを追従させた』とあり、変更後のコードは display_name を読む。変更前のコードが users.name を読んでいたと読める"
+    gap: "マイグレーション適用から旧Podの入れ替え完了までの数分間、旧Podで users.name を読む処理が列なしで失敗する。イメージタグを戻すロールバックでも、旧コードが改名後のスキーマで同じく失敗し、マイグレーションは自動で戻らない"
+    resolution:
+      action: change
+      reason: "運用（マイグレーション先行・新旧Podの併存・イメージだけのロールバック）と両立する形にする。改名を後方互換な二段階（expand-contract）に分ける"
+      candidate: false
+    verification:
+      status: pending
+      plan: "本PRのマイグレーションを『display_name 列の追加と既存値のコピー』に変え、旧コードが name に書き込む経路があれば同期を入れる。name 列の削除は、全Podが新コードになりロールバックで旧イメージに戻す必要が無くなった後の別マイグレーションにする。確認: 全リポジトリで users.name の読み書きを洗い出す／旧イメージ＋新スキーマで旧コードの主要経路が動く／ロールバック手順で旧イメージが動く"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "抜粋外のコード（app/sessions など）の users.name 参照と書き込み経路を確認していない。既存値のコピーの負荷は users の件数次第で未評価"
+      revisit_condition: "全リポジトリの参照の洗い出しと users の件数確認のあと"
+      kind: unverified
+      accepted_by: null
+    depends_on: []
+
+  # 入口: 影響駆動（移行・後方互換。公開APIの形）。
+  - id: D-004
+    scope: {ref: "app/routes/members.py:10-14", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 境界
+    origin: impact
+    question: "どの前提を焼き込んでいる: 一覧APIの応答キーを display_name にするのは、API利用側（画面・外部連携）が追従済みという前提か"
+    current_answer: "列名の改名に合わせて応答キーも display_name にしている"
+    grounding:
+      - requirement: "docs/tickets/TEAM-45.md:8 — 改名の対象はDB列 users.name。公開APIの応答形の変更は要求に無い"
+      - existing_contract: "docs/spec/members.md:3-5 — 一覧の既存仕様。応答のフィールド名は記載なし"
+    evidence:
+      - inspection: "app/routes/members.py:11 — 応答キーは id / display_name / role（管理者には email も）"
+    gap: "変更前の応答キー名が資料に無い。name だったなら、DB列の改名に伴って要求外の公開APIの変更が入り、name を読む画面や外部利用者が壊れる"
+    resolution:
+      action: investigate
+      reason: "変更前のキー名で対応が分かれる。name だったなら応答キーを name に戻し（列名との対応は serialize で吸収）、DB列の改名だけにする"
+      candidate: false
+    verification:
+      status: pending
+      plan: "PRの差分で変更前の serialize を確認する。name だった場合は応答キーを戻し、一覧画面の参照箇所と応答キーのテストを確認する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "API利用者の範囲（画面以外の利用者の有無）が資料に無い"
+      revisit_condition: "差分で変更前のキー名を確認したとき"
+      kind: unverified
+      accepted_by: null
+    depends_on: []
+
+  # 入口: 実問（模擬尋問。この成果物を一番厳しく見るコードレビュアーを想定）。
+  - id: D-005
+    scope: {ref: "app/routes/invitations.py:27-28", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 境界
+    origin: asked
+    simulated: true
+    question: "なぜこの形: 席数超過をなぜ 409 で返し、402・403・422 ではないのか"
+    current_answer: "席の使用数が上限に達している状態との衝突として 409 を返す"
+    grounding:
+      - freedom: "要求（docs/tickets/TEAM-45.md:6）は超える招待をできないようにすることだけを求め、状態コードを指定していない。資料にエラー形式の規約は無い。409 は許容範囲内の選択で、402・422 を否定しない"
+      - existing_contract: "app/routes/invitations.py:14-15、app/routes/org_settings.py:12-16 — 同じエンドポイントと近隣APIは、403 を権限不足に、422 を入力の形式不正に使っている。席数超過はどちらでもない"
+    evidence:
+      - inspection: "app/routes/invitations.py:27-28 — 使用数が上限以上で HTTPException(409, \"seat limit reached\")"
+      - inspection: "tests/test_invitations.py:7-11 — 409 を期待するテストがある（未実行）"
+    gap: null
+    resolution: null
+    verification:
+      status: done
+      plan: "コードと、同じエンドポイント・近隣APIの状態コードの使い分けを読んで照合する"
+      result: "invitations.py:27-28 で 409 を返す。403 は同じエンドポイントで権限不足（14-15行）に使われており、意味が重ならない"
+      artifact_version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"
+    final_answer: "要求は拒否することだけを求めていて、状態コードは指定がない。同じエンドポイントで 403 は権限不足に使っているので、席の使用数との衝突として 409 を返す。402 や 422 を否定するものではない"
+    admitted_limit: null
+    depends_on: []
+
+  # 入口: 影響駆動（障害時・部分失敗時の挙動。要求の補足にある既存の一括招待）。
+  - id: D-006
+    scope: {ref: "app/routes/invitations.py:27-28", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 境界
+    origin: impact
+    question: "どの前提を焼き込んでいる: 一括招待画面（最大200件を1件ずつAPI呼び出し）が、途中から返る 409 を扱える前提か"
+    current_answer: "席が尽きた時点以降の招待は1件ずつ 409 で拒否される"
+    grounding:
+      - requirement: "docs/tickets/TEAM-45.md:12 — 管理者は一括招待画面から最大200件まで招待できる。画面は1件ずつ招待APIを呼ぶ（既存の動作）"
+    evidence:
+      - inspection: "app/routes/invitations.py:27-28 — 席数判定は1件ごと。200件の途中で上限に達すると以降はすべて 409"
+    gap: "画面のコードが資料に無く、409 を受けたときに残りを続けるか止めるか、招待できなかった宛先を管理者に示すかが分からない。示さなければ、一部だけ招待された状態に管理者が気づけない"
+    resolution:
+      action: investigate
+      reason: "画面の既存の扱い次第で、対応不要か、画面側の改修を別に依頼するかに分かれる"
+      candidate: false
+    verification:
+      status: pending
+      plan: "一括招待画面のエラー処理を読み、409 を受けたときの表示と続行の挙動を確認する。不足があれば画面側の改修として依頼者に提起する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "画面側の挙動を確認していない"
+      revisit_condition: "画面のコードを確認したとき"
+      kind: unverified
+      accepted_by: null
+    depends_on: []
+
+  # ───────────── 手続き ─────────────
+
+  # 入口: 影響駆動（認可・テナント分離）＋反例駆動（説明「一覧を60秒キャッシュする」に従えてしまう実装）。
+  - id: D-007
+    scope: {ref: "app/routes/members.py:19-22", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 手続き
+    origin: [impact, counterexample]
+    question: "どう反証: 組織Aの利用者が1ページ目を取得してから60秒以内に、組織Bの利用者が1ページ目を要求したら何が返るか"
+    current_answer: "キー members:page={page} でキャッシュを引き、あればそれを返す"
+    grounding:
+      - existing_contract: "docs/spec/members.md:3 — 利用者は自分の組織のメンバーだけを見られる"
+      - existing_contract: "app/cache.py:1 — キャッシュは API プロセス間で共有する Redis（全Pod・全組織で同じキー空間）"
+    evidence:
+      - inspection: "app/routes/members.py:19-22 — キーは page だけで org_id を含まず、ヒットすれば組織の条件を通らずに返す"
+      - inspection: "app/routes/members.py:23-26 — 組織の絞り込みはDB問い合わせにだけある"
+      - inspection: "tests/test_members.py:12-33 — 各テストが新しい FakeCache を使い、別組織の利用者が続けて呼ぶ場合を検査していない"
+    gap: "組織Bの利用者に組織Aのメンバー一覧（表示名・役割。Aの管理者が先に引いていればメールアドレスも）が返る。認証済みの利用者なら誰でも、ページ番号を指定するだけで到達できる"
+    resolution:
+      action: change
+      reason: "既存仕様（自分の組織のメンバーだけ）に反する経路を閉じる。キャッシュキーに org_id を含める"
+      candidate: false
+    verification:
+      status: pending
+      plan: "キーに org_id を含めた実装を確認する。共有の FakeCache で『組織Aの管理者→組織Bの利用者』の順に呼び、Bの応答にAのメンバーが含まれないことを確かめるテストを追加して実行する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit: null
+    depends_on: []
+
+  # 入口: 影響駆動（認可・個人情報の経路）＋反例駆動。
+  - id: D-008
+    scope: {ref: "app/routes/members.py:10-14,19-29", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 手続き
+    origin: [impact, counterexample]
+    question: "どう反証: 管理者が一覧を取得してから60秒以内に、同じ組織の一般メンバーが同じページを要求したら何が返るか"
+    current_answer: "メールを含めるかを要求者の役割で決めて整形し、整形後の結果をキャッシュする"
+    grounding:
+      - existing_contract: "docs/spec/members.md:4 — メンバーのメールアドレスは組織の管理者（role = admin）にだけ返す。一般メンバーには返さない"
+    evidence:
+      - inspection: "app/routes/members.py:12-13,28-29 — メールの有無を整形時に決め、整形後の結果をキャッシュする"
+      - inspection: "app/routes/members.py:19-22 — ヒット時は要求者の役割を見ずに返す"
+      - inspection: "tests/test_members.py:12-23 — 管理者と一般メンバーを別々の FakeCache で検査しており、続けて呼ぶ場合を検査していない"
+    gap: "一般メンバーに管理者向けの応答（メールアドレス入り）が返る。逆の順なら管理者にメールなしの一覧が返る"
+    resolution:
+      action: change
+      reason: "整形前の行をキャッシュし、メールを含めるかの判定と整形をキャッシュの後で毎回行う。役割の判定がキャッシュの有無に依存しなくなる。キーに役割を足す形も同じ性質を持ち、否定しない"
+      candidate: false
+    verification:
+      status: pending
+      plan: "共有の FakeCache で『管理者→一般メンバー』『一般メンバー→管理者』の順に呼び、一般メンバーの応答に email が無く、管理者の応答に email があることを確かめるテストを追加して実行する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit: null
+    depends_on: []
+
+  # 入口: 影響駆動（個人情報の経路、データの保存期間）。
+  - id: D-009
+    scope: {ref: "app/routes/members.py:23-29", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 手続き
+    origin: impact
+    question: "どの前提を焼き込んでいる: メンバーのメールアドレスを共有の Redis に置いてよい前提か"
+    current_answer: "管理者向けの応答（メールアドレス入り）をそのまま60秒キャッシュする"
+    grounding: []
+    evidence:
+      - inspection: "app/routes/members.py:24,28-29 — 管理者が引いた場合、メールアドレスを含む応答を Redis に60秒置く。D-008 の改修案（整形前の行をキャッシュ）でもメールアドレスは Redis に置かれる"
+      - inspection: "app/cache.py:1,8 — REDIS_URL の Redis を全APIプロセスで共有する"
+    gap: "本PRで、メールアドレスがDB以外（Redis）に置かれる経路が新しくできた。個人情報の保存先に関する規程も、Redis の運用（アクセスできる主体・永続化）も資料に無い"
+    resolution:
+      action: investigate
+      reason: "規程と運用を確認するまで、置いてよいとも置くべきでないとも言えない。キャッシュからメールを外す等の改修は確認結果を待つ"
+      candidate: false
+    verification:
+      status: pending
+      plan: "個人情報の保存先に関する社内規程と、REDIS_URL の Redis の運用設定（アクセスできる主体、永続化の有無）を確認する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "Redis にメールアドレスを置くことの可否を確認していない"
+      revisit_condition: "規程と Redis の運用設定を確認したとき"
+      kind: unverified
+      accepted_by: null
+    depends_on: []
+
+  # 入口: 影響駆動（障害時・部分失敗時の挙動）。
+  - id: D-010
+    scope: {ref: "app/routes/members.py:20,29", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 手続き
+    origin: impact
+    question: "どの前提を焼き込んでいる: Redis が常に応答する前提で、一覧APIを Redis に依存させていないか"
+    current_answer: "cache.get でヒットを確かめ、外れればDBから取得して cache.set する"
+    grounding: []
+    evidence:
+      - inspection: "app/routes/members.py:20,29 — cache.get / cache.set を例外処理なしで呼ぶ"
+      - inspection: "app/cache.py:8-17 — 例外処理なし。接続・応答待ちのタイムアウトを指定していない（ライブラリの既定値は未確認）"
+      - inspection: "README.md:7,20-21 — 一覧APIへのキャッシュは本PRで入った（app/cache.py 自体は既存）"
+    gap: "Redis の障害・接続不可で、DBが正常でも一覧が失敗する。この依存を許容するかの根拠（可用性の要求、他のキャッシュ利用箇所の慣行）が資料に無い"
+    resolution:
+      action: investigate
+      reason: "既存のキャッシュ利用箇所に失敗時の扱いの慣行があればそれに揃える。慣行が無ければ、読み書きの失敗時にDBで応答する形を提案する"
+      candidate: false
+    verification:
+      status: pending
+      plan: "抜粋外で app.cache を使う箇所を検索し、失敗時の扱いを確認する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "Redis 障害時の一覧の挙動を許容するかが未確認"
+      revisit_condition: "既存のキャッシュ利用箇所の扱いを確認したとき"
+      kind: unverified
+      accepted_by: null
+    depends_on: []
+
+  # 入口: 影響駆動（並行実行、課金に触れる計算）＋反例駆動（説明「席数を超える招待を409で拒否」に従えてしまう実装）。
+  # 数えてから INSERT する形は退屈版と一致している。
+  - id: D-011
+    scope: {ref: "app/routes/invitations.py:16-33", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 手続き
+    origin: [impact, counterexample]
+    question: "どう反証: 残り1席のとき、同じ組織の招待要求が2件同時に届いたら"
+    current_answer: "同じトランザクションの中で、有効メンバー数と未承諾招待数を数え、上限未満なら INSERT する"
+    grounding:
+      - requirement: "docs/tickets/TEAM-45.md:6 — プランの席数を超えてメンバーを招待できないようにする"
+      - existing_contract: "deploy/README.md:3 — DB は PostgreSQL 16。既定のトランザクション分離レベルは変更していない"
+      - existing_contract: "PostgreSQL 16 文書 13.3.2 Row-Level Locks（FOR UPDATE で取得した行は、他トランザクションの UPDATE・DELETE・SELECT FOR UPDATE 等をトランザクション終了までブロックする）と SELECT 文書『The Locking Clause』（表を指定すればその表の行だけをロックし、指定しなければ文中の全表をロックする）— 改修方式を選ぶ理由として使う"
+    evidence:
+      - inspection: "app/routes/invitations.py:16-33 — 数えてから INSERT するまでの間に、行ロックも一意制約も無い"
+      - inspection: "PostgreSQL 16 文書 13.2・13.2.1 Read Committed Isolation Level — 既定の分離レベルは Read Committed。FOR UPDATE/SHARE の無い SELECT はクエリ開始前にコミット済みのデータだけを見る"
+      - inspection: "deploy/api.yaml:6,15 — 3レプリカ×4ワーカーで要求を並行に処理する"
+      - inspection: "tests/test_invitations.py:7-20 — トランザクションを偽物に差し替えており、並行実行もSQLも検査していない（未実行）"
+    gap: "2つのトランザクションがどちらも使用数＝上限−1を読み、どちらも INSERT してコミットできる。席数を超える招待が成立し、要求2に反する。2人の管理者の同時操作や二重送信で到達する（一括招待画面が並行に呼ぶかは資料で分からない）"
+    resolution:
+      action: change
+      reason: "数える前に組織の行を FOR UPDATE OF o でロックし、同じ組織の招待をトランザクション単位で直列化する。OF o に限るのは、plans の行までロックすると同じプランの全組織が直列化するため。分離レベルの変更や新しい仕組みは足さない"
+      candidate: false
+    verification:
+      status: pending
+      plan: "実DBで2接続から同時に招待する結合テストで、上限を超えないことと、後から来た方が 409 になることを確かめる（次周、strength=テスト実行）"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "ロックはトランザクション終了まで保持され、現状はその間にロゴ取得とメール送信（外部通信）が入るため、同じ組織の招待がその時間だけ待つ。席を消費する他の経路（メンバーの再有効化など）が資料に無く、同じロックを取るか未確認"
+      revisit_condition: "D-012・D-013 の resolution が確定したとき、および席を消費する他の経路を洗い出したとき"
+      kind: unverified
+      accepted_by: null
+    depends_on: []
+
+  # 入口: 影響駆動（性能・資源、障害時の挙動）。
+  - id: D-012
+    scope: {ref: "app/routes/invitations.py:16,34", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 手続き
+    origin: impact
+    question: "どの前提を焼き込んでいる: ロゴ取得（外部HTTP）をトランザクションの中で行うのは、取得がすぐ終わる前提か"
+    current_answer: "INSERT の後、同じトランザクションの中で fetch_logo を呼ぶ"
+    grounding:
+      - existing_contract: "app/db.py:21-25 — transaction() は with の間、プールの接続を保持する"
+      - existing_contract: "app/config.py:5 — DB_POOL_SIZE = 10（プロセスごと）"
+      - requirement: "docs/tickets/TEAM-45.md:12 — 一括招待は最大200件を1件ずつ呼ぶ"
+    evidence:
+      - inspection: "app/routes/invitations.py:16,34 — fetch_logo が with db.transaction() の内側にある"
+      - inspection: "app/logo.py:7 — timeout=5"
+      - inspection: "requests 文書 Quickstart『Timeouts』の注記 — timeout は応答全体のダウンロード時間の上限ではなく、無通信の時間に対する上限"
+    gap: "取得先が遅い・少しずつ返す場合、招待1件ごとにDB接続を5秒以上保持しうる。一括招待200件ではこれが1件ずつ続き、同じプロセスのプール（10接続）を他のAPIと取り合う。D-011 の改修後はロックも同じ時間保持される"
+    resolution:
+      action: change
+      reason: "ロゴは席数判定と INSERT から独立しているので、取得をトランザクションの外へ出しても判定の意味は変わらない"
+      candidate: true
+    verification:
+      status: pending
+      plan: "fetch_logo の呼び出しがトランザクションの外にあることをコードで確認し、取得を遅らせたテストで、トランザクションの保持時間に取得時間が含まれないことを確かめる"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "一括招待では招待ごとに同じロゴを取得し直す（200件なら200回）。取得結果の再利用は本周では提案しない"
+      revisit_condition: "D-002 で取得を残すと決まったとき、または一括招待の所要時間に苦情が出たとき"
+      kind: unverified
+      accepted_by: null
+    depends_on: [D-002]
+
+  # 入口: 影響駆動（外部サービスへの副作用、部分失敗）＋反例駆動。
+  - id: D-013
+    scope: {ref: "app/routes/invitations.py:16,30-36", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 手続き
+    origin: [impact, counterexample]
+    question: "どう反証: メール送信の後でコミットが失敗したら、または送信が失敗・時間切れになったら"
+    current_answer: "INSERT とロゴ取得の後、コミット前に mailer.send_invitation を呼ぶ"
+    grounding:
+      - existing_contract: "app/mailer.py:2 — 外部のメール配信サービス（SaaS）のAPIを同期で呼んで送信する"
+    evidence:
+      - inspection: "app/routes/invitations.py:16,35-36 — 送信がトランザクションの内側、コミットの前にある"
+    gap: "送信後にコミットが失敗すると、DBに無いトークンの招待メールが届く。送信が例外になれば INSERT は取り消されるが、時間切れなら配信サービス側で送られたかが分からない。送信中もDB接続（D-011 の改修後はロックも）を保持する。送信をトランザクション内に置いたのが本PRか以前からかは資料で分からない"
+    resolution:
+      action: investigate
+      reason: "コミット後に送る形にすると、送れなかった招待が席を占める。どちらの失敗を許すか（送信失敗時に招待を取り消す、再送できるようにする）は依頼者の判断が要る"
+      candidate: false
+    verification:
+      status: pending
+      plan: "PRの差分で送信呼び出しの位置が以前からかを確認する。依頼者と失敗時の扱いを決め、コミット後送信にするなら送信失敗時の扱いを実装してテストする"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "送信とコミットの順序、および失敗時の扱いが未確定"
+      revisit_condition: "差分の確認と依頼者の判断のあと"
+      kind: unverified
+      accepted_by: null
+    depends_on: []
+
+  # 入口: 影響駆動（認可の前提、外部への副作用）＋反例駆動（説明「管理者が登録したURLのロゴを表示」に従えてしまう実装）。
+  - id: D-014
+    scope: {ref: "app/logo.py:4-12; app/routes/org_settings.py:14-16", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 手続き
+    origin: [impact, counterexample]
+    question: "どう反証: 組織の管理者が、内部の宛先（または内部へリダイレクトする https URL）をロゴURLに登録し、自分のアドレスを招待したら"
+    current_answer: "組織設定は https:// で始まることだけを検査し、招待時にそのURLを requests.get で取得してメールに渡す"
+    grounding:
+      - requirement: "docs/tickets/TEAM-45.md:7 — ロゴは組織設定で管理者が登録した画像URLを使う。管理者は組織ごとの利用者（docs/spec/members.md:4、app/auth.py:8-12）"
+      - convention: "OWASP ASVS 5.0.0 V1.3.6（V1.3 Sanitization, Level 2）— “Verify that the application protects against Server-side Request Forgery (SSRF) attacks, by validating untrusted data against an allowlist of protocols, domains, paths and ports and sanitizing potentially dangerous characters before using the data to call another service.” チームがこの規格を採用しているとは資料に無い"
+    evidence:
+      - inspection: "app/routes/org_settings.py:14-16 — https:// で始まることだけを検査し、ホスト・アドレスは制限しない"
+      - inspection: "app/logo.py:7 — requests.get(url, timeout=5)。allow_redirects は既定のまま"
+      - inspection: "requests 文書 Quickstart『Redirection and History』— HEAD 以外は既定でリダイレクトを追う"
+      - inspection: "app/routes/invitations.py:32-35 — 宛先は本文の email（管理者が任意に指定できる）で、取得結果がそのメールの logo 引数に渡る"
+    gap: "組織の管理者の入力だけで、APIサーバーから任意の宛先（リダイレクト先を含む）へ要求が飛び、200 の応答本文が logo として管理者の指定したアドレス宛ての送信に渡る。登録時の https 検査はリダイレクト先・宛先アドレスを制限しない。実際に到達できる内部宛先の有無と、mailer が任意の本文をそのまま配信するかは未確認"
+    resolution:
+      action: change
+      reason: "D-002 で取得を残す場合、取得の宛先を制限する: リダイレクトを追わない、名前解決したアドレスがループバック・プライベート・リンクローカルなら接続しない（検査したアドレスに接続する）。D-002 で取得をやめれば本項目の対象は消える"
+      candidate: true
+    verification:
+      status: pending
+      plan: "logo.py のテストを追加する: リダイレクト応答を追わないこと、内部アドレスに解決されるホストへ接続しないこと（名前解決を差し替えて確認）。到達しうる内部宛先と外向き通信の制限の有無は運用担当に確認する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "到達しうる内部宛先（クラスタ内のサービス等）の有無を確認していない。名前解決の切り替え（DNS rebinding）まで防ぐには、検査したアドレスへ直接接続する実装が要る"
+      revisit_condition: "D-002 の結論が出たとき、および運用担当から外向き通信の制限の有無を聞いたとき"
+      kind: unverified
+      accepted_by: null
+    depends_on: [D-002]
+
+  # ───────────── 細部 ─────────────
+
+  - id: D-015
+    scope: {ref: "app/routes/members.py:29", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 細部
+    origin: asked
+    simulated: true
+    question: "なぜこの形: キャッシュの有効期間はなぜ60秒か。その間に古い一覧を返すことを誰が許容しているか"
+    current_answer: "60秒の TTL で Redis に置く（cache.set(..., ttl=60) → Redis の ex=60）"
+    grounding:
+      - freedom: "要求（docs/tickets/TEAM-45.md:5）は速くすることだけで、鮮度の要求も上限も無い。60秒は許容範囲内の任意選択で、30秒や120秒を否定しない"
+    evidence:
+      - inspection: "app/routes/members.py:29、app/cache.py:16-17 — ttl=60 を Redis の ex に渡す"
+    gap: "招待の承諾、メンバーの無効化、表示名・役割の変更が最大60秒一覧に出ない。無効化されたメンバーが最大60秒一覧に残ることを許容するかは依頼者の判断で、資料に無い"
+    resolution:
+      action: narrow
+      reason: "説明を『60秒は許容範囲内の選択で、一覧は最大60秒古い』に限定する。許容されない場合の更新時のキャッシュ削除は、許容可否を確認してから決める"
+      candidate: false
+    verification:
+      status: pending
+      plan: "PR説明に鮮度の限界を書いたことを確認し、許容可否を依頼者に確認する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "一覧が最大60秒古い。担当開発者には製品としての許容を決める権限が無い"
+      revisit_condition: "依頼者が許容しないと答えたとき（更新時のキャッシュ削除を検討する）"
+      kind: unverified
+      accepted_by: null
+    depends_on: []
+
+  - id: D-016
+    scope: {ref: "app/logo.py:7", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 細部
+    origin: asked
+    simulated: true
+    question: "なぜこの形: ロゴ取得のタイムアウトはなぜ5秒か。5秒で打ち切れるのか"
+    current_answer: "requests.get(url, timeout=5) とし、時間切れならロゴなしで送る"
+    grounding:
+      - freedom: "要求に取得時間の上限は無い。5秒は許容範囲内の任意選択で、3秒や10秒を否定しない"
+    evidence:
+      - inspection: "app/logo.py:7-9"
+      - inspection: "requests 文書 Advanced Usage『Timeouts』— 単一の値は接続と読み取りの両方に適用され、どちらも経過時間（wall clock）の上限ではない。Quickstart『Timeouts』の注記も同旨"
+    gap: "『5秒で諦める』とは言えない。接続と無通信の各5秒の上限であり、少しずつ返す相手には5秒を超えて待つ"
+    resolution:
+      action: narrow
+      reason: "説明を『接続と無通信の各5秒』に限定する。全体の上限が要るかは、取得をトランザクションの外へ出した後（D-012）に判断する"
+      candidate: true
+    verification:
+      status: pending
+      plan: "docstring と PR説明の表現が限定した主張になっていることを確認する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "取得全体の所要時間に上限が無い"
+      revisit_condition: "D-002 で取得を残すと決まったとき"
+      kind: unverified
+      accepted_by: null
+    depends_on: [D-002]
+
+  # 入口: 反例駆動（説明「画像URLのロゴを埋め込む」に従えてしまう実装）。
+  - id: D-017
+    scope: {ref: "app/logo.py:10-12", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 細部
+    origin: counterexample
+    question: "どう反証: ロゴURLが画像でない応答や、非常に大きな応答を返したら"
+    current_answer: "ステータスが 200 なら本文をそのまま返し、メールに渡す"
+    grounding:
+      - requirement: "docs/tickets/TEAM-45.md:7 — ロゴは管理者が登録した画像URLを使う"
+    evidence:
+      - inspection: "app/logo.py:10-12 — Content-Type も大きさも検査しない"
+      - inspection: "requests 文書 Advanced Usage『Body Content Workflow』— 既定では応答本文を即時に全部ダウンロードする"
+    gap: "画像以外（HTML、JSON など）もロゴとして渡る（D-014 の持ち出しの経路にもなる）。大きな応答は全量をメモリに読み、配信サービスの上限（資料に無い）次第で送信が失敗する"
+    resolution:
+      action: change
+      reason: "要求は画像URL。Content-Type が image/ の応答だけを受け付け、stream=True で上限バイト数を超えたら打ち切ってロゴなしにする。上限値は配信サービスの添付上限を確認してから決める"
+      candidate: true
+    verification:
+      status: pending
+      plan: "画像以外・上限超過の応答でロゴなしになるテストを追加する。配信サービスの添付上限を確認する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "上限バイト数の根拠（配信サービスの上限）が未確認"
+      revisit_condition: "D-002 の結論と配信サービスの上限を確認したとき"
+      kind: unverified
+      accepted_by: null
+    depends_on: [D-002]
+
+  - id: D-018
+    scope: {ref: "app/routes/invitations.py:17-21,27", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 細部
+    origin: asked
+    simulated: true
+    question: "どの前提を焼き込んでいる: plans.seat_limit が常に数値である前提か（無制限のプランは無いか）"
+    current_answer: "seat_limit をそのまま使用数と比較する"
+    grounding:
+      - requirement: "docs/tickets/TEAM-45.md:6 — 席数は plans.seat_limit"
+    evidence:
+      - inspection: "app/routes/invitations.py:18,27 — seat_limit が None の場合の分岐が無い"
+    gap: "plans の定義と既存データが資料に無い。無制限を NULL で表すプランがあれば比較が TypeError になり、そのプランの組織は招待できなくなる（500）"
+    resolution:
+      action: investigate
+      reason: "plans の定義次第で、対応不要か、NULL を無制限として扱う分岐を足すかに分かれる"
+      candidate: false
+    verification:
+      status: pending
+      plan: "plans のマイグレーションと、本番データの seat_limit の値（NULL の有無）を確認する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "seat_limit が NULL になりうるかを確認していない"
+      revisit_condition: "plans の定義を確認したとき"
+      kind: unverified
+      accepted_by: null
+    depends_on: []
+
+  # 入口: 影響駆動（冪等性・重複実行、データの保存期間）。
+  - id: D-019
+    scope: {ref: "app/routes/invitations.py:22-33", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 細部
+    origin: impact
+    question: "どの前提を焼き込んでいる: 同じ宛先への未承諾招待が複数あっても、それぞれ1席と数える前提か"
+    current_answer: "未承諾の招待を件数どおりに数え、同じ宛先・既存メンバー宛ての確認はしない"
+    grounding:
+      - requirement: "docs/tickets/TEAM-45.md:6 — 席数には有効なメンバーと未承諾の招待を数える（同じ宛先の重複・既存メンバー宛ての扱いは書かれていない）"
+      - requirement: "docs/tickets/TEAM-45.md:12 — 一括招待は最大200件"
+      - existing_contract: "migrations/0020_invitations.sql:1-9 — (org_id, email) の一意制約も有効期限の列も無い"
+    evidence:
+      - inspection: "app/routes/invitations.py:22-26,30-33 — 重複の確認なく、件数をそのまま数えて INSERT する"
+    gap: "一括招待のやり直しや再送のつもりの再招待、既存メンバーのアドレスへの招待が、それぞれ1席を消費する。期限も無いため、承諾されない招待は席を占め続ける（取り消し手段は資料に無い）。要求の文言には合っているが、招待できるはずの人数が招待できなくなる"
+    resolution:
+      action: investigate
+      reason: "数え方の規則は要求の解釈で、依頼者が決める。決まるまで要求の文言どおりの数え方を保つ"
+      candidate: false
+    verification:
+      status: pending
+      plan: "依頼者に、同じ宛先の未承諾招待を1席と数えるか、既存メンバー宛ての招待を拒否するか、招待の取り消し・期限が要るかを確認する"
+      result: null
+      artifact_version: null
+    final_answer: null
+    admitted_limit:
+      limit: "重複招待と未承諾のまま残る招待の数え方が未確定"
+      revisit_condition: "依頼者の回答のあと"
+      kind: unverified
+      accepted_by: null
+    depends_on: []
+
+  # 確かめて問題がなかった問い（以下3件）。
+  - id: D-020
+    scope: {ref: "app/routes/invitations.py:22-28", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 細部
+    origin: asked
+    simulated: true
+    question: "どう反証: 上限ちょうどまで招待でき、上限を超える招待だけを拒否するか（境界のずれは無いか）"
+    current_answer: "使用数（有効メンバー＋未承諾招待）が上限以上なら拒否する"
+    grounding:
+      - requirement: "docs/tickets/TEAM-45.md:6 — 席数には有効なメンバーと未承諾の招待を数える"
+    evidence:
+      - inspection: "app/routes/invitations.py:22-28 — 使用数＝有効メンバー数＋未承諾招待数。使用数 ≥ 上限のときだけ 409"
+      - inspection: "tests/test_invitations.py:7-11（上限5・使用5で409）、14-20（上限5・使用1で送信）— テストの意図も同じ境界（未実行。トランザクションは偽物でSQLは通らない）"
+    gap: null
+    resolution: null
+    verification:
+      status: done
+      plan: "SQLと比較式を読み、要求の数え方と境界を照合する"
+      result: "数え方は要求どおり。使用数が上限−1なら許可され、招待後に使用数＝上限となる。使用数が上限なら拒否する。1件ずつの要求についての確認で、同時実行は D-011"
+      artifact_version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"
+    final_answer: "席数は要求どおり有効メンバーと未承諾招待の合計で数え、上限ちょうどまで招待でき、それを超える招待を拒否する。これは1件ずつの要求についての答えで、同時に届く場合は別に改修する"
+    admitted_limit: null
+    depends_on: []
+
+  - id: D-021
+    scope: {ref: "app/routes/members.py:7,26", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 細部
+    origin: asked
+    simulated: true
+    question: "なぜこの形: 1ページ50件の根拠"
+    current_answer: "PAGE_SIZE = 50 で LIMIT を指定する"
+    grounding:
+      - existing_contract: "docs/spec/members.md:5 — 1ページ50件"
+    evidence:
+      - inspection: "app/routes/members.py:7,26"
+    gap: null
+    resolution: null
+    verification:
+      status: done
+      plan: "定数と既存仕様を照合する"
+      result: "一致"
+      artifact_version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"
+    final_answer: "既存仕様の1ページ50件に合わせている"
+    admitted_limit: null
+    depends_on: []
+
+  - id: D-022
+    scope: {ref: "app/logo.py:4-12", version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"}
+    layer: 細部
+    origin: asked
+    simulated: true
+    question: "無いと何が壊れる: ロゴを取得できないとき、招待そのものは止まらないか（説明『取得できなければロゴなしで送る』は実装と一致するか）"
+    current_answer: "取得で例外が出るか 200 以外なら None を返し、ロゴなしで送る"
+    grounding:
+      - freedom: "要求（docs/tickets/TEAM-45.md:7）はロゴの表示を求めるが、取得できない場合の扱いは指定していない。ロゴなしで招待を続ける扱いは許容範囲内の選択で、招待を失敗させる扱いを否定しない"
+    evidence:
+      - inspection: "app/logo.py:6-11 — requests.RequestException と 200 以外は None を返す"
+      - inspection: "requests 文書 Quickstart『Errors and Exceptions』— requests が明示的に送出する例外はすべて RequestException の派生"
+      - inspection: "requests 文書 Advanced Usage『Body Content Workflow』— 既定では本文は要求の時点で全部ダウンロードされるため、本文受信中の失敗も try の内側で起きる"
+    gap: null
+    resolution: null
+    verification:
+      status: done
+      plan: "実装と requests の文書を読み、失敗時の経路を照合する"
+      result: "接続失敗・時間切れ・200 以外ではロゴなしで送る。requests が明示的に送出しない例外（文書の範囲外）は確認していない"
+      artifact_version: "sha256:48e8e2f41ff05774c4cc9f4bb4c46708bc4d543e20d05c373d5ed921dcf869cc"
+    final_answer: "ロゴを取得できないときはロゴなしで招待メールを送り、ロゴの取得失敗で招待を失敗させない"
+    admitted_limit: null
+    depends_on: []

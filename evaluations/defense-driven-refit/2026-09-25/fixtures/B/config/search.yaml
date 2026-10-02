@@ -1,0 +1,5 @@
+# 管理画面の利用者検索用。jobs/user_indexer.py が5分ごとに差分を同期する。
+opensearch:
+  endpoint: https://search.internal:9200
+  index: users-v3
+  fields: [id, email, display_name, phone, address]

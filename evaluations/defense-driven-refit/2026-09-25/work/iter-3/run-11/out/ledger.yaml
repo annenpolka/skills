@@ -1,0 +1,433 @@
+# 弁明台帳: PR #318 年額プランの自動更新ジョブ（BILL-212）
+# 保存はグラフ（id と depends_on）。時制は妥当性の条件で固定し、選択の経緯は書かない。
+meta:
+  artifact: "PR #318 年額プランの自動更新ジョブ（リポジトリ抜粋 run-11/repo）"
+  round: 1
+  signature: {scope: "変更範囲（PR #318 全体）", granularity: "細部", strength: "資料確認"}
+  round_constraints: "第一周。コード変更なし・テスト未実行。改修は resolution と verification.plan に記録。done は資料確認だけで閉じられた問いに限る"
+  version_scheme: "抜粋は版管理外（.git なし）のため、対象ファイルの内容ハッシュ（sha256 先頭12桁）を版とする。複数ファイルの scope は ref の順にハッシュを + で連結"
+  file_versions:
+    app/renewal_worker.py: "0a6068e124d6"
+    app/payments_client.py: "276e91d17330"
+    app/scheduler.py: "02acedadbafb"
+    app/monthly_worker.py: "b6617e651159"
+    app/money.py: "cbbd013c623a"
+    app/config.py: "7a8363437f02"
+    app/db.py: "2d1b37c5a564"
+    app/mailer.py: "590b2dbaba2b"
+    migrations/0042_add_failure_count.sql: "6b8bd2f8a059"
+    migrations/0031_subscriptions.sql: "eca698449661"
+    tests/test_renewal_worker.py: "3f3b9c017620"
+    deploy/scheduler.yaml: "8892f10aef6c"
+    deploy/monthly-worker.yaml: "9e7b5d48c899"
+    deploy/README.md: "1318b5a4fd5a"
+    docs/tickets/BILL-212.md: "a77b976d80ec"
+    docs/vendor/payco-api-v2-excerpt.md: "a9931db2c6a6"
+  boring_version: "同種の既存実装（参照順序2）: app/monthly_worker.py、app/money.py、deploy/monthly-worker.yaml。明示規約（lint・CONTRIBUTING・設計ガイド）は抜粋に無い"
+  impact_areas:
+    applicable:
+      - "冪等性・重複実行: S-02 B-01 B-05 P-01 D-02"
+      - "並行実行: S-02 P-04"
+      - "金銭・課金に触れる計算: B-03 D-03 D-04"
+      - "障害時・部分失敗: P-01 P-05 D-09"
+      - "外部サービスへの副作用: B-01 B-02 D-09 D-12"
+      - "時刻・タイムゾーン: D-01 D-02"
+      - "個人情報の経路: D-05"
+      - "移行・後方互換: B-02 B-04"
+      - "性能・規模（backend 索引）: P-03 P-04"
+    not_applicable:
+      - "認可・認証: 利用者の要求を受ける入口を追加・変更していない（定期バッチのみ）"
+      - "キャッシュ: 結果を再利用する箇所が無い"
+      - "夏時間: 実行環境の Asia/Tokyo も UTC も夏時間を持たない"
+      - "公開API・入力形式: 外部公開の API は変えていない（社内共有クライアントの互換は B-02 で扱う）"
+  termination: "未達。gap を持つ22項目はすべて pending（改修未適用）。done は B-04 と D-06 の2項目"
+  counts: {items: 24, deviation: 5, impact: 12, counterexample: 3, asked: 4}
+
+items:
+# ===== 構造 =====
+# 入口: 逸脱駆動。退屈版＝月額ジョブ（CronJob・concurrencyPolicy: Forbid・単独起動）
+- id: S-01
+  scope: {ref: "app/scheduler.py:7,10; deploy/scheduler.yaml:1-19", version: "02acedadbafb+8892f10aef6c"}
+  layer: 構造
+  origin: deviation
+  question: なぜこの形
+  current_answer: "既存の定期ジョブ基盤 billing-scheduler に登録し10分ごとに実行する（README.md:6）"
+  grounding: [{existing_contract: "月額更新は CronJob・concurrencyPolicy: Forbid の単独起動（deploy/monthly-worker.yaml:1-8、app/monthly_worker.py:1）"}]
+  evidence: [{inspection: "deploy/scheduler.yaml:7 replicas: 2、:1 INFRA-77（可用性のため）。app/scheduler.py:9-10 で session purge と同じプロセスに同居"}]
+  gap: "同居させる根拠が資料に無い。同居の結果、2レプリカの双方で実行され（S-02）、例外でプロセスが落ちると session purge も止まり（D-03）、長い実行が purge を待たせる（P-04）"
+  resolution: {action: remove_or_align, reason: "月額と同じ単独起動の CronJob（Forbid）を年額用に置き、scheduler.py の登録を外す。既存方式を継承し、新しい仕組みは足さない"}
+  verification: {status: pending, plan: "改修後: deploy/ に年額用 CronJob（Forbid）があり scheduler.py から登録が消えたことを差分で確認。次の強さ: ステージングで1実行時刻に Job が1つだけ動くことを観察", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "INFRA-77 の可用性要件の中身は資料に無く、CronJob 化で満たすか未確認", revisit_condition: "INFRA-77 の内容を確認したとき"}
+  depends_on: []
+
+# 入口: 影響駆動（並行実行・冪等性・金銭）。deploy 設定と BILL-212 から持ち込んだ横断項目
+- id: S-02
+  scope: {ref: "app/renewal_worker.py:15-43; deploy/scheduler.yaml:7-9", version: "0a6068e124d6+8892f10aef6c"}
+  layer: 構造
+  origin: impact
+  question: どの前提
+  current_answer: "明示なし。取得→課金→更新の間に行の確保も課金の重複排除も無く、同時に1プロセスだけが実行することを暗黙に前提している"
+  grounding: [{requirement: "BILL-212.md:10 同じ購読・同じ請求期間に二重課金しない（BILL-212 によれば利用規約 §4.2 に明記。規約本文は未確認）"}, {existing_contract: "PayCo は Idempotency-Key を受け付け、同じキーの再送には最初の要求の結果を返す（payco-api-v2-excerpt.md:8）"}]
+  evidence: [{inspection: "deploy/scheduler.yaml:7 の2プロセスがそれぞれ app/scheduler.py:10 で同じジョブを登録。app/renewal_worker.py:17-42 に行の確保もキーも無い"}]
+  gap: "2レプリカが別々に10分ごとに実行し、一方が処理中の行をもう一方も取得すると同じ購読に2回課金する。処理が長い日（毎月1日の約40万件 BILL-212.md:18）ほど重なりやすい。CronJob に寄せても1実行時刻に Job が2つ作られることがある（Kubernetes 文書 CronJob limitations）ので、単一起動だけでは要求2を保証できない"
+  resolution: {action: change, reason: "二段で保証する: 単一起動（S-01）と、請求期間ごとに固定した Idempotency-Key（B-01・B-05）＋旧値一致の条件付き更新（D-02）。分散ロックやリーダー選出は足さない"}
+  verification: {status: pending, plan: "改修後: 課金呼び出しにキーが渡り、更新が旧値一致条件付きであることを差分で確認。次の強さ: 同じ購読を2つの実行が処理するテストで、PayCo への要求のキーが同一・更新が1回だけ効くことを確認", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "PayCo のキー保持期間が不明（payco-api-v2-excerpt.md:9、SUP-4411）で、重複排除が効く時間幅を言えない", revisit_condition: "SUP-4411 の回答が来たとき"}
+  depends_on: [S-01]
+
+# ===== 境界 =====
+# 入口: 影響駆動（外部API・副作用・成否不定）。PayCo 転記から持ち込んだ
+- id: B-01
+  scope: {ref: "app/payments_client.py:13-43", version: "276e91d17330"}
+  layer: 境界
+  origin: impact
+  question: 無いと何が壊れる
+  current_answer: "5xx と接続エラーで、同じ POST /v2/charges を2秒おきに最大3回まで送る（README.md:11）"
+  grounding: [{existing_contract: "5xx では課金の成否が不定のことがある（payco-api-v2-excerpt.md:10）。Idempotency-Key を受け付ける（同:8）"}, {requirement: "BILL-212.md:10 二重課金しない"}]
+  evidence: [{inspection: "app/payments_client.py:27-39 の再送に Idempotency-Key が無く、PayCo から見て別の要求になる"}, {inspection: "requests は送信後の切断（Connection aborted / RemoteDisconnected）も ConnectionError として送出する（requests の公開 issue で確認。一次文書の該当箇所は未確認）"}]
+  gap: "成立済みの課金に 5xx が返ると、再送で2回目の課金になりうる。requests の ConnectionError は要求送信後の切断でも出るので、接続エラーにも成否不定が含まれる"
+  resolution: {action: change, reason: "charge() が呼び出し側から冪等キーを受け取って Idempotency-Key ヘッダで送る。キーを渡さない呼び出しは再送しない"}
+  verification: {status: pending, plan: "改修後: ヘッダ付与と『キー無しなら再送なし』の分岐を差分で確認。次の強さ: 5xx→200 の擬似応答で2回の要求が同じキーを持つテスト", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "最初の要求が 5xx だったとき、同じキーの再送に何が返るかは転記に無い", revisit_condition: "PayCo 原文か SUP-4411 で確認できたとき"}
+  depends_on: [S-02]
+
+# 入口: 影響駆動（移行・後方互換／影響範囲）。変更していない月額ジョブが同じクライアントを使う
+- id: B-02
+  scope: {ref: "app/payments_client.py:13-43; app/monthly_worker.py:9,23-34", version: "276e91d17330+b6617e651159"}
+  layer: 境界
+  origin: impact
+  question: 誰の要求
+  current_answer: "再送はクライアント全体の既定動作として入った（max_attempts=3 が既定値）"
+  grounding: [{requirement: "BILL-212.md:22 月額プランは対象外"}, {existing_contract: "月額ジョブは既定引数の PaymentsClient() を使う（app/monthly_worker.py:9）"}]
+  evidence: [{inspection: "app/monthly_worker.py:23-34 は同じ charge() を呼び、PaymentError で即 past_due にする"}]
+  gap: "対象外の月額ジョブも、キー無しで最大3回再送する挙動に変わる。月額にも二重課金の経路が入り、PayCo 障害時の1件あたりの待ちも延びる"
+  resolution: {action: change, reason: "B-01 の『キーを渡さない呼び出しは再送しない』で、月額ジョブは変更前の1回送信のままになる。月額ジョブ側のコードは変えない"}
+  verification: {status: pending, plan: "改修後: 月額ジョブがキーを渡さず再送分岐に入らないことを差分で確認。次の強さ: 月額経路で 5xx 時の要求回数が1回のテスト", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "変更前の payments_client.py は抜粋に無く、『変更前は再送なし』は README.md:11 の記述からの読み取り", revisit_condition: "PR の差分を入手したとき"}
+  depends_on: [B-01]
+
+# 入口: 逸脱駆動。退屈版＝月額の money.with_tax_minor_units
+- id: B-03
+  scope: {ref: "app/renewal_worker.py:5,26", version: "0a6068e124d6"}
+  layer: 境界
+  origin: deviation
+  question: なぜこの形
+  current_answer: "price×(1+TAX_RATE) を小数2桁に round して amount に渡す"
+  grounding: [{existing_contract: "amount は通貨の最小単位の整数（payco-api-v2-excerpt.md:7）"}, {existing_contract: "税込・最小単位の計算 money.with_tax_minor_units（app/money.py:7-11、app/monthly_worker.py:21）"}, {requirement: "BILL-212.md:12 税込、通貨ごとの最小単位に丸める"}]
+  evidence: [{inspection: "app/renewal_worker.py:26 は主単位の小数を渡す。型の問題（D-03）を除いても、例として JPY 999 なら 1098.9、USD 120.00 なら 132.0 になる"}]
+  gap: "PayCo の契約（最小単位の整数）と要求4（JPY は1円単位）に合わない。非整数を送ったときの PayCo の挙動は転記に無く、拒否されれば顧客の失敗に数えられ、受理されれば USD はセント扱いで1/100の請求になる"
+  resolution: {action: remove_or_align, reason: "money.with_tax_minor_units(sub['price'], sub['currency']) に寄せ、月額と同じ計算と丸め（ROUND_HALF_UP）を継承する"}
+  verification: {status: pending, plan: "改修後: 呼び出しの置き換えを差分で確認。次の強さ: Decimal 入力で JPY・USD の整数最小単位を確かめるテスト（D-10）", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "money.py は JPY と USD だけに対応（app/money.py:4）し、currency 列に制約が無い（0031_subscriptions.sql:7）。年額購読の通貨分布は資料外", revisit_condition: "JPY・USD 以外の年額購読があると分かったとき"}
+  depends_on: []
+
+# 入口: 影響駆動（DBマイグレーション・混在版・ロールバック）。確かめて問題がなかった問い
+- id: B-04
+  scope: {ref: "migrations/0042_add_failure_count.sql:1", version: "6b8bd2f8a059"}
+  layer: 境界
+  origin: impact
+  question: 無いと何が壊れる
+  current_answer: "failure_count を integer NOT NULL DEFAULT 0 で追加する"
+  grounding: [{existing_contract: "マイグレーションは pre-deploy で適用し、ロールバックはイメージだけ戻す。DB は PostgreSQL 16（deploy/README.md:3-5）"}]
+  evidence: [{inspection: "PostgreSQL 16 文書 ALTER TABLE Notes: 非 volatile な DEFAULT 付きの ADD COLUMN は表の書き換えを要しない"}, {inspection: "旧版のコード（app/monthly_worker.py）は failure_count を参照しない"}]
+  gap: null
+  resolution: null
+  verification: {status: done, plan: "マイグレーション・デプロイ手順・旧版コードの照合", result: "書き換えなし。列追加が先でも旧版は影響を受けず、イメージだけ戻しても列は残って旧版は無視する", artifact_version: "6b8bd2f8a059"}
+  final_answer: "定数の既定値付きの列追加なので PG16 では表を書き換えず、旧版アプリともロールバック手順とも両立する"
+  admitted_limit: {limit: "ACCESS EXCLUSIVE ロックの取得待ちは評価していない", revisit_condition: "適用時に subscriptions を長く掴む処理があると分かったとき、または 0042 を変更したとき"}
+  depends_on: []
+
+# 入口: 反例駆動。説明「請求期間ごとに固定したキーで送れば二重課金しない」に従って見えて困る実装
+- id: B-05
+  scope: {ref: "app/renewal_worker.py:28-33; app/payments_client.py:17-31", version: "0a6068e124d6+276e91d17330"}
+  layer: 境界
+  origin: counterexample
+  question: どう反証
+  current_answer: "（B-01 の改修案）購読と請求期間から冪等キーを作って送る"
+  grounding: [{requirement: "BILL-212.md:10 二重課金しない、:11 失敗したら3日後に再試行"}, {existing_contract: "同じキーの再送には最初の要求の結果を返す（payco-api-v2-excerpt.md:8）"}]
+  evidence: [{inspection: "反例1: キー＝購読IDのみ → 翌年の更新に前年の結果が返り、課金されずに renews_at だけ進む。反例2: 3日後の再試行にも同じキー → 拒否済みの結果が返り、要求3の再試行が実際には行われない。反例3: キーに renews_at を使う → 再試行で renews_at が動き（P-02）、成否不定の後の再送が重複排除されない"}]
+  gap: "説明に欠けていた条件: キーは請求期間を含み、確定した失敗の後だけ新しくし、成否不定の後は同じキーを使い続ける"
+  resolution: {action: change, reason: "キー＝購読ID＋再試行で動かない期間の起点＋確定失敗後の試行番号。成否不定では番号を進めない"}
+  verification: {status: pending, plan: "改修後: キーの入力が上の3要素だけであることを差分で確認。次の強さ: 翌年・拒否後・成否不定後の3場面でキーの同一と相違を確かめるテスト", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "キー保持期間が再試行間隔（3日）より短ければ、成否不定の後の再送は重複排除されない", revisit_condition: "SUP-4411 の回答が来たとき。短ければ GET /v2/charges（payco-api-v2-excerpt.md:12-14）での照合を検討する"}
+  depends_on: [B-01, P-02]
+
+# ===== 手続き =====
+# 入口: 反例駆動。説明「課金に失敗したら3日後に再試行」（BILL-212.md:11）に従って見えて二重課金する実装
+- id: P-01
+  scope: {ref: "app/renewal_worker.py:27-42,46-59; app/payments_client.py:36-43", version: "0a6068e124d6+276e91d17330"}
+  layer: 手続き
+  origin: counterexample
+  question: どう反証
+  current_answer: "PaymentError はすべて失敗として failure_count を増やし、3日後に再試行する"
+  grounding: [{requirement: "BILL-212.md:10-11"}, {existing_contract: "5xx は成否不定のことがある（payco-api-v2-excerpt.md:10）"}]
+  evidence: [{inspection: "app/payments_client.py:43 は再送を使い切った 5xx も、:40-41 の 4xx と同じ PaymentError にする。app/renewal_worker.py:28-42 の課金と renews_at 更新は別の文（app/db.py:6 autocommit）"}]
+  gap: "反例: 実は成立していた課金を失敗と記録し、3日後にもう一度課金する。課金成功の後・更新の前にプロセスが止まる（更新・停止・例外）と次の実行で再課金する。欠けていた条件は何を失敗とみなすか、成否不明をどう扱うか。4xx の内訳も転記に無く、すべて顧客の失敗に数えている"
+  resolution: {action: change, reason: "クライアントで確定した拒否と成否不定を別の例外に分け、成否不定は B-05 の同じキーで再送する。課金後の中断による再実行もキーで吸収する"}
+  verification: {status: pending, plan: "改修後: 例外の分岐と失敗記録の条件を差分で確認。次の強さ: 5xx を使い切った後の再実行で同じキーが送られ failure_count が変わらないテスト", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "成否不定を要求3の『失敗』に数えるか、成否不定をいつ再送するかは要求に書かれていない", revisit_condition: "要求オーナー（BILL-212）に確認できたとき"}
+  depends_on: [B-01, B-05]
+
+# 入口: 反例駆動。説明「3日後に再試行し、次回更新日は前回更新日の1年後」（BILL-212.md:11,13）
+- id: P-02
+  scope: {ref: "app/renewal_worker.py:17-21,38,54-58", version: "0a6068e124d6"}
+  layer: 手続き
+  origin: counterexample
+  question: どう反証
+  current_answer: "失敗時は renews_at を now+3日に書き換え、成功時は renews_at の1年後を次回にする"
+  grounding: [{requirement: "BILL-212.md:10 同じ請求期間に二重課金しない（期間を識別できる必要がある）"}, {requirement: "BILL-212.md:13 次回更新日は前回更新日の1年後"}]
+  evidence: [{inspection: "app/renewal_worker.py:56-57 が renews_at を再試行時刻で上書きし、:38 がその値に1年足す"}]
+  gap: "renews_at が再試行時刻と請求期間の起点を兼ねている。反例: 失敗のたびに期間の起点が動くので B-05 のキーの基準にできず、次回更新日も再試行の分だけずれる（起算日の解釈は D-11）"
+  resolution: {action: change, reason: "renews_at は期間の起点として再試行では動かさず、再試行の時刻は別に持つ。候補は (a) 再試行時刻の列を1つ足す、(b) 起点＋失敗回数×3日で求める（列を足さない）。どちらも根拠は要求2"}
+  verification: {status: pending, plan: "改修後: 失敗時の UPDATE が renews_at を変えないこと、抽出条件が再試行時刻を見ること、その条件が既存索引 subscriptions_due_idx（0031_subscriptions.sql:11）を使える形かを差分で確認。次の強さ: 2回失敗→成功で次回更新日と期間キーを確かめるテスト", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: null
+  depends_on: [B-01]
+
+# 入口: 逸脱駆動。退屈版＝月額の JOIN による1回の取得
+- id: P-03
+  scope: {ref: "app/renewal_worker.py:17-25", version: "0a6068e124d6"}
+  layer: 手続き
+  origin: deviation
+  question: なぜこの形
+  current_answer: "購読を取得したあと、1件ごとに customers を SELECT * する"
+  grounding: [{existing_contract: "月額は subscriptions と customers を JOIN し、payco_customer_id だけを取る（app/monthly_worker.py:14-19）"}]
+  evidence: [{inspection: "app/renewal_worker.py:23-25 が対象件数ぶん追加の問い合わせを出し、顧客行の全列（0031_subscriptions.sql:13 の住所などを含む）を読む"}]
+  gap: "毎月1日の約40万件では同じ数の追加問い合わせになる。別に取得する理由は資料に無い"
+  resolution: {action: remove_or_align, reason: "月額と同じ JOIN に寄せ、必要な列（payco_customer_id、通知用の email）だけを取る"}
+  verification: {status: pending, plan: "改修後: 問い合わせが1本になり列が限定されたことを差分で確認", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: null
+  depends_on: []
+
+# 入口: 影響駆動（性能・規模、並行実行）。BILL-212 の規模から持ち込んだ
+- id: P-04
+  scope: {ref: "app/renewal_worker.py:16-43", version: "0a6068e124d6"}
+  layer: 手続き
+  origin: impact
+  question: どの前提
+  current_answer: "期日を過ぎた全件を一度に取得し、1件ずつ課金と更新をする"
+  grounding: [{requirement: "BILL-212.md:17-18 年額約180万件、毎月1日に約40万件が集中"}]
+  evidence: [{inspection: "app/renewal_worker.py:17-21 は件数上限の無い fetch_all、:22-43 は逐次処理。完了時刻の要求は BILL-212 に無い"}, {inspection: "抽出条件の列（:18-19）は既存索引 subscriptions_due_idx (plan_type, status, renews_at)（0031_subscriptions.sql:11）と一致。実行計画は取っていない"}]
+  gap: "所要時間が未計測。取得した時点の行を長い時間をかけて処理するので、その間に解約（status=canceled）された購読にも課金しうる。解約を誰がいつ行うかは抜粋に無い"
+  resolution: {action: investigate, reason: "1件あたりと1日分の所要時間を計測し、解約の経路を確認する。競合の窓が問題になるなら、課金直前に status を確かめ直す案を候補にする"}
+  verification: {status: pending, plan: "計測値と解約経路の所在を台帳に追記する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "処理時間・メモリ使用量・解約との競合の頻度は未計測。完了期限の要求が無いので、遅れの許容幅は言えない", revisit_condition: "計測値が出たとき、または完了期限の要求が示されたとき"}
+  depends_on: [S-01]
+
+# 入口: 影響駆動（障害時・部分失敗）。退屈版（月額）も同型だが、影響領域なので一致を根拠にしない
+- id: P-05
+  scope: {ref: "app/renewal_worker.py:22-43; app/payments_client.py:41", version: "0a6068e124d6+276e91d17330"}
+  layer: 手続き
+  origin: impact
+  question: 無いと何が壊れる
+  current_answer: "PaymentError だけを捕まえて次の購読へ進む"
+  grounding: [{requirement: "BILL-212.md:9 期日を過ぎた active な年額購読を自動で更新課金する"}]
+  evidence: [{inspection: "PaymentError 以外（4xx の本文が JSON でないときの例外 app/payments_client.py:41、D-02 の日付例外、DB 例外、メール送信の例外、未対応通貨の KeyError）はループの外へ出る"}, {inspection: "schedule は実行中の例外を捕まえない（schedule 文書 Exception Handling）"}]
+  gap: "1件の想定外の例外でその回の残り全件が止まり、同じ行が先に来れば毎回止まる。課金成功の後で出ると更新されず、次の実行で再課金する（P-01）"
+  resolution: {action: change, reason: "課金前の例外は1件単位で記録して次へ進む。課金後の例外による再実行はキー（B-05）で安全にする。月額ジョブは変えない"}
+  verification: {status: pending, plan: "改修後: 1件単位の例外処理が課金前の範囲に限られていることを差分で確認。次の強さ: 2件のうち1件目で例外が出ても2件目が課金されるテスト", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "payco_customer_id が NULL になりうるか（0003_customers.sql）は抜粋に無い", revisit_condition: "顧客テーブルの定義を確認したとき"}
+  depends_on: [S-01, B-05]
+
+# ===== 細部 =====
+# 入口: 影響駆動（時刻・タイムゾーン）。deploy 設定の TZ と列の型から持ち込んだ
+- id: D-01
+  scope: {ref: "app/renewal_worker.py:16,57", version: "0a6068e124d6"}
+  layer: 細部
+  origin: impact
+  question: どの前提
+  current_answer: "タイムゾーンなしの datetime.now() で、期日の判定と再試行時刻を作る"
+  grounding: [{existing_contract: "月額は datetime.now(timezone.utc)（app/monthly_worker.py:13）"}, {requirement: "BILL-212.md:9 renews_at を過ぎたものを課金する"}]
+  evidence: [{inspection: "deploy/scheduler.yaml:18-19 TZ=Asia/Tokyo。renews_at は timestamptz（0031_subscriptions.sql:8）。psycopg はタイムゾーンなしの datetime を timestamp として送り（psycopg 文書 Adapting basic Python types）、PostgreSQL は timestamptz との変換でセッション TimeZone の現地時刻とみなす（PostgreSQL 16 文書 8.5.1.3）"}]
+  gap: "日本時刻の壁時計がセッション TimeZone（抜粋に設定なし）で解釈される。UTC なら最大9時間早く課金し、再試行時刻も9時間ずれる。S-01 で CronJob に移すと TZ の指定が無くなり（deploy/monthly-worker.yaml に TZ なし）、値が黙って変わる"
+  resolution: {action: remove_or_align, reason: "月額と同じ datetime.now(timezone.utc) に寄せ、セッション設定と実行環境の TZ に依存しない形にする"}
+  verification: {status: pending, plan: "改修後: now の生成がタイムゾーン付きであることを差分で確認", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "RDS のセッション TimeZone の実設定は資料外で、現状どれだけずれるかは言えない", revisit_condition: "DB パラメータを確認したとき"}
+  depends_on: [S-01]
+
+# 入口: 影響駆動（時刻・日付計算、部分失敗）
+- id: D-02
+  scope: {ref: "app/renewal_worker.py:38-42", version: "0a6068e124d6"}
+  layer: 細部
+  origin: impact
+  question: どう反証
+  current_answer: "renews_at.replace(year=+1) を次回更新日として UPDATE する"
+  grounding: [{requirement: "BILL-212.md:13 次回は1年後、:10 二重課金しない"}, {existing_contract: "月額は SQL の interval で日付を進める（app/monthly_worker.py:36）。PostgreSQL は存在しない日を月末に寄せる（PostgreSQL 16 文書 9.9）"}]
+  evidence: [{inspection: "2月29日の renews_at では replace(year=+1) が ValueError になる。この行は課金成功（:28-33）の後にある。現状は D-03 の例外が先に出るため、D-03 を直した後に表面化する"}]
+  gap: "2月29日起点の購読は課金成功後の例外で更新されず、キーが無い現状では実行のたびに再課金される。一方、月額と同じ renews_at = renews_at + interval に寄せると、同じ購読が2回処理されたとき2年進む"
+  resolution: {action: change, reason: "候補（D-11 の確定待ち）: 取得した起点＋interval '1 year' を SQL で計算し、旧値一致を条件に UPDATE する"}
+  verification: {status: pending, plan: "改修後: UPDATE の SET と WHERE を差分で確認。次の強さ: 2028-02-29 起点と、同じ行への2回適用のテスト", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "既存データに2月29日起点の年額購読があるかは資料外", revisit_condition: "データを確認したとき（遅くとも 2028年2月の実行より前）"}
+  depends_on: [P-02, D-11]
+
+# 入口: 影響駆動（金銭の数値型）。列の型・DBドライバ・config から持ち込んだ
+- id: D-03
+  scope: {ref: "app/renewal_worker.py:26; app/config.py:3", version: "0a6068e124d6+7a8363437f02"}
+  layer: 細部
+  origin: impact
+  question: どの前提
+  current_answer: "price を float とみなし、TAX_RATE（float 0.10）を掛ける"
+  grounding: [{existing_contract: "price は numeric(12,2)（0031_subscriptions.sql:6）。psycopg は numeric を Decimal で返す（psycopg 文書 Data adaptation configuration）"}]
+  evidence: [{inspection: "Decimal と float の算術は TypeError（Python decimal 文書）。:26 は try の外"}, {inspection: "テストの price は float 12000.0（tests/test_renewal_worker.py:41）で、この経路を通らない"}]
+  gap: "対象が1件でもあれば、本番の行では最初の1件で TypeError になり、1件も課金せずに実行が落ちる。schedule は例外を捕まえないので scheduler プロセスごと止まり、再起動しても10分で落ちるため、1時間間隔の session purge が実行されない（ライブラリの既定動作からの推論。実行していない）"
+  resolution: {action: remove_or_align, reason: "B-03 で money.with_tax_minor_units に寄せると、float との算術そのものが消える"}
+  verification: {status: pending, plan: "改修後: 金額計算に float の算術が残っていないことを差分で確認。次の強さ: Decimal の price でのテスト（D-10）", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: null
+  depends_on: [B-03, S-01]
+
+# 入口: 実問（模擬尋問。決済基盤シニアを想定した質問で、実際に来た質問ではない）「要求は config の TAX_RATE と言っている。money.py に寄せたらどちらが正？」
+- id: D-04
+  scope: {ref: "app/config.py:3; app/money.py:3", version: "7a8363437f02+cbbd013c623a"}
+  layer: 細部
+  origin: asked
+  question: 誰の要求
+  current_answer: "（B-03 の改修後）money.py の TAX_RATE（Decimal 0.10）が使われる"
+  grounding: [{requirement: "BILL-212.md:12 税率は config の TAX_RATE"}, {existing_contract: "月額の税込計算は money.TAX_RATE を使う（app/money.py:3,10）"}]
+  evidence: [{inspection: "両者とも現在 0.10。config は float、money は Decimal"}]
+  gap: "税率の出所が二つあり、要求の文言（config）と既存の計算（money）が食い違う"
+  resolution: {action: investigate, reason: "どちらを正とするかを要求オーナーに確認する。確認までは『現在は同値』と範囲を限って説明する"}
+  verification: {status: pending, plan: "回答を台帳に記録し、必要なら一方が他方を参照する形に揃える", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "税率が改定されると片方だけが更新される恐れがある", revisit_condition: "要求オーナーの回答が来たとき、または税率改定の予定が出たとき"}
+  depends_on: [B-03]
+
+# 入口: 影響駆動（個人情報の経路）
+- id: D-05
+  scope: {ref: "app/renewal_worker.py:43", version: "0a6068e124d6"}
+  layer: 細部
+  origin: impact
+  question: 無いと何が壊れる
+  current_answer: "成功時に sub と customer の辞書全体を INFO で出力する"
+  grounding: [{existing_contract: "月額のログは sub_id だけ（app/monthly_worker.py:33,39）"}]
+  evidence: [{inspection: "customers は email・name・billing_address・payco_customer_id などを持つ（0031_subscriptions.sql:13）。P-03 の SELECT * で全列がログに載る"}]
+  gap: "更新のたびに顧客の連絡先と住所がログに出る（年約180万件）。この出力を要する理由が資料に無い"
+  resolution: {action: remove_or_align, reason: "月額と同じく sub_id（必要なら customer_id）だけを出す"}
+  verification: {status: pending, plan: "改修後: ログの引数が ID だけになったことを差分で確認", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "社内のログ取扱い規程は資料に無く、照合していない", revisit_condition: "ログ規程の所在が分かったとき"}
+  depends_on: []
+
+# 入口: 逸脱駆動。月額は初回の失敗で即 past_due（app/monthly_worker.py:29-34）。確かめて問題がなかった問い
+- id: D-06
+  scope: {ref: "app/renewal_worker.py:11-12,40,46-58", version: "0a6068e124d6"}
+  layer: 細部
+  origin: deviation
+  question: 誰の要求
+  current_answer: "MAX_FAILURES=3、RETRY_AFTER=3日、成功時に failure_count を0に戻す"
+  grounding: [{requirement: "BILL-212.md:11 3日後に再試行、連続3回失敗で past_due とメール通知"}]
+  evidence: [{inspection: "app/renewal_worker.py:47-58 は失敗ごとに+1し3回目で past_due とメール、:40 で成功時に0。tests/test_renewal_worker.py:74-85 に3回目のテストがある（未実行）"}]
+  gap: null
+  resolution: null
+  verification: {status: done, plan: "定数と要求3の照合", result: "値と『連続』のリセットが要求3と一致", artifact_version: "0a6068e124d6"}
+  final_answer: "3日と3回は要求3の値そのもので、月額と違うのは要求3が再試行を求めているから"
+  admitted_limit: {limit: "何を失敗に数えるかは P-01、再試行時刻の持ち方は P-02 で別に扱っており、この項目は値だけを閉じる", revisit_condition: "P-01 の確認結果が出たとき"}
+  depends_on: []
+
+# 入口: 逸脱駆動。月額は15分間隔（deploy/monthly-worker.yaml:7）
+- id: D-07
+  scope: {ref: "app/scheduler.py:10", version: "02acedadbafb"}
+  layer: 細部
+  origin: deviation
+  question: なぜこの形
+  current_answer: "10分ごと"
+  grounding: [{freedom: "BILL-212 は『renews_at を過ぎたら』以外に時間の要求を持たない。10分でも月額と同じ15分でもよく、どちらも否定しない"}]
+  evidence: [{inspection: "BILL-212.md:7-13 に実行間隔・完了時刻の要求なし"}]
+  gap: "間隔の理由が PR 説明（README.md:6）に無い"
+  resolution: {action: narrow, reason: "許容範囲内の任意値と説明する。S-01 で CronJob の schedule に移る"}
+  verification: {status: pending, plan: "S-01 の改修後: CronJob の schedule の値と説明が一致することを確認", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: null
+  depends_on: [S-01]
+
+# 入口: 実問（模擬尋問）「クライアントの3回は要求3の3回と同じ根拠か。2秒の根拠は」
+- id: D-08
+  scope: {ref: "app/payments_client.py:13-15,34,38", version: "276e91d17330"}
+  layer: 細部
+  origin: asked
+  question: 誰の要求
+  current_answer: "max_attempts=3、固定2秒の待ち"
+  grounding: [{freedom: "要求3（3日間隔・3回）とは別物で、一時的な障害向けの即時再送の回数。要求や計測に由来しない任意値"}]
+  evidence: [{inspection: "失敗のたびに sleep するので最後の試行の後にも2秒待つ（:34,:38 から :43）。PayCo 障害時は1件あたり要求時間のほかに6秒待つ"}]
+  gap: "要求3の3回と混同されやすく、値の根拠が無い"
+  resolution: {action: narrow, reason: "要求3とは無関係の任意値と説明する。B-01 でキー付きの呼び出しだけに限る"}
+  verification: {status: pending, plan: "B-01 の改修後: 再送の条件と値を差分で確認", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "PayCo の応答時間と障害時の挙動は計測していない。毎月1日の約40万件の処理中に障害が起きると待ちが積み上がる（P-04）", revisit_condition: "計測値が出たとき"}
+  depends_on: [B-01]
+
+# 入口: 影響駆動（外部サービスへの副作用・部分失敗）
+- id: D-09
+  scope: {ref: "app/renewal_worker.py:48-53; app/mailer.py:1-3", version: "0a6068e124d6+590b2dbaba2b"}
+  layer: 細部
+  origin: impact
+  question: 無いと何が壊れる
+  current_answer: "past_due に更新してから、メール送信を enqueue する"
+  grounding: [{requirement: "BILL-212.md:11 連続3回失敗で顧客へメール通知"}]
+  evidence: [{inspection: "mailer.send は実装省略で、失敗時の挙動が抜粋に無い。past_due の行は以後抽出されない（app/renewal_worker.py:19）"}]
+  gap: "更新の後・送信の前に例外や停止があると、その通知は二度と送られない"
+  resolution: {action: investigate, reason: "mailer の失敗時の挙動（例外になるか、再送されるか）を確かめてから、順序か記録方法を決める"}
+  verification: {status: pending, plan: "mailer の仕様を確認し、結果を台帳に追記する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "通知の取りこぼしが起きうるかは未確認", revisit_condition: "mailer の仕様が分かったとき"}
+  depends_on: [P-05]
+
+# 入口: 実問（模擬尋問）「CI #9912 が全件成功なら動くのでは」
+- id: D-10
+  scope: {ref: "tests/test_renewal_worker.py:9-85", version: "3f3b9c017620"}
+  layer: 細部
+  origin: asked
+  question: どう反証
+  current_answer: "正常系・失敗・3回目の3件のテストが CI #9912 で成功した（README.md:21。結果そのものは見ていない）"
+  grounding: [{requirement: "BILL-212.md:10-13（テストが符号化すべき条件の出所）"}]
+  evidence: [{inspection: "FakeDB は SQL を無視（:15-16）、price は float（:41）、renews_at はタイムゾーンなし（:42）。:59 の比較は float と int を区別せず（13200.0 == 13200）、JPY の例だけでは単位の誤りを検出できない"}]
+  gap: "テストは本番の型（Decimal・timestamptz）と PayCo の契約（整数の最小単位）を通っておらず、緑でも D-03・B-03 の不具合と両立する。二重課金・2月29日・成否不定の場面が無い"
+  resolution: {action: change, reason: "要求を符号化するテストにする: Decimal 入力から整数の最小単位（JPY・USD）、期間キーの同一と相違、2月29日起点、成否不定で failure_count が変わらないこと"}
+  verification: {status: pending, plan: "改修後: 各テストが要求の条項を参照していることを確認。次の強さ: テスト実行", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "CI #9912 の結果は見ていない（README の記載のみ）", revisit_condition: "テストを実行する周回"}
+  depends_on: [B-03, B-05, D-02]
+
+# 入口: 実問（模擬尋問）「3日遅れで成功した購読の次回更新日は、元の日付の1年後か、成功日の1年後か」
+- id: D-11
+  scope: {ref: "app/renewal_worker.py:38", version: "0a6068e124d6"}
+  layer: 細部
+  origin: asked
+  question: 誰の要求
+  current_answer: "成功した試行の予定時刻の1年後。失敗が無ければ元の予定日、失敗の後は再試行の予定時刻が基準になる"
+  grounding: [{requirement: "BILL-212.md:13 次回更新日は前回更新日の1年後"}]
+  evidence: [{inspection: "BILL-212 に『前回更新日』の定義（予定日か課金成功日か）が無い"}]
+  gap: "起算日が要求から決まらない。『元の予定日』と読むなら、失敗後の現在の挙動は要求と合わない"
+  resolution: {action: investigate, reason: "要求オーナー（BILL-212）に起算日を確認する"}
+  verification: {status: pending, plan: "回答を台帳に記録し、D-02 の起点を確定する", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "起算日の解釈が未確定", revisit_condition: "要求オーナーの回答が来たとき"}
+  depends_on: [P-02]
+
+# 入口: 影響駆動（外部API・タイムアウト、運用）
+- id: D-12
+  scope: {ref: "app/payments_client.py:27-31", version: "276e91d17330"}
+  layer: 細部
+  origin: impact
+  question: 無いと何が壊れる
+  current_answer: "requests.post に timeout を渡していない"
+  grounding: [{convention: "requests 文書 Timeouts: 既定ではタイムアウトしない。外部への要求にはタイムアウトを付けるべき"}, {requirement: "BILL-212.md:9 自動で更新課金する（止まったまま気づかれない状態は要求を満たさない）"}]
+  evidence: [{inspection: "app/payments_client.py:27-31 に timeout 引数なし。CronJob の Forbid は前の実行が終わるまで次を飛ばす（Kubernetes 文書、deploy/monthly-worker.yaml:8）"}]
+  gap: "PayCo の応答が止まると1件で無期限に待ち、S-01 の後は後続の実行も飛ばされ続けて更新全体が黙って止まる。本 PR で入った行か既存かは差分が無く不明"
+  resolution: {action: change, reason: "timeout を呼び出し側から渡せる引数にして年額ジョブだけが指定し、タイムアウトは成否不定（P-01）として扱う。月額ジョブの挙動は変えない"}
+  verification: {status: pending, plan: "改修後: timeout の指定と例外の分類を差分で確認", result: null, artifact_version: null}
+  final_answer: null
+  admitted_limit: {limit: "timeout の値は計測が無く任意。月額経路の無期限待ちは本 PR の範囲外として残す", revisit_condition: "PayCo の応答時間を計測したとき、または月額ジョブを扱う変更のとき"}
+  depends_on: [B-01, B-02, S-01]

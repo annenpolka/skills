@@ -1,0 +1,5 @@
+import os
+
+DATABASE_URL = os.environ["DATABASE_URL"]
+REDIS_URL = os.environ["REDIS_URL"]
+DB_POOL_SIZE = 10

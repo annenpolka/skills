@@ -1,0 +1,65 @@
+endpoint: https://api.typesafe.ai/v1/systemone
+model: jev-latest
+state keys:
+  key_A1: string, 388 chars
+  key_A3: string, 509 chars
+  key_B1: string, 431 chars
+  key_B6: string, 163 chars
+  run01_items: string, 3796 chars
+  run03_items: string, 2725 chars
+  run02_prop_items: string, 2778 chars
+  run02_D012: string, 673 chars
+  run04_prop_items: string, 2897 chars
+  run02_ge: string, 3163 chars
+  run03_ge: string, 3942 chars
+questions:
+  r01_D02_replicas_to_double_charge [noul]
+    instructions: In `run01_items`, does item D-02 connect the scheduler deployment running two replicas (or several scheduler processes) to a path where the same subscription is charged twice?
+    criteria: {"true":"D-02 states the multiple-replica/multiple-process fact and describes the resulting double charge","false":"D-02 lacks the deployment fact, or lacks the double-charge path"}
+  r01_D02_origin_impact [noul]
+    instructions: In `run01_items`, is the `origin` field of item D-02 equal to `impact`?
+    criteria: {"true":"origin is impact","false":"origin is another value or absent"}
+  r01_D02_suff [noul]
+    instructions: Does the text of item D-02 in `run01_items` itself state the replica count or multiple processes, rather than only pointing to another item ID or a file whose content is not shown?
+    criteria: {"true":"The replica/process fact is written in D-02's own text","false":"D-02 relies only on references whose content is not shown"}
+  r01_volume [noul]
+    instructions: In `run01_items`, does any item tie a resource, run-duration, or per-row-query problem to a stated volume figure (for example about 400k rows at month start, or 1.8M subscriptions)?
+    criteria: {"true":"At least one item links such a problem to a volume figure","false":"No item links a resource/duration/per-row-query problem to a volume figure"}
+  r01_timeout [noul]
+    instructions: In `run01_items`, does any item identify that HTTP requests to the payment API are sent without a timeout, or that retries use a fixed interval without jitter?
+    criteria: {"true":"At least one item states the missing timeout or the jitter-less fixed retry interval","false":"Neither is stated"}
+  r01_rolling_stop [noul]
+    instructions: In `run01_items`, does any item describe the worker being stopped during a rolling update (termination grace period or SIGTERM) between a successful charge and the database update?
+    criteria: {"true":"Such a stop during rollout is described as a path","false":"No item describes a stop during rollout"}
+  r03_volume [noul]
+    instructions: In `run03_items`, does any item tie a resource, run-duration, or per-row-query problem to a stated volume figure (for example about 400k rows at month start, or 1.8M subscriptions)?
+    criteria: {"true":"At least one item links such a problem to a volume figure","false":"No item links a resource/duration/per-row-query problem to a volume figure"}
+  r03_timeout [noul]
+    instructions: In `run03_items`, does any item identify that HTTP requests to the payment API are sent without a timeout, or that retries use a fixed interval without jitter?
+    criteria: {"true":"At least one item states the missing timeout or the jitter-less fixed retry interval","false":"Neither is stated"}
+  r03_rolling_stop [noul]
+    instructions: In `run03_items`, does any item describe the worker being stopped during a rolling update (termination grace period or SIGTERM) between a successful charge and the database update?
+    criteria: {"true":"Such a stop during rollout is described as a path","false":"No item describes a stop during rollout"}
+  r02_D012_closes_without_demand [noul]
+    instructions: In `run02_D012`, does item D-012 close the BOLA/IDOR and CSRF questions without requesting any code change or new protective measure?
+    criteria: {"true":"D-012 closes them and requests no change or new measure","false":"D-012 requests a change or measure, or does not close them"}
+  r02_prop_two_targets [noul]
+    instructions: In `run02_prop_items`, do at least two items with origin `impact` each identify a different place where a deleted user's personal data remains: a search index sync, an analytics warehouse export, or an external CRM?
+    criteria: {"true":"At least two such distinct places appear in impact items","false":"Fewer than two such places appear in impact items"}
+  r04_prop_two_targets [noul]
+    instructions: In `run04_prop_items`, do at least two items with origin `impact` each identify a different place where a deleted user's personal data remains: a search index sync, an analytics warehouse export, or an external CRM?
+    criteria: {"true":"At least two such distinct places appear in impact items","false":"Fewer than two such places appear in impact items"}
+  r02_ge_no_bare_names [noul]
+    instructions: In `run02_ge`, is every grounding and evidence entry a reference to a requirement, measurement, contract, named convention, freedom declaration, or test, rather than only a person's name, a concept name, or a book title?
+    criteria: {"true":"Every entry is such a reference; none is only a person/concept/book name","false":"At least one entry is only a person's name, concept name, or book title"}
+  r03_ge_no_bare_names [noul]
+    instructions: In `run03_ge`, is every grounding and evidence entry a reference to a requirement, measurement, contract, named convention, freedom declaration, or test, rather than only a person's name, a concept name, or a book title?
+    criteria: {"true":"Every entry is such a reference; none is only a person/concept/book name","false":"At least one entry is only a person's name, concept name, or book title"}
+  r01_A3_meets_key [noul]
+    instructions: Using the criteria in `key_A3`, do the items in `run01_items` meet the ○ condition (at least two of (a), (b), (c), each tied to concrete material)?
+    criteria: {"true":"At least two of (a), (b), (c) are met with concrete material","false":"Fewer than two are met"}
+  r03_A3_meets_key [noul]
+    instructions: Using the criteria in `key_A3`, do the items in `run03_items` meet the ○ condition (at least two of (a), (b), (c), each tied to concrete material)?
+    criteria: {"true":"At least two of (a), (b), (c) are met with concrete material","false":"Fewer than two are met"}
+no credential-like patterns found (this scan does not replace your own review)
+recorded inspection of request.json for this endpoint; read the summary above, then send in a separate step

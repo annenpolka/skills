@@ -1,0 +1,43 @@
+endpoint: https://api.typesafe.ai/v1/systemone
+model: jev-latest
+state keys:
+  diff: string, 4170 chars
+questions:
+  tier1_overall [noul]
+    instructions: Does `diff` define the first-level answer to open with a whole-artifact answer to whether the artifact may be adopted, within 3 sentences, including adoption-blocking gaps from any layer?
+    criteria: {"true":"All of these are stated","false":"Any is missing"}
+  tier1_per_item [noul]
+    instructions: Does `diff` define, in addition, a per-item answer of at most 3 sentences for each structure/boundary item?
+    criteria: {"true":"The per-item answer is defined","false":"It is not"}
+  tier3_split [noul]
+    instructions: Does `diff` require the third level to separate accepted limits from unverified matters of items scheduled for fixing?
+    criteria: {"true":"Separation is required","false":"Not required"}
+  version_set [noul]
+    instructions: Does `diff` define the version outside version control as one content hash over the whole set of target materials, and forbid per-file versions?
+    criteria: {"true":"Both are stated","false":"Either is missing"}
+  version_invalidate [noul]
+    instructions: Does `diff` add a rule that when the version changes, done items whose scope.ref or referenced material changed go back to pending?
+    criteria: {"true":"The rule is added","false":"It is not"}
+  one_item_rule [noul]
+    instructions: Does `diff` remove the 20-line rule and replace it with a rule that one item holds one question and one response, splitting items that mix questions or different kinds of response?
+    criteria: {"true":"Removed and replaced as described","false":"Not removed, or not replaced as described"}
+  convention_external [noul]
+    instructions: Does `diff` allow external standards or recommendations as `convention` only when the document name, section and relevant statement are given, and say a name alone is not grounding?
+    criteria: {"true":"All of these are stated","false":"Any is missing"}
+  inspection_scope [noul]
+    instructions: Does `diff` extend `inspection` evidence to include observations of undesirable current behaviour and product/library behaviour cited by document name and section?
+    criteria: {"true":"Both are added","false":"Either is missing"}
+  depends_general [noul]
+    instructions: Does `diff` define depends_on generally as another item whose resolution this item's conclusion presupposes, with the layer case as the typical example, and exclude cases where every upper choice needs the same response?
+    criteria: {"true":"All three are stated","false":"Any is missing"}
+  candidate_scope [noul]
+    instructions: Does `diff` say candidate status covers only the choice of response, that the gap is recorded and reported without waiting, that items without a resolution do not get the marker, and place the marker at resolution.candidate?
+    criteria: {"true":"All four are stated","false":"Any is missing"}
+  question_format [noul]
+    instructions: Does `diff` change the question field format to 'label: concrete question' in the item-shape example?
+    criteria: {"true":"The format is changed in the example","false":"It is not"}
+  stop_early [noul]
+    instructions: Does `diff` add that when stopping before the end condition, the signature states whether the condition is met, how many items with gaps remain, and the first step of the next round?
+    criteria: {"true":"All three are required","false":"Any is missing"}
+no credential-like patterns found (this scan does not replace your own review)
+recorded inspection of request.json for this endpoint; read the summary above, then send in a separate step
